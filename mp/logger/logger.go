@@ -50,6 +50,7 @@ func InitializeLogger() *zap.SugaredLogger {
 	sugar := logger.Sugar()
 	defer logger.Sync()
 
+	sugar.Info("Successfully loaded logger.")
 	return sugar
 }
 

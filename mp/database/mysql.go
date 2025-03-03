@@ -31,7 +31,7 @@ func initializeMysql() {
 	logger.Info("Successfully initialized MySQL Database.")
 }
 
-func getMySQLConnection(context context.Context) (*sql.Conn, error) {
+func GetMySQLConnection(context context.Context) (*sql.Conn, error) {
 	connection, err := database.Conn(context)
 	if err != nil {
 		logger.Panic("Error connecting with MySQL Database. - ", err)

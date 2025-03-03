@@ -31,7 +31,7 @@ func initializeRedis() {
 	logger.Info("Successfully initialized the Redis Database.")
 }
 
-func getRedisClient() *redis.Client {
+func GetRedisClient() *redis.Client {
 	if client == nil {
 		logger.Error("Redis client not found.")
 	}
