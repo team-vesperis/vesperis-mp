@@ -17,6 +17,8 @@ func InitializeDatabases(log *zap.SugaredLogger) {
 func CloseDatabases() {
 	logger.Info("Closing databases...")
 
+	closeListeners()
+
 	closeRedis()
 	closeMySQL()
 

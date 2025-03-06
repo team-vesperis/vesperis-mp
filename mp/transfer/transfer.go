@@ -153,23 +153,14 @@ func TransferPlayerToProxy(player proxy.Player, targetProxy string) error {
 }
 
 func listenToTransfers() {
-	pubsub = database.GetRedisClient().Subscribe(ctx, "proxy_transfer_request")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	for {
-		msg, err := pubsub.ReceiveMessage(ctx)
-		if err != nil {
-			if err == context.Canceled || ctx.Err() == context.Canceled {
-				return
-			}
-			logger.Error("Error receiving transfer command: ", err)
-			continue
-		}
-		wg.Add(1)
-
+	database.StartListener(ctx, "proxy_transfer_request", func(msg *redis.Message) {
 		parts := strings.Split(msg.Payload, "|")
 		if len(parts) != 3 {
 			logger.Error("Invalid transfer command format")
-			continue
+			return
 		}
 
 		playerID := parts[0]
@@ -195,19 +186,5 @@ func listenToTransfers() {
 				logger.Warn("Error returning transfer. ", err)
 			}
 		}
-
-		wg.Done()
-	}
-}
-
-func CloseTransfer() {
-	logger.Info("Closing transfer...")
-	if cancel != nil {
-		cancel()
-	}
-	wg.Wait()
-	if pubsub != nil {
-		pubsub.Close()
-		logger.Info("Successfully closed transfer.")
-	}
+	})
 }

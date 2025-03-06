@@ -22,6 +22,13 @@ func InitializeListeners(proxy *proxy.Proxy, log *zap.SugaredLogger) {
 	event.Subscribe(p.Event(), 1, transfer.OnPreShutdown())
 	event.Subscribe(p.Event(), 0, transfer.OnChooseInitialServer())
 	event.Subscribe(p.Event(), 0, onLogin())
+	event.Subscribe(p.Event(), 0, onPluginMessage())
 
 	logger.Info("Successfully registered all listeners.")
+}
+
+func onPluginMessage() func(*proxy.PluginMessageEvent) {
+	return func(event *proxy.PluginMessageEvent) {
+		logger.Info(event)
+	}
 }

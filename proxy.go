@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/robinbraemer/event"
 	"github.com/team-vesperis/vesperis-mp/mp/ban"
@@ -11,11 +11,14 @@ import (
 	"github.com/team-vesperis/vesperis-mp/mp/database"
 	"github.com/team-vesperis/vesperis-mp/mp/listeners"
 	log "github.com/team-vesperis/vesperis-mp/mp/logger"
+	"github.com/team-vesperis/vesperis-mp/mp/playerdata"
 	"github.com/team-vesperis/vesperis-mp/mp/register"
 	"github.com/team-vesperis/vesperis-mp/mp/share"
 	"github.com/team-vesperis/vesperis-mp/mp/terminal"
 	"github.com/team-vesperis/vesperis-mp/mp/transfer"
 	"github.com/team-vesperis/vesperis-mp/mp/utils"
+	"github.com/team-vesperis/vesperis-mp/mp/web/datasync"
+	"github.com/team-vesperis/vesperis-mp/mp/web/task"
 	"go.minekube.com/gate/cmd/gate"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 
@@ -50,6 +53,9 @@ func main() {
 			utils.InitializeUtils(p, logger)
 			register.InitializeRegister(p, logger)
 			ban.InitializeBanManager(logger)
+			datasync.InitializeDataSync(proxy, logger)
+			task.InitializeTask(proxy, logger)
+			playerdata.InitializePlayerData(logger)
 
 			go share.InitializeShare(logger, p, proxy_name)
 			go terminal.HandleTerminalInput(p, logger)
@@ -59,20 +65,32 @@ func main() {
 		},
 	})
 
+	go testTask()
 	gate.Execute()
+}
+
+func testTask() {
+	time.Sleep(30 * time.Second)
+
+	messageTask := &task.MessageTask{
+		OriginPlayerName: "Bores",
+		TargetPlayerName: "BorisP",
+		Message:          "hello!",
+	}
+
+	err := messageTask.CreateTask()
+	if err != nil {
+		logger.Info(err)
+	}
 }
 
 func shutdown() {
 	logger.Info("Stopping " + proxy_name + "...")
 
-	transfer.CloseTransfer()
+	close(ban.Quit) // close unban checker
+	datasync.CloseDataSync()
 	share.CloseShare()
 	database.CloseDatabases()
-
-	defer func() {
-		fmt.Println("Press 'Enter' to exit...")
-		fmt.Scanln()
-	}()
 }
 
 func onShutdown() func(*proxy.ShutdownEvent) {
