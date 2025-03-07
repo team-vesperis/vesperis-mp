@@ -4,91 +4,82 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/mp/database"
-	"github.com/team-vesperis/vesperis-mp/mp/share"
+	"github.com/team-vesperis/vesperis-mp/mp/web/datasync"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
-	"go.minekube.com/common/minecraft/key"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.uber.org/zap"
 )
 
 var (
-	p           *proxy.Proxy
-	logger      *zap.SugaredLogger
-	pubsub      *redis.PubSub
-	ctx         context.Context
-	cancel      context.CancelFunc
-	wg          sync.WaitGroup
-	proxy_name  string
-	transferKey key.Key
+	p          *proxy.Proxy
+	logger     *zap.SugaredLogger
+	proxy_name string
 )
 
 func InitializeTransfer(proxy *proxy.Proxy, log *zap.SugaredLogger, pn string) {
 	p = proxy
 	logger = log
 	proxy_name = pn
-	transferKey = key.New("vmp", "transfer")
-	ctx, cancel = context.WithCancel(context.Background())
 	go listenToTransfers()
 	logger.Info("Initialized transfer.")
 }
 
 // send players to other proxies
-func OnPreShutdown() func(*proxy.PreShutdownEvent) {
-	return func(event *proxy.PreShutdownEvent) {
-		for _, player := range p.Players() {
-			for _, proxy := range share.GetAllProxyNames() {
-				if proxy != proxy_name {
-					err := TransferPlayerToProxy(player, proxy)
-					if err == nil {
-						return
-					}
+func OnPreShutdown(event *proxy.PreShutdownEvent) {
+	proxies, err := datasync.GetAllProxies()
+	if err != nil {
+		logger.Error("Error getting all proxies for transfer: ", err)
+	}
+	for _, player := range p.Players() {
+		for _, proxy := range proxies {
+			if proxy != proxy_name {
+				err := TransferPlayerToProxy(player, proxy)
+				if err == nil {
+					return
 				}
 			}
-
-			player.Disconnect(&component.Text{
-				Content: "The proxy you were on has closed and there was no other proxy to connect to.",
-				S: component.Style{
-					Color: color.Red,
-				},
-			})
-
 		}
+
+		player.Disconnect(&component.Text{
+			Content: "The proxy you were on has closed and there was no other proxy to connect to.",
+			S: component.Style{
+				Color: color.Red,
+			},
+		})
+
 	}
 }
 
 // check if player has cookie specifying which server he needs.
-func OnChooseInitialServer() func(*proxy.PlayerChooseInitialServerEvent) {
-	return func(event *proxy.PlayerChooseInitialServerEvent) {
-		if len(p.Servers()) < 1 {
-			event.Player().Disconnect(&component.Text{
-				Content: "No available server. Please try again.",
-				S: component.Style{
-					Color: color.Red,
-				},
-			})
-		} else {
-			// payload, err := event.Player().RequestCookieWithResult(transferKey)
-			// if err == nil {
-			// 	server_name := string(payload)
-			// 	server := p.Server(server_name)
-			// 	if server != nil {
-			// 		payload := []byte(targetServer)
-			// 		err := player.StoreCookie(transferKey, payload)
-			// 		if err != nil {
-			// 			logger.Warn("Could not store cookie for player transfer for: ", player.ID().String())
-			// 		}
-			// 		event.SetInitialServer(server)
-			// 	}
-			// } else {
-			event.SetInitialServer(p.Servers()[0])
-			//}
-		}
+func OnChooseInitialServer(event *proxy.PlayerChooseInitialServerEvent) {
+	if len(p.Servers()) < 1 {
+		event.Player().Disconnect(&component.Text{
+			Content: "No available server. Please try again.",
+			S: component.Style{
+				Color: color.Red,
+			},
+		})
+	} else {
+		// payload, err := event.Player().RequestCookieWithResult(transferKey)
+		// if err == nil {
+		// 	server_name := string(payload)
+		// 	server := p.Server(server_name)
+		// 	if server != nil {
+		// 		payload := []byte(targetServer)
+		// 		err := player.StoreCookie(transferKey, payload)
+		// 		if err != nil {
+		// 			logger.Warn("Could not store cookie for player transfer for: ", player.ID().String())
+		// 		}
+		// 		event.SetInitialServer(server)
+		// 	}
+		// } else {
+		event.SetInitialServer(p.Servers()[0])
+		//}
 	}
 }
 

@@ -13,7 +13,6 @@ import (
 	log "github.com/team-vesperis/vesperis-mp/mp/logger"
 	"github.com/team-vesperis/vesperis-mp/mp/playerdata"
 	"github.com/team-vesperis/vesperis-mp/mp/register"
-	"github.com/team-vesperis/vesperis-mp/mp/share"
 	"github.com/team-vesperis/vesperis-mp/mp/terminal"
 	"github.com/team-vesperis/vesperis-mp/mp/transfer"
 	"github.com/team-vesperis/vesperis-mp/mp/utils"
@@ -45,19 +44,18 @@ func main() {
 			p = proxy
 			logger.Info("Creating plugin...")
 
-			event.Subscribe(p.Event(), 0, onShutdown())
+			event.Subscribe(p.Event(), 0, onShutdown)
 
 			transfer.InitializeTransfer(p, logger, proxy_name)
 			commands.InitializeCommands(p, logger)
-			listeners.InitializeListeners(p, logger)
+			listeners.InitializeListeners(p, logger, proxy_name)
 			utils.InitializeUtils(p, logger)
-			register.InitializeRegister(p, logger)
+			register.InitializeRegister(p, logger, proxy_name)
 			ban.InitializeBanManager(logger)
-			datasync.InitializeDataSync(proxy, logger)
-			task.InitializeTask(proxy, logger)
+			datasync.InitializeDataSync(proxy, logger, proxy_name)
+			task.InitializeTask(proxy, logger, proxy_name)
 			playerdata.InitializePlayerData(logger)
 
-			go share.InitializeShare(logger, p, proxy_name)
 			go terminal.HandleTerminalInput(p, logger)
 
 			logger.Info("Successfully created plugin.")
@@ -66,11 +64,12 @@ func main() {
 	})
 
 	go testTask()
+	logger.Info("Successfully started " + proxy_name + ".")
 	gate.Execute()
 }
 
 func testTask() {
-	time.Sleep(30 * time.Second)
+	time.Sleep(25 * time.Second)
 
 	messageTask := &task.MessageTask{
 		OriginPlayerName: "Bores",
@@ -78,23 +77,35 @@ func testTask() {
 		Message:          "hello!",
 	}
 
-	err := messageTask.CreateTask()
+	err := messageTask.CreateTask("proxy_1")
 	if err != nil {
-		logger.Info(err)
+		if err.Error() == task.Player_Not_Found {
+			logger.Info("player not found!")
+		} else {
+			logger.Info(err)
+		}
+	}
+
+	err = messageTask.CreateTask("sdkfj")
+	if err != nil {
+		if err.Error() == task.Player_Not_Found {
+			logger.Info("player not found!")
+		} else {
+			logger.Info(err)
+		}
 	}
 }
 
 func shutdown() {
 	logger.Info("Stopping " + proxy_name + "...")
 
-	close(ban.Quit) // close unban checker
+	ban.CloseBanManager()
 	datasync.CloseDataSync()
-	share.CloseShare()
 	database.CloseDatabases()
+
+	logger.Info("Successfully stopped " + proxy_name + ".")
 }
 
-func onShutdown() func(*proxy.ShutdownEvent) {
-	return func(event *proxy.ShutdownEvent) {
-		shutdown()
-	}
+func onShutdown(event *proxy.ShutdownEvent) {
+	shutdown()
 }

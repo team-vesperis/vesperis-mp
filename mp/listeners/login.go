@@ -10,72 +10,71 @@ import (
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
-func onLogin() func(*proxy.LoginEvent) {
-	return func(event *proxy.LoginEvent) {
-		player := event.Player()
+func onLogin(event *proxy.LoginEvent) {
+	player := event.Player()
 
-		if ban.IsPlayerBanned(player) {
-			reason := ban.GetBanReason(player)
+	if ban.IsPlayerBanned(player) {
+		reason := ban.GetBanReason(player)
 
-			if ban.IsPlayerPermanentlyBanned(player) {
-				event.Deny(&component.Text{
-					Content: "You are permanently banned from VesperisMC.",
+		if ban.IsPlayerPermanentlyBanned(player) {
+			event.Deny(&component.Text{
+				Content: "You are permanently banned from VesperisMC.",
+				S: component.Style{
+					Color: color.Red,
+				},
+				Extra: []component.Component{
+					&component.Text{
+						Content: "\n\nReason: " + reason,
+						S: component.Style{
+							Color: color.Gray,
+						},
+					},
+				},
+			})
+
+		} else {
+			timeComponent := component.Text{}
+			duration := time.Until(ban.GetBanExpiration(player))
+
+			if duration.Seconds() < 1 {
+				timeComponent = component.Text{
+					Content: "\n\nYour ban has just expired. Please try again in a moment.",
 					S: component.Style{
-						Color: color.Red,
+						Color: color.Aqua,
 					},
-					Extra: []component.Component{
-						&component.Text{
-							Content: "\n\nReason: " + reason,
-							S: component.Style{
-								Color: color.Gray,
-							},
-						},
-					},
-				})
-
-			} else {
-				timeComponent := component.Text{}
-				duration := time.Until(ban.GetBanExpiration(player))
-
-				if duration.Seconds() < 1 {
-					timeComponent = component.Text{
-						Content: "\n\nYour ban has just expired. Please try again in a moment.",
-						S: component.Style{
-							Color: color.Aqua,
-						},
-					}
-
-				} else {
-					hours := int(duration.Hours())
-					days := hours / 24
-					hours = hours % 24
-					minutes := int(duration.Minutes()) % 60
-					seconds := int(duration.Seconds()) % 60
-
-					timeComponent = component.Text{
-						Content: "\n\nYou are still banned for " + fmt.Sprintf("%d days, %d hours, %d minutes and %d seconds", days, hours, minutes, seconds),
-						S: component.Style{
-							Color: color.Aqua,
-						},
-					}
 				}
 
-				event.Deny(&component.Text{
-					Content: "You are temporarily banned from VesperisMC",
+			} else {
+				hours := int(duration.Hours())
+				days := hours / 24
+				hours = hours % 24
+				minutes := int(duration.Minutes()) % 60
+				seconds := int(duration.Seconds()) % 60
+
+				timeComponent = component.Text{
+					Content: "\n\nYou are still banned for " + fmt.Sprintf("%d days, %d hours, %d minutes and %d seconds", days, hours, minutes, seconds),
 					S: component.Style{
-						Color: color.Red,
+						Color: color.Aqua,
 					},
-					Extra: []component.Component{
-						&component.Text{
-							Content: "\n\nReason: " + reason,
-							S: component.Style{
-								Color: color.Gray,
-							},
-						},
-						&timeComponent,
-					},
-				})
+				}
 			}
+
+			event.Deny(&component.Text{
+				Content: "You are temporarily banned from VesperisMC",
+				S: component.Style{
+					Color: color.Red,
+				},
+				Extra: []component.Component{
+					&component.Text{
+						Content: "\n\nReason: " + reason,
+						S: component.Style{
+							Color: color.Gray,
+						},
+					},
+					&timeComponent,
+				},
+			})
 		}
 	}
+
 }

@@ -3,6 +3,7 @@ package terminal
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -20,6 +21,8 @@ func HandleTerminalInput(p *proxy.Proxy, logger *zap.SugaredLogger) {
 	time.Sleep(50 * time.Millisecond)
 	reader := bufio.NewReader(os.Stdin)
 	for {
+		fmt.Print("> ")
+
 		cmd, _ := reader.ReadString('\n')
 		cmd = strings.TrimSpace(cmd)
 		if cmd == "" {

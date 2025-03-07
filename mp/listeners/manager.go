@@ -8,27 +8,21 @@ import (
 )
 
 var (
-	p      *proxy.Proxy
-	logger *zap.SugaredLogger
+	p          *proxy.Proxy
+	logger     *zap.SugaredLogger
+	proxy_name string
 )
 
-func InitializeListeners(proxy *proxy.Proxy, log *zap.SugaredLogger) {
+func InitializeListeners(proxy *proxy.Proxy, log *zap.SugaredLogger, pn string) {
 	p = proxy
 	logger = log
+	proxy_name = pn
 
-	event.Subscribe(p.Event(), 0, onPing())
-	event.Subscribe(p.Event(), 1, onPlayerCountJoin())
-	event.Subscribe(p.Event(), 1, onPlayerCountLeave())
-	event.Subscribe(p.Event(), 1, transfer.OnPreShutdown())
-	event.Subscribe(p.Event(), 0, transfer.OnChooseInitialServer())
-	event.Subscribe(p.Event(), 0, onLogin())
-	event.Subscribe(p.Event(), 0, onPluginMessage())
+	event.Subscribe(p.Event(), 0, onPing)
+	event.Subscribe(p.Event(), 1, onServerConnect)
+	event.Subscribe(p.Event(), 0, transfer.OnPreShutdown)
+	event.Subscribe(p.Event(), 0, transfer.OnChooseInitialServer)
+	event.Subscribe(p.Event(), 0, onLogin)
 
 	logger.Info("Successfully registered all listeners.")
-}
-
-func onPluginMessage() func(*proxy.PluginMessageEvent) {
-	return func(event *proxy.PluginMessageEvent) {
-		logger.Info(event)
-	}
 }

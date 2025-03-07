@@ -1,9 +1,11 @@
 package ban
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/team-vesperis/vesperis-mp/mp/database"
 	"github.com/team-vesperis/vesperis-mp/mp/playerdata"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
@@ -11,25 +13,50 @@ import (
 	"go.uber.org/zap"
 )
 
-var logger *zap.SugaredLogger
-var Quit chan struct{} = make(chan struct{})
+var (
+	logger     *zap.SugaredLogger
+	quit       chan struct{} = make(chan struct{})
+	banChecker               = 5 * time.Second
+	lockKey                  = "ban_checker_lock"
+	ctx                      = context.Background()
+)
 
 func InitializeBanManager(log *zap.SugaredLogger) {
 	logger = log
 	logger.Info("Initialized Ban Manager.")
 
-	ticker := time.NewTicker(30 * time.Second)
 	go func() {
 		for {
-			select {
-			case <-ticker.C:
-				playerdata.CheckTempBans()
-			case <-Quit:
-				ticker.Stop()
-				return
+			acquired, err := database.AcquireLock(ctx, lockKey)
+			if err != nil {
+				logger.Error("Error acquiring lock for ban checker: ", err)
+				time.Sleep(banChecker)
+				continue
+			}
+
+			// another proxy is already running the checker
+			if !acquired {
+				time.Sleep(banChecker)
+				continue
+			}
+
+			ticker := time.NewTicker(banChecker)
+			for {
+				select {
+				case <-ticker.C:
+					playerdata.CheckTempBans()
+				case <-quit:
+					ticker.Stop()
+					return
+				}
 			}
 		}
 	}()
+}
+
+func CloseBanManager() {
+	database.ReleaseLock(ctx, lockKey)
+	close(quit)
 }
 
 func IsPlayerBanned(player proxy.Player) bool {

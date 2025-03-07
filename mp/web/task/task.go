@@ -13,37 +13,51 @@ import (
 )
 
 var (
-	p             *proxy.Proxy
-	logger        *zap.SugaredLogger
-	proxy_name    string
-	performPubSub *redis.PubSub
+	p          *proxy.Proxy
+	logger     *zap.SugaredLogger
+	proxy_name string
 )
 
-func InitializeTask(proxy *proxy.Proxy, log *zap.SugaredLogger) {
+func InitializeTask(proxy *proxy.Proxy, log *zap.SugaredLogger, pn string) {
 	p = proxy
 	logger = log
+	proxy_name = pn
 
 	startTaskPerformListener()
 
-	logger.Info("Successfully initialized sync.")
+	logger.Info("Successfully initialized task.")
 }
 
 type Task interface {
-	CreateTask() error
+	CreateTask(targetProxy string) error
 	PerformTask()
 	SendResponse(errorString string)
 }
 
 // error returns
 var (
-	playerNotFound = "playerNotFound"
-	successful     = "successful"
+	Player_Not_Found = "player not found"
+	Successful       = "successful"
 )
 
-func send(task Task, responseChannel string) error {
+func send(targetProxy string, task Task, responseChannel string) error {
 	data, err := json.Marshal(task)
 	if err != nil {
 		logger.Warn("could not marshal task before sending", err)
+		return err
+	}
+
+	var taskMap map[string]any
+	err = json.Unmarshal(data, &taskMap)
+	if err != nil {
+		logger.Warn("could not unmarshal task data", err)
+		return err
+	}
+
+	taskMap["target_proxy"] = targetProxy
+	data, err = json.Marshal(taskMap)
+	if err != nil {
+		logger.Warn("could not marshal task data with target_proxy", err)
 		return err
 	}
 
@@ -56,10 +70,10 @@ func send(task Task, responseChannel string) error {
 	}
 
 	switch msg.Payload {
-	case playerNotFound:
-		return errors.New(playerNotFound)
+	case Player_Not_Found:
+		return errors.New(Player_Not_Found)
 
-	case successful:
+	case Successful:
 		return nil
 
 	default:
@@ -82,6 +96,12 @@ func startTaskPerformListener() {
 		taskType, ok := taskMap["task_type"].(string)
 		if !ok {
 			logger.Warn("Invalid task type")
+			return
+		}
+
+		targetProxy, ok := taskMap["target_proxy"].(string)
+		if !ok || targetProxy != proxy_name {
+			// Task is not for this proxy, ignore it
 			return
 		}
 

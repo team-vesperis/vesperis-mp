@@ -3,7 +3,6 @@ package commands
 import (
 	"strings"
 
-	"github.com/team-vesperis/vesperis-mp/mp/share"
 	"github.com/team-vesperis/vesperis-mp/mp/transfer"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/common/minecraft/color"
@@ -80,7 +79,6 @@ func transferCommand() brigodier.LiteralNodeBuilder {
 
 					return nil
 				})).
-				Suggests(suggestAllServersFromProxy()).
 				Then(brigodier.Argument("player", brigodier.String).
 					Executes(command.Command(func(ctx *command.Context) error {
 						player := getPlayerTarget(ctx.String("player"), ctx)
@@ -104,26 +102,4 @@ func transferCommand() brigodier.LiteralNodeBuilder {
 					})).
 					Suggests(suggestAllPlayers())))).
 		Requires(requireAdminOrModerator())
-}
-
-func suggestAllServersFromProxy() brigodier.SuggestionProvider {
-	return command.SuggestFunc(func(ctx *command.Context, builder *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
-		remaining := builder.RemainingLowerCase
-		proxy := ctx.String("proxy")
-
-		servers := make([]string, 0)
-		for _, server := range share.GetAllServerNamesFromProxy(proxy) {
-			if strings.HasPrefix(strings.ToLower(server), remaining) {
-				servers = append(servers, server)
-			}
-		}
-
-		if len(servers) != 0 {
-			for _, server := range servers {
-				builder.Suggest(server)
-			}
-		}
-
-		return builder.Build()
-	})
 }

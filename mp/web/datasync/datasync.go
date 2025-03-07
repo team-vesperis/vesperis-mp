@@ -6,21 +6,20 @@ import (
 )
 
 var (
-	p      *proxy.Proxy
-	logger *zap.SugaredLogger
+	p          *proxy.Proxy
+	logger     *zap.SugaredLogger
+	proxy_name string
 )
 
-func InitializeDataSync(proxy *proxy.Proxy, log *zap.SugaredLogger) {
+func InitializeDataSync(proxy *proxy.Proxy, log *zap.SugaredLogger, pn string) {
 	p = proxy
 	logger = log
+	proxy_name = pn
 
-	logger.Info("Successfully initialized sync.")
+	registerProxy(proxy_name)
+	logger.Info("Successfully initialized data sync.")
 }
 
 func CloseDataSync() {
-}
-
-func sync(data []string) error {
-
-	return nil
+	unregisterProxy(proxy_name)
 }

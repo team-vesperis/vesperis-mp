@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/team-vesperis/vesperis-mp/mp/playerdata"
-	"github.com/team-vesperis/vesperis-mp/mp/share"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
@@ -159,63 +158,18 @@ func suggestProxyServers() brigodier.SuggestionProvider {
 
 func suggestAllServers() brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(ctx *command.Context, builder *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
-		remaining := builder.RemainingLowerCase
-
-		servers := make([]string, 0)
-		for _, server := range share.GetAllServerNames() {
-			if strings.HasPrefix(strings.ToLower(server), remaining) {
-				servers = append(servers, server)
-			}
-		}
-
-		if len(servers) != 0 {
-			for _, server := range servers {
-				builder.Suggest(server)
-			}
-		}
-
 		return builder.Build()
 	})
 }
 
 func suggestAllProxies() brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(ctx *command.Context, builder *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
-		remaining := builder.RemainingLowerCase
-
-		proxies := make([]string, 0)
-		for _, proxy := range share.GetAllProxyNames() {
-			if strings.HasPrefix(strings.ToLower(proxy), remaining) {
-				proxies = append(proxies, proxy)
-			}
-		}
-
-		if len(proxies) != 0 {
-			for _, proxy := range proxies {
-				builder.Suggest(proxy)
-			}
-		}
-
 		return builder.Build()
 	})
 }
 
 func suggestAllPlayers() brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(ctx *command.Context, builder *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
-		remaining := builder.RemainingLowerCase
-
-		players := make([]string, 0)
-		for _, player := range share.GetAllPlayerNames() {
-			if strings.HasPrefix(strings.ToLower(player), remaining) {
-				players = append(players, player)
-			}
-		}
-
-		if len(players) != 0 {
-			for _, player := range players {
-				builder.Suggest(player)
-			}
-		}
-
 		return builder.Build()
 	})
 }

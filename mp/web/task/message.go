@@ -17,20 +17,20 @@ type MessageTask struct {
 	ResponseChannel  string `json:"response_channel"`
 }
 
-func (t *MessageTask) CreateTask() error {
+func (t *MessageTask) CreateTask(target_proxy string) error {
 	t.TaskType = "MessageTask"
 	responseChannel := uuid.New().String() + "__message_task"
 	t.ResponseChannel = responseChannel
-	return send(t, responseChannel)
+	return send(target_proxy, t, responseChannel)
 }
 
 func (t *MessageTask) PerformTask() {
 	targetPlayer := p.PlayerByName(t.TargetPlayerName)
 	if targetPlayer == nil {
-		t.SendResponse(playerNotFound)
+		t.SendResponse(Player_Not_Found)
 	} else {
 		targetPlayer.SendMessage(&component.Text{
-			Content: "[" + t.OriginPlayerName + " ->]",
+			Content: "[<- " + t.OriginPlayerName + "]",
 			S: component.Style{
 				Color: color.Aqua,
 			},
@@ -44,7 +44,7 @@ func (t *MessageTask) PerformTask() {
 			},
 		})
 
-		t.SendResponse(successful)
+		t.SendResponse(Successful)
 	}
 }
 
