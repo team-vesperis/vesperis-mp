@@ -62,7 +62,7 @@ func permissionCommand(name string) brigodier.LiteralNodeBuilder {
 func setRole(role string) brigodier.Command {
 	return command.Command(func(context *command.Context) error {
 		playerName := context.String("player")
-		player := getPlayerTarget(playerName, context)
+		player := getPlayerTargetFromThisProxy(playerName, context)
 		if player == nil {
 			return nil
 		}
@@ -94,7 +94,7 @@ func setRole(role string) brigodier.Command {
 func setRank(rank string) brigodier.Command {
 	return command.Command(func(context *command.Context) error {
 		playerName := context.String("player")
-		player := getPlayerTarget(playerName, context)
+		player := getPlayerTargetFromThisProxy(playerName, context)
 		if player == nil {
 			return nil
 		}
@@ -126,7 +126,7 @@ func setRank(rank string) brigodier.Command {
 func getRank() brigodier.Command {
 	return command.Command(func(context *command.Context) error {
 		playerName := context.String("player")
-		player := getPlayerTarget(playerName, context)
+		player := getPlayerTargetFromThisProxy(playerName, context)
 		if player == nil {
 			return nil
 		}
@@ -158,7 +158,7 @@ func getRank() brigodier.Command {
 func getRole() brigodier.Command {
 	return command.Command(func(context *command.Context) error {
 		playerName := context.String("player")
-		player := getPlayerTarget(playerName, context)
+		player := getPlayerTargetFromThisProxy(playerName, context)
 		if player == nil {
 			return nil
 		}

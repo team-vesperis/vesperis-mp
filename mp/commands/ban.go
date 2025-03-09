@@ -28,7 +28,7 @@ func banCommand() brigodier.LiteralNodeBuilder {
 func banPlayer() brigodier.Command {
 	return command.Command(func(context *command.Context) error {
 		playerName := context.String("player")
-		player := getPlayerTarget(playerName, context)
+		player := getPlayerTargetFromThisProxy(playerName, context)
 		if player == nil {
 			return nil
 		}

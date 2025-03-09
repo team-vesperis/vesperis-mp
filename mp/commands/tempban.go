@@ -46,7 +46,7 @@ func tempBanCommand() brigodier.LiteralNodeBuilder {
 func tempBanPlayer(time_type time.Duration) brigodier.Command {
 	return command.Command(func(context *command.Context) error {
 		playerName := context.String("player")
-		player := getPlayerTarget(playerName, context)
+		player := getPlayerTargetFromThisProxy(playerName, context)
 		if player == nil {
 			return nil
 		}

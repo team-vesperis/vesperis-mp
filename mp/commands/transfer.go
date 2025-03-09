@@ -81,7 +81,7 @@ func transferCommand() brigodier.LiteralNodeBuilder {
 				})).
 				Then(brigodier.Argument("player", brigodier.String).
 					Executes(command.Command(func(ctx *command.Context) error {
-						player := getPlayerTarget(ctx.String("player"), ctx)
+						player := getPlayerTargetFromThisProxy(ctx.String("player"), ctx)
 						if player == nil {
 							return nil
 						}

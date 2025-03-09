@@ -7,9 +7,17 @@ import (
 
 func onServerConnect(event *proxy.ServerConnectedEvent) {
 	player := event.Player()
-	server := event.Server().ServerInfo().Name()
+	newServer := event.Server()
+	oldServer := event.PreviousServer()
 
-	err := datasync.RegisterPlayer(proxy_name, server, player)
+	if oldServer != nil {
+		err := datasync.UnregisterPlayer(proxy_name, oldServer.ServerInfo().Name(), player)
+		if err != nil {
+			logger.Error("Failed to unregister player: ", err)
+		}
+	}
+
+	err := datasync.RegisterPlayer(proxy_name, newServer.ServerInfo().Name(), player)
 	if err != nil {
 		logger.Error("Failed to register player: ", err)
 	}

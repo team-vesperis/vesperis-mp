@@ -36,6 +36,7 @@ func OnPreShutdown(event *proxy.PreShutdownEvent) {
 		logger.Info(proxy)
 		if err != nil {
 			logger.Error("Error getting the proxy with lowest player count for transfer: ", err)
+			time.Sleep(50 * time.Millisecond)
 			player.Disconnect(&component.Text{
 				Content: "The proxy you were on has closed and there was no other proxy to connect to.",
 				S: component.Style{
@@ -45,6 +46,7 @@ func OnPreShutdown(event *proxy.PreShutdownEvent) {
 		} else {
 			err = TransferPlayerToProxy(player, proxy)
 			if err != nil {
+				time.Sleep(50 * time.Millisecond)
 				player.Disconnect(&component.Text{
 					Content: "The proxy you were on has closed and there was no other proxy to connect to.",
 					S: component.Style{
@@ -59,6 +61,7 @@ func OnPreShutdown(event *proxy.PreShutdownEvent) {
 // check if player has cookie specifying which server he needs.
 func OnChooseInitialServer(event *proxy.PlayerChooseInitialServerEvent) {
 	if len(p.Servers()) < 1 {
+		time.Sleep(50 * time.Millisecond)
 		event.Player().Disconnect(&component.Text{
 			Content: "No available server. Please try again.",
 			S: component.Style{
@@ -66,21 +69,22 @@ func OnChooseInitialServer(event *proxy.PlayerChooseInitialServerEvent) {
 			},
 		})
 	} else {
-		// payload, err := event.Player().RequestCookieWithResult(transferKey)
-		// if err == nil {
-		// 	server_name := string(payload)
-		// 	server := p.Server(server_name)
-		// 	if server != nil {
-		// 		payload := []byte() // empty to reset cookie
-		// 		err := player.StoreCookie(transferKey, payload)
-		// 		if err != nil {
-		// 			logger.Warn("Could not store cookie for player transfer for: ", player.ID().String())
-		// 		}
-		// 		event.SetInitialServer(server)
-		// 	}
-		// } else {
-		event.SetInitialServer(p.Servers()[0])
-		//}
+		key := "transfer_specific_server_" + event.Player().ID().String()
+		server_name_msg := database.GetRedisClient().Get(context.Background(), key)
+		server_name, err := server_name_msg.Result()
+		if err == nil {
+			server := p.Server(server_name)
+			if server != nil {
+				event.SetInitialServer(server)
+			} else {
+				event.SetInitialServer(p.Servers()[0])
+			}
+		} else {
+			event.SetInitialServer(p.Servers()[0])
+		}
+
+		// reset
+		database.GetRedisClient().Set(context.Background(), key, "", 2*time.Second)
 	}
 }
 
@@ -113,13 +117,7 @@ func TransferPlayerToServerOnOtherProxy(player proxy.Player, targetProxy string,
 		}
 
 		if server == "2" {
-			// store cookie
-			// payload := []byte(targetServer)
-			// err := player.StoreCookie(transferKey, payload)
-			// if err != nil {
-			// 	logger.Warn("Could not store cookie for player transfer for: ", player.ID().String())
-			// 	return errors.New("could not store cookie")
-			// }
+			database.GetRedisClient().Set(context.Background(), "transfer_specific_server_"+player.ID().String(), targetServer, 10*time.Second)
 		}
 
 		address := parts[2]

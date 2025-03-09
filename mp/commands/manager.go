@@ -6,8 +6,6 @@ import (
 
 	"github.com/team-vesperis/vesperis-mp/mp/playerdata"
 	"go.minekube.com/brigodier"
-	"go.minekube.com/common/minecraft/color"
-	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.uber.org/zap"
@@ -24,6 +22,7 @@ func InitializeCommands(proxy *proxy.Proxy, log *zap.SugaredLogger) {
 	registerTempBanCommand()
 	registerUnBanCommand()
 	registerPermissionCommand()
+	registerMessageCommand()
 
 	brigodier.ErrDispatcherUnknownArgument = errors.New("Unknown argument.")
 
@@ -82,21 +81,8 @@ func requireStaff() brigodier.RequireFn {
 	})
 }
 
-func getPlayerTarget(playerName string, context *command.Context) proxy.Player {
-	player := p.PlayerByName(playerName)
-
-	if player == nil {
-		context.SendMessage(&component.Text{
-			Content: "Player not found.",
-			S: component.Style{
-				Color: color.Red,
-			},
-		})
-
-		return nil
-	}
-
-	return player
+func getPlayerTargetFromThisProxy(playerName string, context *command.Context) proxy.Player {
+	return p.PlayerByName(playerName)
 }
 
 func getPlayerFromSource(source command.Source) proxy.Player {
