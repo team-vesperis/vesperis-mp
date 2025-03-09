@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/team-vesperis/vesperis-mp/mp/playerdata"
@@ -23,6 +24,8 @@ func InitializeCommands(proxy *proxy.Proxy, log *zap.SugaredLogger) {
 	registerTempBanCommand()
 	registerUnBanCommand()
 	registerPermissionCommand()
+
+	brigodier.ErrDispatcherUnknownArgument = errors.New("Unknown argument.")
 
 	logger.Info("Successfully registered all commands.")
 }

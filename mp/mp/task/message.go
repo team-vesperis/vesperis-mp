@@ -6,7 +6,6 @@ import (
 	"github.com/team-vesperis/vesperis-mp/mp/database"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
-	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type MessageTask struct {
@@ -14,20 +13,17 @@ type MessageTask struct {
 	OriginPlayerName string `json:"origin_player_name"`
 	TargetPlayerName string `json:"target_player_name"`
 	Message          string `json:"message"`
-	ResponseChannel  string `json:"response_channel"`
 }
 
 func (t *MessageTask) CreateTask(target_proxy string) error {
 	t.TaskType = "MessageTask"
-	responseChannel := uuid.New().String() + "__message_task"
-	t.ResponseChannel = responseChannel
-	return send(target_proxy, t, responseChannel)
+	return send(target_proxy, t)
 }
 
-func (t *MessageTask) PerformTask() {
+func (t *MessageTask) PerformTask(responseChannel string) {
 	targetPlayer := p.PlayerByName(t.TargetPlayerName)
 	if targetPlayer == nil {
-		t.SendResponse(Player_Not_Found)
+		t.SendResponse(Player_Not_Found, responseChannel)
 	} else {
 		targetPlayer.SendMessage(&component.Text{
 			Content: "[<- " + t.OriginPlayerName + "]",
@@ -44,10 +40,10 @@ func (t *MessageTask) PerformTask() {
 			},
 		})
 
-		t.SendResponse(Successful)
+		t.SendResponse(Successful, responseChannel)
 	}
 }
 
-func (t *MessageTask) SendResponse(errorString string) {
-	database.Publish(context.Background(), t.ResponseChannel, errorString)
+func (t *MessageTask) SendResponse(errorString, responseChannel string) {
+	database.Publish(context.Background(), responseChannel, errorString)
 }

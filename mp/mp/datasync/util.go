@@ -8,6 +8,53 @@ import (
 	"github.com/team-vesperis/vesperis-mp/mp/database"
 )
 
+func GetProxyWithLowestPlayerCount(countThisProxy bool) (string, error) {
+	client := database.GetRedisClient()
+	ctx := context.Background()
+
+	proxies, err := GetAllProxies()
+	if err != nil {
+		return "", err
+	}
+
+	var minProxy string
+	minCount := -1
+
+	for _, proxyName := range proxies {
+		if !countThisProxy {
+			if proxyName == proxy_name {
+				continue
+			}
+		}
+
+		totalCount := 0
+		servers, err := GetServersForProxy(proxyName)
+		if err != nil {
+			return "", err
+		}
+
+		for _, serverName := range servers {
+			key := fmt.Sprintf("proxy:%s:server:%s:players", proxyName, serverName)
+			playerCount, err := client.HLen(ctx, key).Result()
+			if err != nil {
+				return "", err
+			}
+			totalCount += int(playerCount)
+		}
+
+		if minCount == -1 || totalCount < minCount {
+			minCount = totalCount
+			minProxy = proxyName
+		}
+	}
+
+	if minProxy == "" {
+		return "", errors.New("no proxies found")
+	}
+
+	return minProxy, nil
+}
+
 func GetAllProxies() ([]string, error) {
 	client := database.GetRedisClient()
 	ctx := context.Background()

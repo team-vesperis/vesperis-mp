@@ -9,6 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/mp/database"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
+	"go.minekube.com/gate/pkg/util/uuid"
 	"go.uber.org/zap"
 )
 
@@ -30,8 +31,8 @@ func InitializeTask(proxy *proxy.Proxy, log *zap.SugaredLogger, pn string) {
 
 type Task interface {
 	CreateTask(targetProxy string) error
-	PerformTask()
-	SendResponse(errorString string)
+	PerformTask(responseChannel string)
+	SendResponse(errorString, responseChannel string)
 }
 
 // error returns
@@ -40,7 +41,7 @@ var (
 	Successful       = "successful"
 )
 
-func send(targetProxy string, task Task, responseChannel string) error {
+func send(targetProxy string, task Task) error {
 	data, err := json.Marshal(task)
 	if err != nil {
 		logger.Warn("could not marshal task before sending", err)
@@ -54,10 +55,13 @@ func send(targetProxy string, task Task, responseChannel string) error {
 		return err
 	}
 
+	responseChannel := "task_response_" + uuid.New().String()
+
 	taskMap["target_proxy"] = targetProxy
+	taskMap["response_channel"] = responseChannel
 	data, err = json.Marshal(taskMap)
 	if err != nil {
-		logger.Warn("could not marshal task data with target_proxy", err)
+		logger.Warn("could not marshal task data with target_proxy and response_channel", err)
 		return err
 	}
 
@@ -120,6 +124,11 @@ func startTaskPerformListener() {
 			return
 		}
 
-		task.PerformTask()
+		responseChannel, ok := taskMap["response_channel"].(string)
+		if !ok {
+			logger.Warn("Invalid response channel")
+			return
+		}
+		task.PerformTask(responseChannel)
 	})
 }
