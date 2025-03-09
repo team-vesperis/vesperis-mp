@@ -2,7 +2,7 @@ package listeners
 
 import (
 	"github.com/team-vesperis/vesperis-mp/mp/config"
-	"github.com/team-vesperis/vesperis-mp/mp/web/datasync"
+	"github.com/team-vesperis/vesperis-mp/mp/mp/datasync"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/ping"
 	"go.minekube.com/gate/pkg/edition/java/proxy"

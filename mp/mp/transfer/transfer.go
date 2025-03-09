@@ -8,7 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/mp/database"
-	"github.com/team-vesperis/vesperis-mp/mp/web/datasync"
+	"github.com/team-vesperis/vesperis-mp/mp/mp/datasync"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/proxy"

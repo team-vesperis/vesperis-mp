@@ -173,3 +173,10 @@ func suggestAllPlayers() brigodier.SuggestionProvider {
 		return builder.Build()
 	})
 }
+
+func suggestTest() brigodier.SuggestionProvider {
+	return command.SuggestFunc(func(ctx *command.Context, builder *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+		builder.Suggest("test")
+		return builder.Build()
+	})
+}

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/team-vesperis/vesperis-mp/mp/mp/register"
 	"github.com/team-vesperis/vesperis-mp/mp/playerdata"
-	"github.com/team-vesperis/vesperis-mp/mp/register"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.uber.org/zap"

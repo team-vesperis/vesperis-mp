@@ -6,7 +6,7 @@ import (
 
 	"fmt"
 
-	"github.com/team-vesperis/vesperis-mp/mp/web/datasync"
+	"github.com/team-vesperis/vesperis-mp/mp/mp/datasync"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.uber.org/zap"
 )

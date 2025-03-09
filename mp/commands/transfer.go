@@ -3,7 +3,7 @@ package commands
 import (
 	"strings"
 
-	"github.com/team-vesperis/vesperis-mp/mp/transfer"
+	"github.com/team-vesperis/vesperis-mp/mp/mp/transfer"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
