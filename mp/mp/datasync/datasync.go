@@ -17,9 +17,11 @@ func InitializeDataSync(proxy *proxy.Proxy, log *zap.SugaredLogger, pn string) {
 	proxy_name = pn
 
 	registerProxy(proxy_name)
+	initializeCacheUpdater()
 	logger.Info("Successfully initialized data sync.")
 }
 
 func CloseDataSync() {
+	close(quit)
 	unregisterProxy(proxy_name)
 }

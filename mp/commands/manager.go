@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/team-vesperis/vesperis-mp/mp/mp/datasync"
 	"github.com/team-vesperis/vesperis-mp/mp/playerdata"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/gate/pkg/command"
@@ -81,10 +82,6 @@ func requireStaff() brigodier.RequireFn {
 	})
 }
 
-func getPlayerTargetFromThisProxy(playerName string, context *command.Context) proxy.Player {
-	return p.PlayerByName(playerName)
-}
-
 func getPlayerFromSource(source command.Source) proxy.Player {
 	player, ok := source.(proxy.Player)
 
@@ -96,12 +93,12 @@ func getPlayerFromSource(source command.Source) proxy.Player {
 }
 
 func suggestProxyPlayers() brigodier.SuggestionProvider {
-	return command.SuggestFunc(func(context *command.Context, builder *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+	return command.SuggestFunc(func(ctx *command.Context, builder *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
 		remaining := builder.RemainingLowerCase
 
 		players := make([]proxy.Player, 0)
 		for _, player := range p.Players() {
-			if sourcePlayer, ok := context.Source.(proxy.Player); ok {
+			if sourcePlayer, ok := ctx.Source.(proxy.Player); ok {
 				if playerdata.IsPlayerPrivileged(sourcePlayer) || playerdata.IsPlayerVanished(player) {
 					if strings.HasPrefix(strings.ToLower(player.Username()), remaining) {
 						players = append(players, player)
@@ -145,20 +142,77 @@ func suggestProxyServers() brigodier.SuggestionProvider {
 	})
 }
 
-func suggestAllServers() brigodier.SuggestionProvider {
+func suggestAllServersFromProxy() brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(ctx *command.Context, builder *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+		remaining := builder.RemainingLowerCase
+		server_list, err := datasync.GetServersForProxy(ctx.String("proxy"))
+		if err != nil {
+			logger.Error("Error getting all server names from one proxy: ", err)
+		}
+
+		servers := make([]string, 0)
+		for _, server := range server_list {
+			if strings.HasPrefix(strings.ToLower(server), remaining) {
+				servers = append(servers, server)
+			}
+		}
+
+		if len(servers) != 0 {
+			for _, server := range servers {
+				builder.Suggest(server)
+			}
+		}
+
 		return builder.Build()
 	})
 }
 
 func suggestAllProxies() brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(ctx *command.Context, builder *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+		remaining := builder.RemainingLowerCase
+		proxy_list, err := datasync.GetAllProxies()
+		if err != nil {
+			logger.Error("Error getting all proxy names: ", err)
+		}
+
+		proxies := make([]string, 0)
+		for _, proxy := range proxy_list {
+			if strings.HasPrefix(strings.ToLower(proxy), remaining) {
+				proxies = append(proxies, proxy)
+			}
+		}
+
+		if len(proxies) != 0 {
+			for _, proxy := range proxies {
+				builder.Suggest(proxy)
+			}
+		}
+
 		return builder.Build()
 	})
 }
 
 func suggestAllPlayers() brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(ctx *command.Context, builder *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+		remaining := builder.RemainingLowerCase
+		player_list, err := datasync.GetAllPlayerNames()
+		if err != nil {
+			logger.Error("Error getting all player names: ", err)
+		}
+
+		players := make([]string, 0)
+		for _, player := range player_list {
+			if strings.HasPrefix(strings.ToLower(player), remaining) {
+				players = append(players, player)
+			}
+		}
+
+		if len(players) != 0 {
+			for _, player := range players {
+				builder.Suggest(player)
+			}
+		}
+
 		return builder.Build()
 	})
 }

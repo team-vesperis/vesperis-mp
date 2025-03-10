@@ -41,7 +41,6 @@ func unregisterProxy(proxyName string) error {
 	client := database.GetRedisClient()
 	ctx := context.Background()
 
-	// Remove all servers under the proxy
 	serverKey := fmt.Sprintf("proxy:%s:servers", proxyName)
 	servers, err := client.SMembers(ctx, serverKey).Result()
 	if err != nil {
@@ -50,9 +49,11 @@ func unregisterProxy(proxyName string) error {
 	}
 
 	for _, server := range servers {
-		err := UnregisterServer(proxyName, server)
+		pipe := client.Pipeline()
+		pipe.SRem(ctx, serverKey, server)
+		_, err := pipe.Exec(ctx)
 		if err != nil {
-			logger.Error("Failed to unregister server: ", server, " for proxy: ", err)
+			logger.Error("Failed to unregister servers for proxy: "+proxyName+" - ", err)
 			return err
 		}
 	}

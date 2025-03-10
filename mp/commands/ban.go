@@ -28,16 +28,18 @@ func banCommand() brigodier.LiteralNodeBuilder {
 func banPlayer() brigodier.Command {
 	return command.Command(func(context *command.Context) error {
 		playerName := context.String("player")
-		player := getPlayerTargetFromThisProxy(playerName, context)
+		player := p.PlayerByName(playerName)
 		if player == nil {
 			return nil
 		}
 
-		if playerdata.GetPlayerRole(player) == "admin" {
+		playerRole := playerdata.GetPlayerRole(player)
+		if playerRole == "admin" || playerRole == "moderator" {
 			context.SendMessage(&component.Text{
-				Content: "You are not allowed to ban admins.",
+				Content: "You are not allowed to ban admins or moderators. If an admin or moderator is not following the rules, you can join the discord for help.",
 				S: component.Style{
-					Color: color.Red,
+					HoverEvent: component.NewHoverEvent(component.ShowTextAction, "Hello"),
+					Color:      color.Red,
 				},
 			})
 
