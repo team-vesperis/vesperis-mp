@@ -135,6 +135,8 @@ func CheckTempBans() {
 			UnBanPlayer(playerId)
 		}
 	}
+
+	logger.Info("Successfully checked all tempbans for expired ones.")
 }
 
 func GetBanReason(playerId string) string {

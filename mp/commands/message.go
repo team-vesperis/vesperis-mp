@@ -16,7 +16,11 @@ func registerMessageCommand() {
 }
 
 func messageCommand(name string) brigodier.LiteralNodeBuilder {
-	return brigodier.Literal(name).Then(brigodier.Argument("player", brigodier.SingleWord).Then(brigodier.Argument("message", brigodier.StringPhrase).Executes(sendMessage())))
+	return brigodier.Literal(name).
+		Then(brigodier.Argument("player", brigodier.SingleWord).
+			Suggests(suggestAllPlayers()).
+			Then(brigodier.Argument("message", brigodier.StringPhrase).
+				Executes(sendMessage())))
 }
 
 func sendMessage() brigodier.Command {
@@ -24,7 +28,18 @@ func sendMessage() brigodier.Command {
 		player, ok := ctx.Source.(proxy.Player)
 		if ok {
 			targetName := ctx.String("player")
-			target := getPlayerTargetFromThisProxy(targetName, ctx)
+
+			if player.Username() == targetName {
+				player.SendMessage(&component.Text{
+					Content: "You can't message yourself. You can add friends using /friends add <player_name>",
+					S: component.Style{
+						Color: color.Red,
+					},
+				})
+				return nil
+			}
+
+			target := p.PlayerByName(targetName)
 
 			// player is on this server and can be send a normal message
 			if target != nil {
@@ -55,7 +70,7 @@ func sendMessage() brigodier.Command {
 					return nil
 				}
 
-				if err != nil {
+				if err.Error() != task.Successful {
 					player.SendMessage(&component.Text{
 						Content: "Error searching player: " + err.Error(),
 						S: component.Style{

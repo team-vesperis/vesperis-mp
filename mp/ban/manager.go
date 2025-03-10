@@ -16,7 +16,7 @@ import (
 var (
 	logger     *zap.SugaredLogger
 	quit       chan struct{} = make(chan struct{})
-	banChecker               = 5 * time.Second
+	banChecker               = 5 * time.Minute
 	lockKey                  = "ban_checker_lock"
 	ctx                      = context.Background()
 )
@@ -44,6 +44,7 @@ func InitializeBanManager(log *zap.SugaredLogger) {
 			for {
 				select {
 				case <-ticker.C:
+					logger.Info("Checking temp bans for expired ones...")
 					playerdata.CheckTempBans()
 				case <-quit:
 					ticker.Stop()
