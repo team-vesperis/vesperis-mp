@@ -1,15 +1,13 @@
 package terminal
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/c-bata/go-prompt"
 	"github.com/team-vesperis/vesperis-mp/mp/mp/register"
 	"github.com/team-vesperis/vesperis-mp/mp/playerdata"
 	"go.minekube.com/common/minecraft/component"
@@ -17,13 +15,54 @@ import (
 	"go.uber.org/zap"
 )
 
+func completer(d prompt.Document) []prompt.Suggest {
+	s := []prompt.Suggest{
+		{Text: "stop", Description: "Stop the proxy"},
+		{Text: "register", Description: "Register a new server"},
+		{Text: "unregister", Description: "Unregister a server"},
+		{Text: "ban", Description: "Ban a player"},
+		{Text: "unban", Description: "Unban a player"},
+		{Text: "tempban", Description: "Temporarily ban a player"},
+	}
+
+	// Add subcommands
+	text := d.TextBeforeCursor()
+	if strings.HasPrefix(text, "register ") {
+		s = []prompt.Suggest{
+			{Text: "<server_name>", Description: "Name of the server"},
+			{Text: "<host>", Description: "Host of the server"},
+			{Text: "<port>", Description: "Port of the server"},
+		}
+	} else if strings.HasPrefix(text, "unregister ") {
+		s = []prompt.Suggest{
+			{Text: "<server_name>", Description: "Name of the server"},
+		}
+	} else if strings.HasPrefix(text, "ban ") {
+		s = []prompt.Suggest{
+			{Text: "<player_id>", Description: "ID of the player"},
+			{Text: "<reason>", Description: "Reason for banning"},
+		}
+	} else if strings.HasPrefix(text, "unban ") {
+		s = []prompt.Suggest{
+			{Text: "<player_id>", Description: "ID of the player"},
+		}
+	} else if strings.HasPrefix(text, "tempban ") {
+		s = []prompt.Suggest{
+			{Text: "<player_id>", Description: "ID of the player"},
+			{Text: "<reason>", Description: "Reason for banning"},
+			{Text: "<duration_length>", Description: "Length of the ban duration"},
+			{Text: "<duration_type>", Description: "Type of the ban duration (seconds, minutes, hours, days)"},
+		}
+	}
+
+	return prompt.FilterHasPrefix(s, d.GetWordBeforeCursor(), true)
+}
+
 func HandleTerminalInput(p *proxy.Proxy, logger *zap.SugaredLogger) {
 	time.Sleep(50 * time.Millisecond)
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		fmt.Print("> ")
 
-		cmd, _ := reader.ReadString('\n')
+	for {
+		cmd := prompt.Input("> ", completer)
 		cmd = strings.TrimSpace(cmd)
 		if cmd == "" {
 			continue
@@ -138,11 +177,6 @@ func HandleTerminalInput(p *proxy.Proxy, logger *zap.SugaredLogger) {
 			err := dispatcher.Do(context.Background(), strings.TrimPrefix(cmd, "/"))
 			if err != nil {
 				log.Println("Error executing command:", err)
-			}
-
-			commands := dispatcher.Root.Children()
-			for name := range commands {
-				log.Println("Registered Command:", name)
 			}
 		}
 	}
