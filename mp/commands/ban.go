@@ -2,6 +2,8 @@ package commands
 
 import (
 	"github.com/team-vesperis/vesperis-mp/mp/ban"
+	"github.com/team-vesperis/vesperis-mp/mp/mp/datasync"
+	"github.com/team-vesperis/vesperis-mp/mp/mp/task"
 	"github.com/team-vesperis/vesperis-mp/mp/playerdata"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/common/minecraft/color"
@@ -27,27 +29,64 @@ func banCommand() brigodier.LiteralNodeBuilder {
 
 func banPlayer() brigodier.Command {
 	return command.Command(func(context *command.Context) error {
-		playerName := context.String("player")
-		player := p.PlayerByName(playerName)
-		if player == nil {
+		targetName := context.String("player")
+		target := p.PlayerByName(targetName)
+		if target != nil {
+			playerRole := playerdata.GetPlayerRole(target)
+			if playerRole == "admin" || playerRole == "moderator" {
+				context.SendMessage(&component.Text{
+					Content: "You are not allowed to ban admins or moderators. If an admin or moderator is not following the rules, you can join the discord for help.",
+					S: component.Style{
+						Color: color.Red,
+					},
+				})
+
+				return nil
+			}
+
+			reason := context.String("reason")
+			ban.BanPlayer(target, reason)
+
 			return nil
 		}
 
-		playerRole := playerdata.GetPlayerRole(player)
-		if playerRole == "admin" || playerRole == "moderator" {
+		// player could be on another proxy
+		proxyName, _, _, err := datasync.FindPlayerWithUsername(targetName)
+		if err.Error() == task.Player_Not_Found {
 			context.SendMessage(&component.Text{
-				Content: "You are not allowed to ban admins or moderators. If an admin or moderator is not following the rules, you can join the discord for help.",
+				Content: "Player not found.",
 				S: component.Style{
-					HoverEvent: component.NewHoverEvent(component.ShowTextAction, "Hello"),
-					Color:      color.Red,
+					Color: color.Red,
+				},
+			})
+			return nil
+		}
+
+		if err.Error() != task.Successful {
+			context.SendMessage(&component.Text{
+				Content: "Error searching player: " + err.Error(),
+				S: component.Style{
+					Color: color.Red,
 				},
 			})
 
 			return nil
 		}
 
-		reason := context.String("reason")
-		ban.BanPlayer(player, reason)
+		banTask := &task.BanTask{
+			TargetPlayerName: targetName,
+			Reason:           context.String("reason"),
+		}
+
+		err = banTask.CreateTask(proxyName)
+		if err != nil {
+			context.SendMessage(&component.Text{
+				Content: "Error creating ban task: " + err.Error(),
+				S: component.Style{
+					Color: color.Red,
+				},
+			})
+		}
 
 		return nil
 	})

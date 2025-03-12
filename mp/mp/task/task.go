@@ -113,6 +113,8 @@ func startTaskPerformListener() {
 		switch taskType {
 		case "MessageTask":
 			task = &MessageTask{}
+		case "BanTask":
+			task = &BanTask{}
 		default:
 			logger.Warn("Unknown task type:", taskType)
 			return

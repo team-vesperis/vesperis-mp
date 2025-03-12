@@ -18,6 +18,7 @@ var logger *zap.SugaredLogger
 func InitializeCommands(proxy *proxy.Proxy, log *zap.SugaredLogger) {
 	p = proxy
 	logger = log
+
 	registerTransferCommand()
 	registerBanCommand()
 	registerTempBanCommand()
