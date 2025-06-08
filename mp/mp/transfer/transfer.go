@@ -140,16 +140,22 @@ func TransferPlayerToServerOnOtherProxy(player proxy.Player, targetProxy string,
 
 	parts := strings.Split(msg.Payload, "|")
 	if len(parts) == 4 && parts[0] == player.ID().String() && parts[1] == targetProxy {
-		// server will be one of three things:
+		// server will be one of four things:
 		// 0, means the proxy is found but given server is not available
 		// 1, means the proxy is found and none server is specified
 		// 2, means the proxy is found and the given server is available
+		// 3, means the proxy is found and the given server is found but not responding
 		server := parts[3]
 
 		logger.Info(server)
 		if server == "0" {
 			logger.Warn("Specified server for player transfer was not found: ", player.ID().String())
 			return errors.New("specified server was not found")
+		}
+
+		if server == "3" {
+			logger.Warn("Specified server for player transfer was found, but is not responding: ", player.ID().String())
+			return errors.New("specified server found but not responding")
 		}
 
 		if server == "2" {
@@ -210,9 +216,11 @@ func listenToTransfers() {
 				if foundServer != nil {
 					server = "2"
 				}
-			}
 
-			logger.Info(server)
+				if !isBackendResponding(foundServer.ServerInfo().Addr().String()) {
+					server = "3"
+				}
+			}
 
 			err := database.Publish(context.Background(), responseChannel, playerID+"|"+targetProxy+"|"+address+"|"+server)
 			if err != nil {
