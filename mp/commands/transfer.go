@@ -20,6 +20,16 @@ func transferCommand() brigodier.LiteralNodeBuilder {
 				player, ok := context.Source.(proxy.Player)
 				if ok {
 					proxy := context.String("proxy")
+					if proxy == proxy_name {
+						player.SendMessage(&component.Text{
+							Content: "You are already on this proxy.",
+							S: component.Style{
+								Color: color.Red,
+							},
+						})
+						return nil
+					}
+
 					err := transfer.TransferPlayerToProxy(player, proxy)
 					if err != nil {
 						player.SendMessage(&component.Text{
@@ -39,6 +49,29 @@ func transferCommand() brigodier.LiteralNodeBuilder {
 					if ok {
 						proxy := ctx.String("proxy")
 						server := ctx.String("server")
+						if proxy == proxy_name {
+							s := p.Server(server)
+							if s != nil {
+
+								c := player.CreateConnectionRequest(s)
+								_, err := c.Connect(player.Context())
+								if err != nil {
+									player.SendMessage(&component.Text{
+										Content: "Could not connect to different server: " + err.Error(),
+									})
+								}
+
+							} else {
+								player.SendMessage(&component.Text{
+									Content: "Server not found.",
+									S: component.Style{
+										Color: color.Red,
+									},
+								})
+							}
+
+							return nil
+						}
 						err := transfer.TransferPlayerToServerOnOtherProxy(player, proxy, server)
 						if err != nil {
 							player.SendMessage(&component.Text{

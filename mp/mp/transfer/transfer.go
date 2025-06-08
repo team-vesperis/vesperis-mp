@@ -11,6 +11,8 @@ import (
 	"github.com/team-vesperis/vesperis-mp/mp/mp/datasync"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
+	"go.minekube.com/common/minecraft/key"
+	"go.minekube.com/gate/pkg/edition/java/cookie"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.uber.org/zap"
 )
@@ -19,6 +21,7 @@ var (
 	p          *proxy.Proxy
 	logger     *zap.SugaredLogger
 	proxy_name string
+	tranferKey = key.New("vesperis", "transfer_specific_server")
 )
 
 func InitializeTransfer(proxy *proxy.Proxy, log *zap.SugaredLogger, pn string) {
@@ -60,31 +63,38 @@ func OnPreShutdown(event *proxy.PreShutdownEvent) {
 
 // check if player has cookie specifying which server he needs.
 func OnChooseInitialServer(event *proxy.PlayerChooseInitialServerEvent) {
+	player := event.Player()
 	if len(p.Servers()) < 1 {
 		time.Sleep(50 * time.Millisecond)
-		event.Player().Disconnect(&component.Text{
+		player.Disconnect(&component.Text{
 			Content: "No available server. Please try again.",
 			S: component.Style{
 				Color: color.Red,
 			},
 		})
 	} else {
-		key := "transfer_specific_server_" + event.Player().ID().String()
-		server_name_msg := database.GetRedisClient().Get(context.Background(), key)
-		server_name, err := server_name_msg.Result()
+		c, err := cookie.Request(player.Context(), player, tranferKey, p.Event())
+		server_name := string(c.Payload)
 		if err == nil {
 			server := p.Server(server_name)
 			if server != nil {
 				event.SetInitialServer(server)
 			} else {
-				event.SetInitialServer(p.Servers()[0])
+				servers := p.Servers()
+				randomIndex := time.Now().UnixNano() % int64(len(servers))
+				event.SetInitialServer(servers[randomIndex])
 			}
 		} else {
-			event.SetInitialServer(p.Servers()[0])
+			servers := p.Servers()
+			randomIndex := time.Now().UnixNano() % int64(len(servers))
+			event.SetInitialServer(servers[randomIndex])
 		}
 
 		// reset
-		database.GetRedisClient().Set(context.Background(), key, "", 2*time.Second)
+		err = cookie.Clear(player, tranferKey)
+		if err != nil {
+			logger.Error("Error clearing cookie: " + err.Error())
+		}
 	}
 }
 
@@ -117,6 +127,17 @@ func TransferPlayerToServerOnOtherProxy(player proxy.Player, targetProxy string,
 		}
 
 		if server == "2" {
+			c := &cookie.Cookie{
+				Key:     key.New("vesperis", "transfer_to_server"),
+				Payload: []byte(targetServer),
+			}
+
+			err := cookie.Store(player, c)
+			if err != nil {
+				logger.Error("Error storing cookie to player: " + player.Username() + " - Error: " + err.Error())
+				return errors.New("could not store cookie")
+			}
+
 			database.GetRedisClient().Set(context.Background(), "transfer_specific_server_"+player.ID().String(), targetServer, 10*time.Second)
 		}
 

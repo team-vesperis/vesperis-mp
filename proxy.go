@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"time"
 
 	"github.com/robinbraemer/event"
 	"github.com/team-vesperis/vesperis-mp/mp/ban"
@@ -47,7 +46,7 @@ func main() {
 			event.Subscribe(p.Event(), 0, onShutdown)
 
 			transfer.InitializeTransfer(p, logger, proxy_name)
-			commands.InitializeCommands(p, logger)
+			commands.InitializeCommands(p, logger, proxy_name)
 			listeners.InitializeListeners(p, logger, proxy_name)
 			utils.InitializeUtils(p, logger)
 			register.InitializeRegister(p, logger, proxy_name)
@@ -63,37 +62,8 @@ func main() {
 		},
 	})
 
-	go testTask()
 	logger.Info("Successfully started " + proxy_name + ".")
 	gate.Execute()
-}
-
-func testTask() {
-	time.Sleep(25 * time.Second)
-
-	messageTask := &task.MessageTask{
-		OriginPlayerName: "Bores",
-		TargetPlayerName: "BorisP",
-		Message:          "hello!",
-	}
-
-	err := messageTask.CreateTask("proxy_1")
-	if err != nil {
-		if err.Error() == task.Player_Not_Found {
-			logger.Info("player not found!")
-		} else {
-			logger.Info(err)
-		}
-	}
-
-	err = messageTask.CreateTask("sdkfj")
-	if err != nil {
-		if err.Error() == task.Player_Not_Found {
-			logger.Info("player not found!")
-		} else {
-			logger.Info(err)
-		}
-	}
 }
 
 func shutdown() {
