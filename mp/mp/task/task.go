@@ -37,8 +37,8 @@ type Task interface {
 
 // error returns
 var (
-	Player_Not_Found = "player not found"
-	Successful       = "successful"
+	ErrPlayerNotFound = errors.New("player not found")
+	ErrSuccessful     = errors.New("successful")
 )
 
 func send(targetProxy string, task Task) error {
@@ -74,10 +74,10 @@ func send(targetProxy string, task Task) error {
 	}
 
 	switch msg.Payload {
-	case Player_Not_Found:
-		return errors.New(Player_Not_Found)
+	case ErrPlayerNotFound.Error():
+		return ErrPlayerNotFound
 
-	case Successful:
+	case ErrSuccessful.Error():
 		return nil
 
 	default:

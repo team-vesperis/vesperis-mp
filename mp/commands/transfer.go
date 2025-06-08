@@ -14,7 +14,7 @@ func registerTransferCommand() {
 }
 
 func transferCommand() brigodier.LiteralNodeBuilder {
-	return brigodier.Literal("transfer").
+	return brigodier.Literal("t").
 		Then(brigodier.Argument("proxy", brigodier.String).
 			Executes(command.Command(func(context *command.Context) error {
 				player, ok := context.Source.(proxy.Player)
@@ -58,6 +58,9 @@ func transferCommand() brigodier.LiteralNodeBuilder {
 								if err != nil {
 									player.SendMessage(&component.Text{
 										Content: "Could not connect to different server: " + err.Error(),
+										S: component.Style{
+											Color: color.Red,
+										},
 									})
 								}
 

@@ -23,7 +23,7 @@ func (t *MessageTask) CreateTask(target_proxy string) error {
 func (t *MessageTask) PerformTask(responseChannel string) {
 	targetPlayer := p.PlayerByName(t.TargetPlayerName)
 	if targetPlayer == nil {
-		t.SendResponse(Player_Not_Found, responseChannel)
+		t.SendResponse(ErrPlayerNotFound.Error(), responseChannel)
 	} else {
 		targetPlayer.SendMessage(&component.Text{
 			Content: "[<- " + t.OriginPlayerName + "]",
@@ -40,7 +40,7 @@ func (t *MessageTask) PerformTask(responseChannel string) {
 			},
 		})
 
-		t.SendResponse(Successful, responseChannel)
+		t.SendResponse(ErrSuccessful.Error(), responseChannel)
 	}
 }
 

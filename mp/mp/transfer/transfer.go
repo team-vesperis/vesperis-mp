@@ -3,6 +3,7 @@ package transfer
 import (
 	"context"
 	"errors"
+	"net"
 	"strings"
 	"time"
 
@@ -18,10 +19,10 @@ import (
 )
 
 var (
-	p          *proxy.Proxy
-	logger     *zap.SugaredLogger
-	proxy_name string
-	tranferKey = key.New("vesperis", "transfer_specific_server")
+	p           *proxy.Proxy
+	logger      *zap.SugaredLogger
+	proxy_name  string
+	transferKey = key.New("vesperis", "transfer_specific_server")
 )
 
 func InitializeTransfer(proxy *proxy.Proxy, log *zap.SugaredLogger, pn string) {
@@ -61,41 +62,66 @@ func OnPreShutdown(event *proxy.PreShutdownEvent) {
 	}
 }
 
+func isBackendResponding(backend string) bool {
+	conn, err := net.DialTimeout("tcp", backend, time.Second*5)
+	if err == nil {
+		conn.Close()
+	}
+	return err == nil
+}
+
 // check if player has cookie specifying which server he needs.
 func OnChooseInitialServer(event *proxy.PlayerChooseInitialServerEvent) {
 	player := event.Player()
 	if len(p.Servers()) < 1 {
-		time.Sleep(50 * time.Millisecond)
-		player.Disconnect(&component.Text{
-			Content: "No available server. Please try again.",
-			S: component.Style{
-				Color: color.Red,
-			},
-		})
+		sendNoAvailableServers(player)
 	} else {
-		c, err := cookie.Request(player.Context(), player, tranferKey, p.Event())
-		server_name := string(c.Payload)
-		if err == nil {
+		c, err := cookie.Request(player.Context(), player, transferKey, p.Event())
+		if err == nil && c != nil && len(c.Payload) > 0 {
+			// reset
+			err = cookie.Clear(player, transferKey)
+			if err != nil {
+				logger.Error("Error clearing cookie: " + err.Error())
+			}
+
+			server_name := string(c.Payload)
 			server := p.Server(server_name)
 			if server != nil {
 				event.SetInitialServer(server)
 			} else {
-				servers := p.Servers()
-				randomIndex := time.Now().UnixNano() % int64(len(servers))
-				event.SetInitialServer(servers[randomIndex])
+				chooseRandomServer(player, event)
 			}
 		} else {
-			servers := p.Servers()
-			randomIndex := time.Now().UnixNano() % int64(len(servers))
-			event.SetInitialServer(servers[randomIndex])
-		}
-
-		// reset
-		err = cookie.Clear(player, tranferKey)
-		if err != nil {
-			logger.Error("Error clearing cookie: " + err.Error())
+			chooseRandomServer(player, event)
 		}
 	}
+}
+
+func chooseRandomServer(player proxy.Player, event *proxy.PlayerChooseInitialServerEvent) {
+	var servers []proxy.RegisteredServer
+	for _, server := range p.Servers() {
+		if isBackendResponding(server.ServerInfo().Addr().String()) {
+			servers = append(servers, server)
+		}
+	}
+
+	if len(servers) < 1 {
+		sendNoAvailableServers(player)
+		return
+	}
+
+	randomIndex := time.Now().UnixNano() % int64(len(servers))
+	event.SetInitialServer(servers[randomIndex])
+}
+
+func sendNoAvailableServers(player proxy.Player) {
+	time.Sleep(50 * time.Millisecond)
+	player.Disconnect(&component.Text{
+		Content: "No available server. Please try again.",
+		S: component.Style{
+			Color: color.Red,
+		},
+	})
 }
 
 func TransferPlayerToServerOnOtherProxy(player proxy.Player, targetProxy string, targetServer string) error {

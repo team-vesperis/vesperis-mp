@@ -13,7 +13,7 @@ func registerProxy(proxyName string) error {
 	client := database.GetRedisClient()
 	ctx := context.Background()
 
-	exists, err := client.SIsMember(ctx, "proxies", proxyName).Result()
+	exists, err := client.SIsMember(ctx, "proxy_list", proxyName).Result()
 	if err != nil {
 		logger.Error("Failed to check if proxy is already registered: ", err)
 		return err
@@ -27,7 +27,7 @@ func registerProxy(proxyName string) error {
 		return nil
 	}
 
-	err = client.SAdd(ctx, "proxies", proxyName).Err()
+	err = client.SAdd(ctx, "proxy_list", proxyName).Err()
 	if err != nil {
 		logger.Error("Failed to register proxy: ", err)
 		return err
@@ -45,25 +45,12 @@ func unregisterProxy(proxyName string) error {
 	client := database.GetRedisClient()
 	ctx := context.Background()
 
-	serverKey := fmt.Sprintf("proxy:%s:servers", proxyName)
-	servers, err := client.SMembers(ctx, serverKey).Result()
-	if err != nil {
-		logger.Error("Failed to get servers for proxy: ", err)
-		return err
-	}
-
-	for _, server := range servers {
-		pipe := client.Pipeline()
-		pipe.SRem(ctx, serverKey, server)
-		_, err := pipe.Exec(ctx)
-		if err != nil {
-			logger.Error("Failed to unregister servers for proxy: "+proxyName+" - ", err)
-			return err
-		}
+	for _, server := range p.Servers() {
+		UnregisterServer(proxyName, server.ServerInfo().Name())
 	}
 
 	// Remove the proxy itself
-	err = client.SRem(ctx, "proxies", proxyName).Err()
+	err := client.SRem(ctx, "proxy_list", proxyName).Err()
 	if err != nil {
 		logger.Error("Failed to unregister proxy: ", err)
 		return err
