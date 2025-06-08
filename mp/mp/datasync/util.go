@@ -9,6 +9,7 @@ import (
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/mp/database"
+	"github.com/team-vesperis/vesperis-mp/mp/mp/task"
 )
 
 func GetProxyWithLowestPlayerCount(countThisProxy bool) (string, error) {
@@ -65,23 +66,29 @@ func GetProxyWithLowestPlayerCount(countThisProxy bool) (string, error) {
 var cache = ttlcache.New[string, []string]()
 
 func GetAllProxies() ([]string, error) {
-	if cache.Has("proxy_list") {
-		return cache.Get("proxy_list").Value(), nil
+	key := "proxy_list"
+	if cache.Has(key) {
+		return cache.Get(key).Value(), nil
 	}
 
 	client := database.GetRedisClient()
 	ctx := context.Background()
 
-	proxies, err := client.SMembers(ctx, "proxy_list").Result()
+	proxies, err := client.SMembers(ctx, key).Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get proxies: %w", err)
 	}
 
-	cache.Set("proxy_list", proxies, 10*time.Second)
+	cache.Set(key, proxies, 10*time.Second)
 	return proxies, nil
 }
 
 func GetAllPlayerUUIDs() ([]string, error) {
+	key := "player_uuids_list"
+	if cache.Has(key) {
+		return cache.Get(key).Value(), nil
+	}
+
 	client := database.GetRedisClient()
 	ctx := context.Background()
 
@@ -113,12 +120,15 @@ func GetAllPlayerUUIDs() ([]string, error) {
 		}
 	}
 
+	cache.Set(key, allPlayerUUIDs, 10*time.Second)
 	return allPlayerUUIDs, nil
 }
 
 func GetAllPlayerNames() ([]string, error) {
-	if cache.Has("player_names_list") {
-		return cache.Get("player_names_list").Value(), nil
+	key := "player_names_list"
+	if cache.Has(key) {
+		list := cache.Get(key).Value()
+		return list, nil
 	}
 
 	client := database.GetRedisClient()
@@ -148,7 +158,7 @@ func GetAllPlayerNames() ([]string, error) {
 		}
 	}
 
-	cache.Set("player_names_list", allPlayerNames, 10*time.Second)
+	cache.Set(key, allPlayerNames, 1*time.Second)
 	return allPlayerNames, nil
 }
 
@@ -195,21 +205,17 @@ func FindPlayerWithUUID(playerUUID string) (string, string, string, error) {
 			return "", "", "", err
 		}
 
-		pipe := client.Pipeline()
 		for _, serverName := range servers {
 			key := fmt.Sprintf("proxy:%s:server:%s:players", proxyName, serverName)
-			pipe.HGet(ctx, key, playerUUID)
-		}
-
-		cmders, err := pipe.Exec(ctx)
-		if err != nil {
-			return "", "", "", err
-		}
-
-		for i, cmder := range cmders {
-			playerName := cmder.(*redis.StringCmd).Val()
+			playerName, err := client.HGet(ctx, key, playerUUID).Result()
+			if err == redis.Nil {
+				continue
+			}
+			if err != nil {
+				return "", "", "", err
+			}
 			if playerName != "" {
-				return proxyName, servers[i], playerName, nil
+				return proxyName, serverName, playerName, nil
 			}
 		}
 	}
@@ -232,26 +238,21 @@ func FindPlayerWithUsername(playerName string) (string, string, string, error) {
 			return "", "", "", err
 		}
 
-		pipe := client.Pipeline()
 		for _, serverName := range servers {
 			key := fmt.Sprintf("proxy:%s:server:%s:players", proxyName, serverName)
-			pipe.HGet(ctx, key, playerName)
-		}
-
-		cmders, err := pipe.Exec(ctx)
-		if err != nil {
-			return "", "", "", err
-		}
-
-		for i, cmder := range cmders {
-			playerUUID := cmder.(*redis.StringCmd).Val()
-			if playerUUID != "" {
-				return proxyName, servers[i], playerUUID, nil
+			players, err := client.HGetAll(ctx, key).Result()
+			if err != nil {
+				return "", "", "", err
+			}
+			for uuid, name := range players {
+				if name == playerName {
+					return proxyName, serverName, uuid, nil
+				}
 			}
 		}
 	}
 
-	return "", "", "", errors.New("player not found")
+	return "", "", "", task.ErrPlayerNotFound
 }
 
 func GetTotalPlayerCount() (int, error) {
@@ -259,6 +260,10 @@ func GetTotalPlayerCount() (int, error) {
 	ctx := context.Background()
 
 	cmd := client.Get(ctx, "player_count")
+	if cmd.Err() == redis.Nil {
+		client.IncrBy(ctx, "player_count", 0)
+		return 0, nil
+	}
 	count, err := cmd.Int()
 	return count, err
 }

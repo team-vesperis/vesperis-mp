@@ -52,7 +52,7 @@ func banPlayer() brigodier.Command {
 
 		// player could be on another proxy
 		proxyName, _, _, err := datasync.FindPlayerWithUsername(targetName)
-		if err.Error() == task.Player_Not_Found {
+		if err == task.ErrPlayerNotFound {
 			context.SendMessage(&component.Text{
 				Content: "Player not found.",
 				S: component.Style{
@@ -62,7 +62,7 @@ func banPlayer() brigodier.Command {
 			return nil
 		}
 
-		if err.Error() != task.Successful {
+		if err != task.ErrSuccessful {
 			context.SendMessage(&component.Text{
 				Content: "Error searching player: " + err.Error(),
 				S: component.Style{

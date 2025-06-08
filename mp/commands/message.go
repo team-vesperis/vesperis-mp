@@ -60,24 +60,32 @@ func sendMessage() brigodier.Command {
 			} else {
 				// player could be on another proxy
 				proxyName, _, _, err := datasync.FindPlayerWithUsername(targetName)
-				if err.Error() == task.Player_Not_Found {
-					player.SendMessage(&component.Text{
-						Content: "Player not found.",
-						S: component.Style{
-							Color: color.Red,
-						},
-					})
+				if err != nil {
+					if err == task.ErrPlayerNotFound {
+						player.SendMessage(&component.Text{
+							Content: "Player not found.",
+							S: component.Style{
+								Color: color.Red,
+							},
+						})
+					} else {
+						player.SendMessage(&component.Text{
+							Content: "Error searching player: " + err.Error(),
+							S: component.Style{
+								Color: color.Red,
+							},
+						})
+					}
 					return nil
 				}
 
-				if err.Error() != task.Successful {
+				if proxyName == "" {
 					player.SendMessage(&component.Text{
-						Content: "Error searching player: " + err.Error(),
+						Content: "Player not found on any proxy.",
 						S: component.Style{
 							Color: color.Red,
 						},
 					})
-
 					return nil
 				}
 
@@ -95,10 +103,8 @@ func sendMessage() brigodier.Command {
 							Color: color.Red,
 						},
 					})
-
 					return nil
 				}
-
 			}
 
 			player.SendMessage(&component.Text{
