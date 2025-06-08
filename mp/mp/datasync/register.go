@@ -33,6 +33,10 @@ func registerProxy(proxyName string) error {
 		return err
 	}
 
+	for _, server := range p.Servers() {
+		RegisterServer(proxyName, server.ServerInfo().Name())
+	}
+
 	logger.Info("Registered proxy: ", proxyName)
 	return nil
 }
@@ -73,7 +77,7 @@ func RegisterServer(proxyName, serverName string) error {
 	client := database.GetRedisClient()
 	ctx := context.Background()
 
-	key := fmt.Sprintf("proxy:%s:servers", proxyName)
+	key := fmt.Sprintf("proxy:%s:server_list", proxyName)
 	err := client.SAdd(ctx, key, serverName).Err()
 	if err != nil {
 		logger.Error("Failed to register server: ", err)
@@ -88,7 +92,7 @@ func UnregisterServer(proxyName, serverName string) error {
 	client := database.GetRedisClient()
 	ctx := context.Background()
 
-	key := fmt.Sprintf("proxy:%s:servers", proxyName)
+	key := fmt.Sprintf("proxy:%s:server_list", proxyName)
 	err := client.SRem(ctx, key, serverName).Err()
 	if err != nil {
 		logger.Error("Failed to unregister server: ", err)
@@ -110,6 +114,12 @@ func RegisterPlayer(proxyName, serverName string, player proxy.Player) error {
 		return err
 	}
 
+	err = client.Incr(ctx, "player_count").Err()
+	if err != nil {
+		logger.Error("Failed to increment player count: ", err)
+		return err
+	}
+
 	logger.Info("Registered player: ", player.Username(), " (UUID: ", player.ID().String(), ") under server: ", serverName, " and proxy: ", proxyName)
 	return nil
 }
@@ -122,6 +132,12 @@ func UnregisterPlayer(proxyName, serverName string, player proxy.Player) error {
 	err := client.HDel(ctx, key, player.ID().String()).Err()
 	if err != nil {
 		logger.Error("Failed to unregister player: ", err)
+		return err
+	}
+
+	err = client.Decr(ctx, "player_count").Err()
+	if err != nil {
+		logger.Error("Failed to decrement player count: ", err)
 		return err
 	}
 

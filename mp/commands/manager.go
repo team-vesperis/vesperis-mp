@@ -14,10 +14,12 @@ import (
 
 var p *proxy.Proxy
 var logger *zap.SugaredLogger
+var proxy_name string
 
-func InitializeCommands(proxy *proxy.Proxy, log *zap.SugaredLogger) {
+func InitializeCommands(proxy *proxy.Proxy, log *zap.SugaredLogger, pn string) {
 	p = proxy
 	logger = log
+	proxy_name = pn
 
 	registerTransferCommand()
 	registerBanCommand()

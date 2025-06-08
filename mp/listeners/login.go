@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/team-vesperis/vesperis-mp/mp/ban"
+	"github.com/team-vesperis/vesperis-mp/mp/mp/datasync"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
@@ -75,6 +76,16 @@ func onLogin(event *proxy.LoginEvent) {
 				},
 			})
 		}
+	}
+
+	p, _, _, _ := datasync.FindPlayerWithUUID(player.ID().String())
+	if p != "" {
+		event.Deny(&component.Text{
+			Content: "You are already connected.",
+			S: component.Style{
+				Color: color.Red,
+			},
+		})
 	}
 
 }
