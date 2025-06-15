@@ -160,7 +160,7 @@ func TransferPlayerToServerOnOtherProxy(player proxy.Player, targetProxy string,
 
 		if server == "2" {
 			c := &cookie.Cookie{
-				Key:     key.New("vesperis", "transfer_to_server"),
+				Key:     transferKey,
 				Payload: []byte(targetServer),
 			}
 
@@ -169,8 +169,6 @@ func TransferPlayerToServerOnOtherProxy(player proxy.Player, targetProxy string,
 				logger.Error("Error storing cookie to player: " + player.Username() + " - Error: " + err.Error())
 				return errors.New("could not store cookie")
 			}
-
-			database.GetRedisClient().Set(context.Background(), "transfer_specific_server_"+player.ID().String(), targetServer, 10*time.Second)
 		}
 
 		address := parts[2]

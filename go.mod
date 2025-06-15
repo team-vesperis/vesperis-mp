@@ -10,7 +10,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	go.minekube.com/brigodier v0.0.1
 	go.minekube.com/common v0.0.6
-	go.minekube.com/gate v0.49.1
+	go.minekube.com/gate v0.49.2
 	go.uber.org/zap v1.27.0
 )
 
@@ -79,7 +79,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
 	github.com/tklauser/numcpus v0.10.0 // indirect
-	github.com/urfave/cli/v2 v2.27.6 // indirect
+	github.com/urfave/cli/v2 v2.27.7 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zyedidia/generic v1.2.1 // indirect
