@@ -16,8 +16,8 @@ func onPing(event *proxy.PingEvent) {
 
 	ping := &ping.ServerPing{
 		Version: ping.Version{
-			Name:     "1.21.4",
-			Protocol: 769,
+			Name:     "Vesperis",
+			Protocol: 770,
 		},
 		Players: &ping.Players{
 			Online: playerCount,

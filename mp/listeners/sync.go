@@ -11,6 +11,7 @@ func onServerConnect(event *proxy.ServerConnectedEvent) {
 	oldServer := event.PreviousServer()
 
 	if oldServer != nil {
+		logger.Info("Player is moving server from ", oldServer, " to ", newServer)
 		err := datasync.UnregisterPlayer(proxy_name, oldServer.ServerInfo().Name(), player)
 		if err != nil {
 			logger.Error("Failed to unregister player: ", err)
