@@ -18,6 +18,7 @@ func InitializeListeners(proxy *proxy.Proxy, log *zap.SugaredLogger, pn string) 
 	logger = log
 	proxy_name = pn
 
+	initPing()
 	event.Subscribe(p.Event(), 0, onPing)
 	event.Subscribe(p.Event(), 1, onServerConnect)
 	event.Subscribe(p.Event(), 1, onDisconnect)
