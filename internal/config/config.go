@@ -66,6 +66,10 @@ func GetProxyName() string {
 	return config.GetString("proxy_name")
 }
 
+func SetProxyName(newName string) {
+	config.Set("proxy_name", newName)
+}
+
 func GetMySQLUrl() string {
 	return config.GetString("databases.mysql.username") +
 		":" +

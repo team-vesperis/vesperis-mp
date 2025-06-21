@@ -11,11 +11,12 @@ import (
 
 var database *sql.DB
 
-func initializeMysql() {
+func initializeMysql() error {
 	var err error
 	database, err = sql.Open("mysql", config.GetMySQLUrl())
 	if err != nil {
-		logger.Panic("Error initializing MySQL Database. - ", err)
+		logger.Error("Error initializing MySQL Database. - ", err)
+		return err
 	}
 
 	database.SetConnMaxLifetime(time.Minute * 3)
@@ -24,11 +25,18 @@ func initializeMysql() {
 
 	err = database.Ping()
 	if err != nil {
-		logger.Panic("Error pinging MySQL Database. - ", err)
+		logger.Error("Error pinging MySQL Database. - ", err)
+		return err
 	}
 
-	createTables()
+	err = createTables()
+	if err != nil {
+		logger.Error("Error creating tables in MySQL Database. - ", err)
+		return err
+	}
+
 	logger.Info("Successfully initialized MySQL Database.")
+	return nil
 }
 
 func GetMySQLConnection(context context.Context) (*sql.Conn, error) {
@@ -41,7 +49,7 @@ func GetMySQLConnection(context context.Context) (*sql.Conn, error) {
 	return connection, nil
 }
 
-func createTables() {
+func createTables() error {
 	_, err := database.Exec(`
 		CREATE TABLE IF NOT EXISTS player_data (
 			playerId VARCHAR(36) PRIMARY KEY,
@@ -50,7 +58,8 @@ func createTables() {
 	`)
 
 	if err != nil {
-		logger.Panic("Error creating/loading player_data table. - ", err)
+		logger.Error("Error creating/loading player_data table. - ", err)
+		return err
 	}
 
 	_, err = database.Exec(`
@@ -65,10 +74,12 @@ func createTables() {
 	`)
 
 	if err != nil {
-		logger.Panic("Error creating/loading banned_players table. - ", err)
+		logger.Error("Error creating/loading banned_players table. - ", err)
+		return err
 	}
 
 	logger.Info("Successfully created/loaded MySQL table.")
+	return nil
 }
 
 func closeMySQL() {

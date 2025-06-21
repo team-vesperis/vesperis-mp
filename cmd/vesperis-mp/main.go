@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 
 	"github.com/robinbraemer/event"
 	"github.com/team-vesperis/vesperis-mp/internal/ban"
@@ -20,6 +21,7 @@ import (
 
 	"go.minekube.com/gate/cmd/gate"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
+	"go.minekube.com/gate/pkg/util/uuid"
 	"go.uber.org/zap"
 )
 
@@ -35,7 +37,17 @@ func main() {
 	proxy_name = config.GetProxyName()
 
 	logger.Info("Starting " + proxy_name + "...")
-	database.InitializeDatabases(logger)
+	err := database.InitializeDatabases(logger)
+	if err != nil {
+		shutdown(false)
+	}
+
+	used := datasync.IsProxyAvailable(proxy_name)
+	if used {
+		logger.Warn("Proxy name is already used! Changing name to new one.")
+		proxy_name = "proxy_" + uuid.New().String()
+		config.SetProxyName(proxy_name)
+	}
 
 	proxy.Plugins = append(proxy.Plugins, proxy.Plugin{
 		Name: "VesperisMP-" + proxy_name,
@@ -62,20 +74,25 @@ func main() {
 		},
 	})
 
-	logger.Info("Successfully started " + proxy_name + ".")
 	gate.Execute()
 }
 
-func shutdown() {
+func shutdown(alreadyRunning bool) {
 	logger.Info("Stopping " + proxy_name + "...")
 
-	ban.CloseBanManager()
-	datasync.CloseDataSync()
-	database.CloseDatabases()
+	if alreadyRunning {
+		ban.CloseBanManager()
+		datasync.CloseDataSync()
+		database.CloseDatabases()
+	}
 
 	logger.Info("Successfully stopped " + proxy_name + ".")
+
+	if !alreadyRunning {
+		os.Exit(0)
+	}
 }
 
 func onShutdown(event *proxy.ShutdownEvent) {
-	shutdown()
+	shutdown(true)
 }

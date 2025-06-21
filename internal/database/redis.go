@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
@@ -9,26 +10,35 @@ import (
 
 var client *redis.Client
 
-func initializeRedis() {
+func initializeRedis() error {
 	opt, urlError := redis.ParseURL(config.GetRedisUrl())
 	if urlError != nil {
-		logger.Panic("Error parsing url in the Redis Database. - ", urlError)
+		logger.Error("Error parsing url in the Redis Database. - ", urlError)
+		return urlError
 	}
 
 	client = redis.NewClient(opt)
 
 	setError := client.Set(context.Background(), "ping", "pong", 0).Err()
 	if setError != nil {
-		logger.Panic("Error sending value to the Redis Database. - ", setError)
+		logger.Error("Error sending value to the Redis Database. - ", setError)
+		return setError
 	}
 
 	value, getError := client.Get(context.Background(), "ping").Result()
 	if getError != nil {
-		logger.Panic("Error retrieving value from the Redis Database. - ", getError)
+		logger.Error("Error retrieving value from the Redis Database. - ", getError)
+		return getError
 	}
 
-	logger.Info("Checking connection with Redis Database: " + value)
+	if value != "pong" {
+		err := errors.New("Incorrect value return with Redis Database.")
+		logger.Error(err)
+		return err
+	}
+
 	logger.Info("Successfully initialized the Redis Database.")
+	return nil
 }
 
 func GetRedisClient() *redis.Client {
