@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	redislock "github.com/jefferyjob/go-redislock"
+
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/playerdata"
 	"go.minekube.com/common/minecraft/color"
@@ -17,25 +19,22 @@ var (
 	logger     *zap.SugaredLogger
 	quit       chan struct{} = make(chan struct{})
 	banChecker               = 5 * time.Minute
-	lockKey                  = "ban_checker_lock"
 	ctx                      = context.Background()
+	lock       redislock.RedisLockInter
 )
 
 func InitializeBanManager(log *zap.SugaredLogger) {
 	logger = log
+	lock = redislock.New(ctx, database.GetRedisClient(), "ban_key")
+
 	logger.Info("Initialized Ban Manager.")
 
 	go func() {
 		for {
-			acquired, err := database.AcquireLock(ctx, lockKey)
+			err := lock.Lock()
+			// another proxy is already running the checker
 			if err != nil {
 				logger.Error("Error acquiring lock for ban checker: ", err)
-				time.Sleep(banChecker)
-				continue
-			}
-
-			// another proxy is already running the checker
-			if !acquired {
 				time.Sleep(banChecker)
 				continue
 			}
@@ -56,7 +55,7 @@ func InitializeBanManager(log *zap.SugaredLogger) {
 }
 
 func CloseBanManager() {
-	database.ReleaseLock(ctx, lockKey)
+	lock.UnLock()
 	close(quit)
 }
 

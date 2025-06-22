@@ -47,6 +47,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/honeycombio/otel-config-go v1.17.0 // indirect
+	github.com/jefferyjob/go-redislock v1.1.4 // indirect
 	github.com/jellydator/ttlcache/v3 v3.3.0 // indirect
 	github.com/knadh/koanf/providers/file v1.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
