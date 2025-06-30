@@ -3,96 +3,114 @@ package main
 import (
 	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
 	"github.com/robinbraemer/event"
-	"github.com/team-vesperis/vesperis-mp/internal/ban"
-	"github.com/team-vesperis/vesperis-mp/internal/commands"
+	"github.com/spf13/viper"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
-	"github.com/team-vesperis/vesperis-mp/internal/listeners"
-	log "github.com/team-vesperis/vesperis-mp/internal/logger"
-	"github.com/team-vesperis/vesperis-mp/internal/mp/datasync"
-	"github.com/team-vesperis/vesperis-mp/internal/mp/register"
-	"github.com/team-vesperis/vesperis-mp/internal/mp/task"
-	"github.com/team-vesperis/vesperis-mp/internal/playerdata"
-	"github.com/team-vesperis/vesperis-mp/internal/terminal"
-	"github.com/team-vesperis/vesperis-mp/internal/transfer"
-	"github.com/team-vesperis/vesperis-mp/internal/utils"
+	"github.com/team-vesperis/vesperis-mp/internal/logger"
+	"github.com/team-vesperis/vesperis-mp/internal/proxy/commands"
 
-	"go.minekube.com/gate/cmd/gate"
+	"go.minekube.com/common/minecraft/color"
+	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
-	"go.minekube.com/gate/pkg/util/uuid"
+	"go.minekube.com/gate/pkg/gate"
 	"go.uber.org/zap"
 )
 
-var (
-	logger     *zap.SugaredLogger
-	proxy_name string
-	p          *proxy.Proxy
-)
+type MultiProxy struct {
+	// The database used in the mp. Contains a connection with Redis and MySQL. Combines both in functions for fast and safe usage.
+	db database.Database
+
+	// The ID of the mp. Used to differentiate the proxy from others.
+	id string
+
+	// The logger used in the mp
+	l *zap.SugaredLogger
+
+	// gate proxy used in the mp
+	p *proxy.Proxy
+
+	// config used in the mp. Determines the database connection variables, proxy id, etc.
+	c *viper.Viper
+
+	ctx context.Context
+
+	cm commands.CommandManager
+}
+
+func New(ctx context.Context) (MultiProxy, error) {
+	l, logErr := logger.InitializeLogger()
+	if logErr != nil {
+		return MultiProxy{}, logErr
+	}
+
+	c := config.LoadConfig(l)
+	db, dbErr := database.Init(ctx, c, l)
+
+	if dbErr != nil {
+		l.Error("database initialization error")
+		return MultiProxy{}, dbErr
+	}
+
+	lr := zapr.NewLogger(l.Desugar())
+	ctx = logr.NewContext(ctx, lr)
+
+	return MultiProxy{
+		db:  db,
+		id:  config.GetProxyName(),
+		l:   l,
+		c:   c,
+		ctx: ctx,
+	}, nil
+}
 
 func main() {
-	logger = log.InitializeLogger()
-	config.LoadConfig(logger)
-	proxy_name = config.GetProxyName()
-
-	logger.Info("Starting " + proxy_name + "...")
-	err := database.InitializeDatabases(logger)
+	ctx, canc := context.WithCancel(context.Background())
+	defer canc()
+	// Create the MultiProxy structure and initialize its values
+	mp, err := New(ctx)
 	if err != nil {
-		shutdown(false)
+		return
 	}
 
-	used := datasync.IsProxyAvailable(proxy_name)
-	if used {
-		logger.Warn("Proxy name is already used! Changing name to new one.")
-		proxy_name = "proxy_" + uuid.New().String()
-		config.SetProxyName(proxy_name)
-	}
+	mp.l.Info("Successfully created MultiProxy")
 
-	proxy.Plugins = append(proxy.Plugins, proxy.Plugin{
-		Name: "VesperisMP-" + proxy_name,
-		Init: func(ctx context.Context, proxy *proxy.Proxy) error {
-			p = proxy
-			logger.Info("Creating plugin...")
-
-			event.Subscribe(p.Event(), 0, onShutdown)
-
-			transfer.InitializeTransfer(p, logger, proxy_name)
-			commands.InitializeCommands(p, logger, proxy_name)
-			listeners.InitializeListeners(p, logger, proxy_name)
-			utils.InitializeUtils(p, logger)
-			register.InitializeRegister(p, logger, proxy_name)
-			ban.InitializeBanManager(logger)
-			datasync.InitializeDataSync(proxy, logger, proxy_name)
-			task.InitializeTask(proxy, logger, proxy_name)
-			playerdata.InitializePlayerData(logger)
-
-			go terminal.HandleTerminalInput(p, logger)
-
-			logger.Info("Successfully created plugin.")
-			return nil
-		},
+	cfg, err := gate.LoadConfig(mp.c)
+	gate, err := gate.New(gate.Options{
+		Config:   cfg,
+		EventMgr: event.New(),
 	})
-
-	gate.Execute()
-}
-
-func shutdown(alreadyRunning bool) {
-	logger.Info("Stopping " + proxy_name + "...")
-
-	if alreadyRunning {
-		ban.CloseBanManager()
-		datasync.CloseDataSync()
-		database.CloseDatabases()
+	if err != nil {
+		mp.l.Errorw("creating gate instance error", "error", err)
+		return
 	}
 
-	logger.Info("Successfully stopped " + proxy_name + ".")
+	mp.p = gate.Java()
+	event.Subscribe(mp.p.Event(), 0, mp.onShutdown)
 
-	if !alreadyRunning {
+	mp.cm = commands.Init(mp.p, mp.l, mp.db)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		mp.p.Shutdown(&component.Text{
+			Content: "This proxy has been manually shut using the terminal.",
+			S:       component.Style{Color: color.Red},
+		})
 		os.Exit(0)
-	}
+	}()
+
+	// blocks
+	mp.p.Start(mp.ctx)
 }
 
-func onShutdown(event *proxy.ShutdownEvent) {
-	shutdown(true)
+func (mp *MultiProxy) onShutdown(event *proxy.ShutdownEvent) {
+	mp.l.Info("Stopping...")
+	mp.db.Close()
 }

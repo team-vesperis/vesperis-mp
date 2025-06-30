@@ -14,16 +14,18 @@ import (
 const logDir = "./logs"
 const maxLogFiles = 20
 
-func InitializeLogger() *zap.SugaredLogger {
+func InitializeLogger() (*zap.SugaredLogger, error) {
 	if err := os.MkdirAll(logDir, os.ModePerm); err != nil {
-		panic(fmt.Sprintf("Failed to create log directory: %v", err))
+		fmt.Sprintf("Failed to create log directory: %v", err)
+		return nil, err
 	}
 
 	logFileName := fmt.Sprintf("proxy_%s.log", time.Now().Format("2006-01-02_15-04-05"))
 	logFilePath := filepath.Join(logDir, logFileName)
 	file, err := os.Create(logFilePath)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to create log file: %v", err))
+		fmt.Sprintf("Failed to create log file: %v", err)
+		return nil, err
 	}
 
 	manageLogFiles()
@@ -51,7 +53,7 @@ func InitializeLogger() *zap.SugaredLogger {
 	defer logger.Sync()
 
 	sugar.Info("Successfully loaded logger.")
-	return sugar
+	return sugar, nil
 }
 
 func manageLogFiles() {

@@ -1,34 +1,47 @@
 package database
 
-import "go.uber.org/zap"
+import (
+	"context"
+	"time"
 
-var logger *zap.SugaredLogger
+	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
+)
 
-func InitializeDatabases(log *zap.SugaredLogger) error {
-	logger = log
-	logger.Info("Initializing databases...")
+type Database interface {
+	Get(key string) (any, error)
+	Set(key string, value any) error
 
-	err := initializeRedis()
-	if err != nil {
-		return err
-	}
+	SetPlayerDataField(playerId, field string, value any) error
+	GetPlayerDataField(playerId, field string) (any, error)
 
-	err = initializeMysql()
-	if err != nil {
-		return err
-	}
+	Publish(channel string, message any) error
+	Subscribe(channel string) *redis.PubSub
+	SubscribeWithTimeout(channel string, timeout time.Duration) (*redis.Message, error)
 
-	logger.Info("Successfully initialized databases.")
-	return nil
+	// Combination of Publish & Subscribe. Publish message in a channel, wait for a return message with a time limit.
+	SendAndReturn(channel string, message any, timeout time.Duration) (*redis.Message, error)
+	// Create a listener to listen for incoming calls. Is basically the same as the Subscribe function but it handles it for you. The listener can be stopped by using DeleteListener()
+	CreateListener(channel string, handler func(msg *redis.Message))
+	DeleteListener(channel string) error
+	DeleteAllListeners() error
+
+	// Close the database. Closes the connection with Redis and PostgreSQL
+	Close()
 }
 
-func CloseDatabases() {
-	logger.Info("Closing databases...")
+func Init(ctx context.Context, c *viper.Viper, l *zap.SugaredLogger) (Database, error) {
+	r, err := initializeRedis(ctx, l)
+	if err != nil {
+		return nil, err
+	}
 
-	closeListeners()
+	p, err := initializePostgres(ctx, l)
+	if err != nil {
+		return nil, err
+	}
 
-	closeRedis()
-	closeMySQL()
-
-	logger.Info("Successfully closed databases.")
+	database := new(ctx, r, l, p)
+	return database, nil
 }

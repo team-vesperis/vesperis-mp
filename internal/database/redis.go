@@ -6,50 +6,36 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
+	"go.uber.org/zap"
 )
 
-var client *redis.Client
-
-func initializeRedis() error {
-	opt, urlError := redis.ParseURL(config.GetRedisUrl())
-	if urlError != nil {
-		logger.Error("Error parsing url in the Redis Database. - ", urlError)
-		return urlError
+func initializeRedis(ctx context.Context, l *zap.SugaredLogger) (*redis.Client, error) {
+	opt, urlErr := redis.ParseURL(config.GetRedisUrl())
+	if urlErr != nil {
+		l.Error("Error parsing url in the Redis Database. - ", urlErr)
+		return nil, urlErr
 	}
 
-	client = redis.NewClient(opt)
+	c := redis.NewClient(opt)
 
-	setError := client.Set(context.Background(), "ping", "pong", 0).Err()
+	setError := c.Set(ctx, "ping", "pong", 0).Err()
 	if setError != nil {
-		logger.Error("Error sending value to the Redis Database. - ", setError)
-		return setError
+		l.Error("Error sending value to the Redis Database. - ", setError)
+		return nil, setError
 	}
 
-	value, getError := client.Get(context.Background(), "ping").Result()
+	value, getError := c.Get(ctx, "ping").Result()
 	if getError != nil {
-		logger.Error("Error retrieving value from the Redis Database. - ", getError)
-		return getError
+		l.Error("Error retrieving value from the Redis Database. - ", getError)
+		return nil, getError
 	}
 
 	if value != "pong" {
 		err := errors.New("Incorrect value return with Redis Database.")
-		logger.Error(err)
-		return err
+		l.Error(err)
+		return nil, err
 	}
 
-	logger.Info("Successfully initialized the Redis Database.")
-	return nil
-}
-
-func GetRedisClient() *redis.Client {
-	if client == nil {
-		logger.Error("Redis client not found.")
-	}
-	return client
-}
-
-func closeRedis() {
-	if client != nil {
-		client.Close()
-	}
+	l.Info("Successfully initialized the Redis Database.")
+	return c, nil
 }

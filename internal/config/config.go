@@ -10,7 +10,7 @@ import (
 var config *viper.Viper
 var logger *zap.SugaredLogger
 
-func LoadConfig(log *zap.SugaredLogger) {
+func LoadConfig(log *zap.SugaredLogger) *viper.Viper {
 	logger = log
 	config = viper.New()
 
@@ -28,27 +28,27 @@ func LoadConfig(log *zap.SugaredLogger) {
 	}
 
 	logger.Info("Successfully loaded config.")
+	return config
 }
 
 func createDefaultConfig() {
 	defaultConfig := []byte(`
-# The name that will be used to identify the proxy in the redis database. 
+# The name that will be used to identify the proxy. 
 # If the name is already used it will override to a unique ID.
 proxy_name: "proxy_123"
 
 databases:
-  mysql:
-    username: ""
-    password: ""
-    host: "localhost"
-    port: 3306
-    database: "vesperis_mp"
   redis:
     host: "localhost"
     port: 6379
     database: 0
     username: ""
     password: ""
+  postgresql:
+	username: ""
+	port: 5432
+    host: "localhost"
+
 `)
 
 	if err := os.MkdirAll("./config", os.ModePerm); err != nil {
@@ -70,29 +70,25 @@ func SetProxyName(newName string) {
 	config.Set("proxy_name", newName)
 }
 
-func GetMySQLUrl() string {
-	return config.GetString("databases.mysql.username") +
-		":" +
-		config.GetString("databases.mysql.password") +
-		"@(" +
-		config.GetString("databases.mysql.host") +
-		":" +
-		config.GetString("databases.mysql.port") +
-		")/" +
-		config.GetString("databases.mysql.database") +
-		"?parseTime=true"
-}
-
 func GetRedisUrl() string {
 	host := config.GetString("databases.redis.host")
 	port := config.GetString("databases.redis.port")
 	database := config.GetString("databases.redis.database")
-	username := config.GetString("databases.redis.username")
 	password := config.GetString("databases.redis.password")
 
-	if username != "" && password != "" {
-		return "redis://" + username + ":" + password + "@" + host + ":" + port + "/" + database
+	if password != "" {
+		return "redis://:" + password + "@" + host + ":" + port + "/" + database
 	}
 
 	return "redis://" + host + ":" + port + "/" + database
+}
+
+func GetPostgreSQL() string {
+	username := config.GetString("databases.postgresql.username")
+	password := config.GetString("databases.postgresql.password")
+	host := config.GetString("databases.postgresql.host")
+	port := config.GetString("databases.postgresql.port")
+	database := config.GetString("databases.postgresql.database")
+
+	return "postgres://" + username + ":" + password + "@" + host + ":" + port + "/" + database
 }
