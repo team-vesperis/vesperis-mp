@@ -2,18 +2,18 @@ package commands
 
 import (
 	"github.com/team-vesperis/vesperis-mp/internal/database"
+	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"go.minekube.com/gate/pkg/command"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
-	"go.uber.org/zap"
 )
 
 type CommandManager struct {
 	m  *command.Manager
-	l  *zap.SugaredLogger
-	db database.Database
+	l  *logger.Logger
+	db *database.Database
 }
 
-func Init(p *proxy.Proxy, l *zap.SugaredLogger, db database.Database) CommandManager {
+func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database) CommandManager {
 	cm := CommandManager{
 		m:  p.Command(),
 		l:  l,

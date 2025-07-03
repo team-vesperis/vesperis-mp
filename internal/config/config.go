@@ -4,77 +4,74 @@ import (
 	"os"
 
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
+	"github.com/team-vesperis/vesperis-mp/internal/logger"
 )
 
-var config *viper.Viper
-var logger *zap.SugaredLogger
+const p = "./config/mp.yml"
 
-func LoadConfig(log *zap.SugaredLogger) *viper.Viper {
-	logger = log
-	config = viper.New()
-
-	config.SetConfigName("mp")
-	config.SetConfigType("yml")
-	config.AddConfigPath("./config")
-
-	if _, err := os.Stat("./config/mp.yml"); os.IsNotExist(err) {
-		logger.Warn("Config file not found, creating default...")
-		createDefaultConfig()
-	}
-
-	if err := config.ReadInConfig(); err != nil {
-		logger.Fatal("Error reading config. - ", err)
-	}
-
-	logger.Info("Successfully loaded config.")
-	return config
+type Config struct {
+	v *viper.Viper // nil until created with the load function
+	l *logger.Logger
 }
 
-func createDefaultConfig() {
-	defaultConfig := []byte(`
-# The name that will be used to identify the proxy. 
-# If the name is already used it will override to a unique ID.
-proxy_name: "proxy_123"
-
-databases:
-  redis:
-    host: "localhost"
-    port: 6379
-    database: 0
-    username: ""
-    password: ""
-  postgresql:
-	username: ""
-	port: 5432
-    host: "localhost"
-
-`)
-
-	if err := os.MkdirAll("./config", os.ModePerm); err != nil {
-		logger.Panic("Failed to create config directory. - " + err.Error())
+func Init(l *logger.Logger) *Config {
+	cfg := &Config{
+		l: l,
 	}
 
-	if err := os.WriteFile("./config/mp.yml", defaultConfig, 0644); err != nil {
-		logger.Panic("Failed to create default config. - " + err.Error())
+	cfg.load()
+	return cfg
+}
+
+func (c *Config) load() error {
+	c.v = viper.New()
+
+	c.v.SetConfigName("mp")
+	c.v.SetConfigType("yml")
+	c.v.AddConfigPath("./config/")
+
+	_, err := os.Stat(p)
+	if os.IsNotExist(err) {
+		c.l.Warn("config file not found. creating default one...")
+		err := c.createDefaultConfig()
+		if err != nil {
+			return err
+		}
 	}
 
-	logger.Info("Successfully created config.")
+	// test config
+	err = c.v.ReadInConfig()
+	if err != nil {
+		return err
+	}
+
+	c.l.Info("loaded config")
+	return nil
 }
 
-func GetProxyName() string {
-	return config.GetString("proxy_name")
+func (c *Config) GetViper() *viper.Viper {
+	return c.v
 }
 
-func SetProxyName(newName string) {
-	config.Set("proxy_name", newName)
+func (c *Config) GetProxyId() string {
+	return c.v.GetString("proxy_id")
 }
 
-func GetRedisUrl() string {
-	host := config.GetString("databases.redis.host")
-	port := config.GetString("databases.redis.port")
-	database := config.GetString("databases.redis.database")
-	password := config.GetString("databases.redis.password")
+func (c *Config) SetProxyId(id string) error {
+	c.v.Set("proxy_id", id)
+	return c.v.WriteConfig()
+}
+
+func (c *Config) SetBind(bind string) error {
+	c.v.Set("config.bind", bind)
+	return c.v.WriteConfig()
+}
+
+func (c *Config) GetRedisUrl() string {
+	host := c.v.GetString("databases.redis.host")
+	port := c.v.GetString("databases.redis.port")
+	database := c.v.GetString("databases.redis.database")
+	password := c.v.GetString("databases.redis.password")
 
 	if password != "" {
 		return "redis://:" + password + "@" + host + ":" + port + "/" + database
@@ -83,12 +80,52 @@ func GetRedisUrl() string {
 	return "redis://" + host + ":" + port + "/" + database
 }
 
-func GetPostgreSQL() string {
-	username := config.GetString("databases.postgresql.username")
-	password := config.GetString("databases.postgresql.password")
-	host := config.GetString("databases.postgresql.host")
-	port := config.GetString("databases.postgresql.port")
-	database := config.GetString("databases.postgresql.database")
+func (c *Config) GetPostgresUrl() string {
+	username := c.v.GetString("databases.postgres.username")
+	password := c.v.GetString("databases.postgres.password")
+	host := c.v.GetString("databases.postgres.host")
+	port := c.v.GetString("databases.postgres.port")
+	database := c.v.GetString("databases.postgres.database")
 
 	return "postgres://" + username + ":" + password + "@" + host + ":" + port + "/" + database
+}
+
+func (c *Config) createDefaultConfig() error {
+	defaultConfig := []byte(`
+# The id that will be used to identify the proxy.
+# If the id is already used it will override to a unique ID.
+proxy_id: "proxy_123"
+
+# The behavior of the gate proxy. By standard not needed, but it can be used to change behavior that is not changed by this program.
+# config:
+
+
+databases:
+  redis:
+    host: "localhost"
+    port: 6379
+    database: 0
+    password: ""
+  postgres:
+    username: ""
+    password: ""
+    host: "localhost"
+    port: 5432
+    database: "vesperis_mp"
+`)
+
+	err := os.MkdirAll("./config", os.ModePerm)
+	if err != nil {
+		c.l.Error("config create directory error", "error", err)
+		return err
+	}
+
+	err = os.WriteFile(p, defaultConfig, 0644)
+	if err != nil {
+		c.l.Error("config create default file error", "error", err)
+		return err
+	}
+
+	c.l.Info("created default config")
+	return nil
 }

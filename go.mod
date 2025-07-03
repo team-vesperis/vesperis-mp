@@ -5,11 +5,11 @@ go 1.24.4
 require (
 	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/zapr v1.3.0
-	github.com/go-sql-driver/mysql v1.9.2
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/redis/go-redis/v9 v9.10.0
 	github.com/robinbraemer/event v0.1.1
 	github.com/spf13/viper v1.20.1
+	go.minekube.com/brigodier v0.0.1
 	go.minekube.com/common v0.1.0
 	go.minekube.com/gate v0.50.0
 	go.uber.org/zap v1.27.0
@@ -19,7 +19,6 @@ require (
 	buf.build/gen/go/minekube/connect/protocolbuffers/go v1.36.6-20240220124425-904ce30425c9.1 // indirect
 	connectrpc.com/connect v1.18.1 // indirect
 	connectrpc.com/otelconnect v0.7.2 // indirect
-	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Tnze/go-mc v1.20.2 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
@@ -67,7 +66,6 @@ require (
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zyedidia/generic v1.2.1 // indirect
-	go.minekube.com/brigodier v0.0.1 // indirect
 	go.minekube.com/connect v0.6.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/host v0.62.0 // indirect

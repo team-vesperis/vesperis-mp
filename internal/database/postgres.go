@@ -5,19 +5,19 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
-	"go.uber.org/zap"
+	"github.com/team-vesperis/vesperis-mp/internal/logger"
 )
 
-func initializePostgres(ctx context.Context, l *zap.SugaredLogger) (*pgxpool.Pool, error) {
-	p, err := pgxpool.New(ctx, config.GetPostgreSQL())
+func initializePostgres(ctx context.Context, l *logger.Logger, c *config.Config) (*pgxpool.Pool, error) {
+	p, err := pgxpool.New(ctx, c.GetPostgresUrl())
 	if err != nil {
-		l.Errorw("postgres connection error", "error", err)
+		l.Error("postgres connection error", "error", err)
 		return nil, err
 	}
 
 	err = p.Ping(ctx)
 	if err != nil {
-		l.Errorw("postgres ping error", "error", err)
+		l.Error("postgres ping error", "error", err)
 		return nil, err
 	}
 
@@ -27,11 +27,11 @@ func initializePostgres(ctx context.Context, l *zap.SugaredLogger) (*pgxpool.Poo
 		return nil, err
 	}
 
-	l.Info("Successfully initialized the Postgres Database.")
+	l.Info("initialized postgres")
 	return p, nil
 }
 
-func createTables(ctx context.Context, p *pgxpool.Pool, l *zap.SugaredLogger) error {
+func createTables(ctx context.Context, p *pgxpool.Pool, l *logger.Logger) error {
 	playerDataTable := `
 	CREATE TABLE IF NOT EXISTS player_data (
 		playerId TEXT PRIMARY KEY,
@@ -41,7 +41,7 @@ func createTables(ctx context.Context, p *pgxpool.Pool, l *zap.SugaredLogger) er
 
 	_, err := p.Exec(ctx, playerDataTable)
 	if err != nil {
-		l.Errorw("postgres creating table error", "table", playerDataTable, "error", err)
+		l.Error("postgres creating table error", "table", playerDataTable, "error", err)
 		return err
 	}
 
@@ -54,7 +54,7 @@ func createTables(ctx context.Context, p *pgxpool.Pool, l *zap.SugaredLogger) er
 
 	_, err = p.Exec(ctx, dataTable)
 	if err != nil {
-		l.Errorw("postgres creating table error", "table", dataTable, "error", err)
+		l.Error("postgres creating table error", "table", dataTable, "error", err)
 		return err
 	}
 
