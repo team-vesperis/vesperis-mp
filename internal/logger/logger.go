@@ -37,6 +37,7 @@ func Init() (*Logger, error) {
 	config := zap.NewProductionConfig()
 
 	consoleEncoderConfig := zap.NewDevelopmentEncoderConfig()
+	consoleEncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(time.TimeOnly)
 	consoleEncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
 	consoleEncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	consoleEncoder := zapcore.NewConsoleEncoder(consoleEncoderConfig)

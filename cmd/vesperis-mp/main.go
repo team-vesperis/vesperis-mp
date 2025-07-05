@@ -12,6 +12,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
+	"github.com/team-vesperis/vesperis-mp/internal/player"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/commands"
 
 	"go.minekube.com/common/minecraft/color"
@@ -38,7 +39,9 @@ type MultiProxy struct {
 
 	ctx context.Context
 
-	cm commands.CommandManager
+	cm *commands.CommandManager
+
+	pdm *player.PlayerDataManager
 }
 
 func New(ctx context.Context) (MultiProxy, error) {
@@ -58,12 +61,15 @@ func New(ctx context.Context) (MultiProxy, error) {
 	lr := zapr.NewLogger(l.GetLogger())
 	ctx = logr.NewContext(ctx, lr)
 
+	pdm := player.Init(db, l)
+
 	return MultiProxy{
 		db:  db,
 		id:  c.GetProxyId(),
 		l:   l,
 		c:   c,
 		ctx: ctx,
+		pdm: pdm,
 	}, nil
 }
 
@@ -78,12 +84,7 @@ func main() {
 	}
 	mp.l.Info("created MultiProxy")
 
-	// Set correct bind.
-	bind := "0.0.0.0:25565"
-	mp.c.SetBind(bind)
-
 	cfg, err := gate.LoadConfig(mp.c.GetViper())
-	mp.l.Info(cfg.Config.Bind)
 	gate, err := gate.New(gate.Options{
 		Config:   cfg,
 		EventMgr: event.New(),
@@ -96,7 +97,7 @@ func main() {
 	mp.p = gate.Java()
 	event.Subscribe(mp.p.Event(), 0, mp.onShutdown)
 
-	mp.cm = commands.Init(mp.p, mp.l, mp.db)
+	mp.cm = commands.Init(mp.p, mp.l, mp.db, mp.pdm)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)

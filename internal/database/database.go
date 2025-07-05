@@ -163,7 +163,7 @@ func (d *Database) GetPlayerData(playerId string) (map[string]any, error) {
 	redisKey := "player_data:" + playerId
 	playerData := make(map[string]any)
 
-	// Redis
+	// redis
 	redisData, err := d.r.HGetAll(d.ctx, redisKey).Result()
 	if err == nil && len(redisData) > 0 {
 		for k, v := range redisData {
@@ -192,7 +192,7 @@ func (d *Database) GetPlayerData(playerId string) (map[string]any, error) {
 		return nil, err
 	}
 
-	// Backfill Redis
+	// update redis
 	for k, v := range playerData {
 		if j, err := json.Marshal(v); err == nil {
 			_ = d.r.HSet(d.ctx, redisKey, k, j).Err()
@@ -207,7 +207,7 @@ func (d *Database) GetPlayerData(playerId string) (map[string]any, error) {
 func (d *Database) SetPlayerDataField(playerId, field string, val any) error {
 	redisKey := "player_data:" + playerId
 
-	// Redis
+	// redis
 	jsonVal, err := json.Marshal(val)
 	if err == nil {
 		_ = d.r.HSet(d.ctx, redisKey, field, jsonVal).Err()
@@ -215,7 +215,7 @@ func (d *Database) SetPlayerDataField(playerId, field string, val any) error {
 
 	d.r.Expire(d.ctx, redisKey, redisTTL)
 
-	// postgres: jsonb_set
+	// postgres
 	query := `
 		INSERT INTO player_data (playerId, playerData)
 		VALUES ($1, jsonb_build_object($2, to_jsonb($3)))
@@ -233,7 +233,7 @@ func (d *Database) SetPlayerDataField(playerId, field string, val any) error {
 func (d *Database) GetPlayerDataField(playerId, field string) (any, error) {
 	redisKey := "player_data:" + playerId
 
-	// Redis
+	// redis
 	val, err := d.r.HGet(d.ctx, redisKey, field).Result()
 	if err == nil && val != "" {
 		var result any
@@ -264,7 +264,7 @@ func (d *Database) GetPlayerDataField(playerId, field string) (any, error) {
 		return nil, err
 	}
 
-	// Cache Redis
+	// update redis
 	_ = d.r.HSet(d.ctx, redisKey, field, fieldData).Err()
 	d.r.Expire(d.ctx, redisKey, redisTTL)
 
