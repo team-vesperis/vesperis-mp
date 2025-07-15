@@ -2,15 +2,22 @@ package player
 
 import "go.minekube.com/common/minecraft/component"
 
-type MultiPlayer interface {
+type MultiPlayer struct {
 	// The proxy id on which the underlying player is located
-	Proxy() string
+    p string
 
-	// Send a message to the player
-	SendMessage(component.Text) error
+    // The id of the underlying player
+    id string
+    
+    // The username of the underlying player
+    name string
 }
 
-// New returns a new MultiPlayer that can bred
+// New returns a new MultiPlayer
 func New() *MultiPlayer {
 	return nil
+}
+
+func (mp *MultiPlayer) ProxyId() string {
+    return mp.p
 }
