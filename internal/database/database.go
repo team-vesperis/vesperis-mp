@@ -15,7 +15,6 @@ import (
 
 type Database struct {
 	r   *redis.Client
-	m   *sql.DB
 	p   *pgxpool.Pool
 	l   *logger.Logger
 	ctx context.Context
