@@ -93,8 +93,8 @@ func (c *Config) GetPostgresUrl() string {
 func (c *Config) createDefaultConfig() error {
 	defaultConfig := []byte(`
 # The id that will be used to identify the proxy.
-# If the id is already used it will override to a unique ID.
-proxy_id: "proxy_123"
+# If the id is already used or not set, it will override to a unique ID.
+proxy_id: ""
 
 # The behavior of the gate proxy. By standard not needed, but it can be used to change behavior that is not changed by this program.
 # config:
