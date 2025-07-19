@@ -58,7 +58,7 @@ func New(ctx context.Context) (MultiProxy, error) {
 		return MultiProxy{}, dbErr
 	}
  
- id := c.GetProxyId()
+	id := c.GetProxyId()
 	if id == "" || db.CheckIfProxyIdIsAvailable(id) == false {
 		// set to a unique id
 		// TODO: create standalone function 
