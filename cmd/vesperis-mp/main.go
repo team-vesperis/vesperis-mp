@@ -57,6 +57,14 @@ func New(ctx context.Context) (MultiProxy, error) {
 		l.Error("database initialization error")
 		return MultiProxy{}, dbErr
 	}
+ 
+ id := c.GetProxyId()
+ if id == "" || db.CheckIfProxyIdIsAvailable(id) == false {
+  // set to a unique id
+  // TODO: create standalone function 
+  // for creating unique id to check if the new id is not used
+  id = "proxy_" + uuid.New().String()
+ }
 
 	lr := zapr.NewLogger(l.GetLogger())
 	ctx = logr.NewContext(ctx, lr)
@@ -65,7 +73,7 @@ func New(ctx context.Context) (MultiProxy, error) {
 
 	return MultiProxy{
 		db:  db,
-		id:  c.GetProxyId(),
+		id:  id,
 		l:   l,
 		c:   c,
 		ctx: ctx,
