@@ -1,6 +1,9 @@
 package player
 
-import "go.minekube.com/common/minecraft/component"
+import (
+    "go.minekube.com/common/minecraft/component"
+    "go.minekube.com/gate/pkg/edition/java/proxy"
+)
 
 type MultiPlayer struct {
 	// The proxy id on which the underlying player is located
@@ -14,8 +17,12 @@ type MultiPlayer struct {
 }
 
 // New returns a new MultiPlayer
-func New() *MultiPlayer {
-	return nil
+func New(p proxy.Player, id string) *MultiPlayer {
+	return &MultiPlayer{
+        p: id,
+        id: p.ID().String(),
+        name: p.Username()
+    }
 }
 
 func (mp *MultiPlayer) ProxyId() string {
