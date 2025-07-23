@@ -21,3 +21,11 @@ func New() *MultiPlayer {
 func (mp *MultiPlayer) ProxyId() string {
     return mp.p
 }
+
+func (mp *MultiPlayer) Id() string {
+    return mp.id
+}
+
+func (mp *MultiPlayer) Name() string {
+    return mp.name
+}
