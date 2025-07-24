@@ -23,7 +23,8 @@ import (
 
 type MultiProxy struct {
 	// The database used in the mp. 
-	// Contains a connection with Redis and MySQL. Combines both in functions for fast and safe usage.
+	// Contains a connection with Redis and Postgres. 
+	// Combines both in functions for fast and safe usage.
 	db *database.Database
 
 	// The id of the mp. 
