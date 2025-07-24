@@ -100,7 +100,7 @@ func main() {
 	}
 	mp.l.Info("created MultiProxy")
 
-	cfg, err := gate.LoadConfig(mp.c.GetViper())
+	cfg, err := gate.LoadConfig(mp.c.V)
 	gate, err := gate.New(gate.Options{
 		Config:   cfg,
 		EventMgr: event.New(),
