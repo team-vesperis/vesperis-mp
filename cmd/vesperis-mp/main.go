@@ -22,25 +22,32 @@ import (
 )
 
 type MultiProxy struct {
-	// The database used in the mp. Contains a connection with Redis and MySQL. Combines both in functions for fast and safe usage.
+	// The database used in the mp. 
+	// Contains a connection with Redis and MySQL. Combines both in functions for fast and safe usage.
 	db *database.Database
 
-	// The ID of the mp. Used to differentiate the proxy from others.
+	// The id of the mp. 
+	// Used to differentiate the proxy from others.
 	id string
 
-	// The logger used in the mp
+	// The logger used in the mp.
 	l *logger.Logger
 
-	// gate proxy used in the mp
+	// The gate proxy used in the mp.
 	p *proxy.Proxy
 
-	// config used in the mp. Determines the database connection variables, proxy id, etc.
+	// The config used in the mp. 
+	// Determines the database connection variables, proxy id, etc.
 	c *config.Config
 
+	// The context used in the mp. 
+	// Contains a cancel and logger.
 	ctx context.Context
 
+	// The command manager used in the mp.
 	cm *commands.CommandManager
-
+	
+	// The player data manager uses in the mp. 
 	pdm *player.PlayerDataManager
 }
 
