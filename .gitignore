@@ -22,7 +22,7 @@ go.work.sum
 .env
 
 # config file
-config.yml
+mp.yml
 
 # log files
 *.log

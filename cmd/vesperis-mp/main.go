@@ -19,15 +19,16 @@ import (
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.minekube.com/gate/pkg/gate"
+	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type MultiProxy struct {
-	// The database used in the mp. 
-	// Contains a connection with Redis and Postgres. 
+	// The database used in the mp.
+	// Contains a connection with Redis and Postgres.
 	// Combines both in functions for fast and safe usage.
 	db *database.Database
 
-	// The id of the mp. 
+	// The id of the mp.
 	// Used to differentiate the proxy from others.
 	id string
 
@@ -37,18 +38,18 @@ type MultiProxy struct {
 	// The gate proxy used in the mp.
 	p *proxy.Proxy
 
-	// The config used in the mp. 
+	// The config used in the mp.
 	// Determines the database connection variables, proxy id, etc.
 	c *config.Config
 
-	// The context used in the mp. 
+	// The context used in the mp.
 	// Contains a cancel and logger.
 	ctx context.Context
 
 	// The command manager used in the mp.
 	cm *commands.CommandManager
-	
-	// The player data manager uses in the mp. 
+
+	// The player data manager uses in the mp.
 	pdm *player.PlayerDataManager
 }
 
@@ -65,14 +66,16 @@ func New(ctx context.Context) (MultiProxy, error) {
 		l.Error("database initialization error")
 		return MultiProxy{}, dbErr
 	}
- 
+
 	id := c.GetProxyId()
-	if id == "" || db.CheckIfProxyIdIsAvailable(id) == false {
-		// set to a unique id
-		// TODO: create standalone function 
-		// for creating unique id to check if the new id is not used
-		id = "proxy_" + uuid.New().String()
-	}
+	// if id == "" || db.CheckIfProxyIdIsAvailable(id) == false {
+	// 	// set to a unique id
+	// 	// TODO: create standalone function
+	// 	// for creating unique id to check if the new id is not used
+	// 	id = "proxy_" + uuid.New().Undashed()
+	// }
+
+	id = "proxy_" + uuid.New().Undashed()
 
 	lr := zapr.NewLogger(l.GetLogger())
 	ctx = logr.NewContext(ctx, lr)
@@ -133,6 +136,6 @@ func main() {
 
 func (mp *MultiProxy) onShutdown(event *proxy.ShutdownEvent) {
 	mp.l.Info("Stopping...")
-	mp.db.Close()
+	mp.db.Close(mp.ctx)
 	mp.l.Close()
 }

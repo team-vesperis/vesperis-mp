@@ -380,7 +380,7 @@ func (d *Database) DeleteAllListeners() error {
 }
 
 // Close the database. Closes the connection with Redis and PostgreSQL
-func (d *Database) Close() {
+func (d *Database) Close(ctx context.Context) {
 	d.DeleteAllListeners()
 
 	err := d.r.Close()
@@ -388,10 +388,19 @@ func (d *Database) Close() {
 		d.l.Error("redis close error", "error", err)
 	}
 
-	err = d.m.Close()
-	if err != nil {
-		d.l.Error("mysql close error", "error", err)
-	}
+	ctx, canc := context.WithTimeout(ctx, 30*time.Second)
+	defer canc()
 
-	d.p.Close()
+	done := make(chan struct{})
+	go func() {
+		d.p.Close()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// closed successfully
+	case <-ctx.Done():
+		d.l.Error("postgres close timeout", "error", ctx.Err())
+	}
 }
