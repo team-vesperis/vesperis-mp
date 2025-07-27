@@ -1,4 +1,4 @@
-package player
+package multiplayer
 
 import (
 	"errors"
@@ -48,7 +48,7 @@ var validRanks = []string{
 	RankLegend,
 }
 
-func Init(db *database.Database, l *logger.Logger) *PlayerDataManager {
+func InitPlayerDataManager(db *database.Database, l *logger.Logger) *PlayerDataManager {
 	return &PlayerDataManager{
 		db: db,
 		l:  l,
@@ -62,7 +62,7 @@ func (pdm *PlayerDataManager) IsPlayerVanished(p proxy.Player) (bool, error) {
 func (pdm *PlayerDataManager) IsIdVanished(id string) (bool, error) {
 	val, err := pdm.db.GetPlayerDataField(id, "vanished")
 	if err != nil {
-		pdm.l.Warn("playerdata get vanished from database error", "id", id)
+		pdm.l.Warn("playerdata get vanished from database error", "playerId", id)
 		return false, err
 	}
 
@@ -70,7 +70,7 @@ func (pdm *PlayerDataManager) IsIdVanished(id string) (bool, error) {
 	if ok {
 		return vanished, nil
 	} else {
-		pdm.l.Warn("playerdata incorrect value type returned from database", "id", id, "returnedValue", val)
+		pdm.l.Warn("playerdata incorrect value type returned from database", "playerId", id, "returnedValue", val)
 		return false, ErrIncorrectValueType
 	}
 }
@@ -82,7 +82,7 @@ func (pdm *PlayerDataManager) SetPlayerVanished(p proxy.Player, vanished bool) e
 func (pdm *PlayerDataManager) SetIdVanished(id string, vanished bool) error {
 	err := pdm.db.SetPlayerDataField(id, "vanished", vanished)
 	if err != nil {
-		pdm.l.Warn("playerdata set vanished in database error", "id", id, "vanished", vanished)
+		pdm.l.Warn("playerdata set vanished in database error", "playerId", id, "vanished", vanished)
 	}
 
 	return err
@@ -95,7 +95,7 @@ func (pdm *PlayerDataManager) GetRoleFromPlayer(p proxy.Player) (string, error) 
 func (pdm *PlayerDataManager) GetRoleFromId(id string) (string, error) {
 	val, err := pdm.db.GetPlayerDataField(id, "role")
 	if err != nil {
-		pdm.l.Warn("playerdata get role from database error", "id", id)
+		pdm.l.Warn("playerdata get role from database error", "playerId", id)
 		return "", err
 	}
 
@@ -109,7 +109,7 @@ func (pdm *PlayerDataManager) GetRoleFromId(id string) (string, error) {
 		return RoleDefault, ErrIncorrectRole
 
 	} else {
-		pdm.l.Warn("playerdata incorrect value type returned from database", "id", id, "returnedValue", val)
+		pdm.l.Warn("playerdata incorrect value type returned from database", "playerId", id, "returnedValue", val)
 		return RoleDefault, ErrIncorrectValueType
 	}
 }
@@ -126,9 +126,9 @@ func (pdm *PlayerDataManager) SetRoleWithId(id string, role string) error {
 
 	err := pdm.db.SetPlayerDataField(id, "role", role)
 	if err != nil {
-		pdm.l.Warn("playerdata set role in database error", "id", id, "role", role)
+		pdm.l.Warn("playerdata set role in database error", "playerId", id, "role", role)
 	} else {
-		pdm.l.Info("playerdata set new role", "id", id, "newRole", role)
+		pdm.l.Info("playerdata set new role", "playerId", id, "newRole", role)
 	}
 
 	return err
@@ -160,7 +160,7 @@ func (pdm *PlayerDataManager) GetRankFromPlayer(p proxy.Player) (string, error) 
 func (pdm *PlayerDataManager) GetRankFromId(id string) (string, error) {
 	val, err := pdm.db.GetPlayerDataField(id, "rank")
 	if err != nil {
-		pdm.l.Warn("playerdata get rank from database error", "id", id)
+		pdm.l.Warn("playerdata get rank from database error", "playerId", id)
 		return "", err
 	}
 
@@ -174,7 +174,7 @@ func (pdm *PlayerDataManager) GetRankFromId(id string) (string, error) {
 		return RankDefault, ErrIncorrectRank
 
 	} else {
-		pdm.l.Warn("playerdata incorrect value type returned from database", "id", id, "returnedValue", val)
+		pdm.l.Warn("playerdata incorrect value type returned from database", "playerId", id, "returnedValue", val)
 		return RankDefault, ErrIncorrectValueType
 	}
 }
@@ -191,9 +191,9 @@ func (pdm *PlayerDataManager) SetRankWithId(id string, rank string) error {
 
 	err := pdm.db.SetPlayerDataField(id, "rank", rank)
 	if err != nil {
-		pdm.l.Warn("playerdata set rank in database error", "id", id, "rank", rank)
+		pdm.l.Warn("playerdata set rank in database error", "playerId", id, "rank", rank)
 	} else {
-		pdm.l.Info("playerdata set new rank", "id", id, "newRank", rank)
+		pdm.l.Info("playerdata set new rank", "playerId", id, "newRank", rank)
 	}
 
 	return err

@@ -3,7 +3,7 @@ package commands
 import (
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
-	"github.com/team-vesperis/vesperis-mp/internal/player"
+	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
 	"go.minekube.com/gate/pkg/command"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
@@ -12,10 +12,10 @@ type CommandManager struct {
 	m   *command.Manager
 	l   *logger.Logger
 	db  *database.Database
-	pdm *player.PlayerDataManager
+	pdm *multiplayer.PlayerDataManager
 }
 
-func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, pdm *player.PlayerDataManager) *CommandManager {
+func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, pdm *multiplayer.PlayerDataManager) *CommandManager {
 	cm := &CommandManager{
 		m:   p.Command(),
 		l:   l,

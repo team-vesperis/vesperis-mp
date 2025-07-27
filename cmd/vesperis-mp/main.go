@@ -12,7 +12,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
-	"github.com/team-vesperis/vesperis-mp/internal/player"
+	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/commands"
 
 	"go.minekube.com/common/minecraft/color"
@@ -50,7 +50,7 @@ type MultiProxy struct {
 	cm *commands.CommandManager
 
 	// The player data manager uses in the mp.
-	pdm *player.PlayerDataManager
+	pdm *multiplayer.PlayerDataManager
 }
 
 func New(ctx context.Context) (MultiProxy, error) {
@@ -80,7 +80,7 @@ func New(ctx context.Context) (MultiProxy, error) {
 	lr := zapr.NewLogger(l.GetLogger())
 	ctx = logr.NewContext(ctx, lr)
 
-	pdm := player.Init(db, l)
+	pdm := multiplayer.InitPlayerDataManager(db, l)
 
 	return MultiProxy{
 		db:  db,
