@@ -25,15 +25,6 @@ const (
 
 var ErrIncorrectRole = errors.New("incorrect role")
 
-var validRoles = []string{
-	RoleAdmin,
-	RoleBuilder,
-	RoleDefault,
-	RoleModerator,
-}
-
-var ErrIncorrectRank = errors.New("incorrect rank")
-
 const (
 	RankChampion = "champion"
 	RankDefault  = "default"
@@ -41,12 +32,7 @@ const (
 	RankLegend   = "legend"
 )
 
-var validRanks = []string{
-	RankChampion,
-	RankDefault,
-	RankElite,
-	RankLegend,
-}
+var ErrIncorrectRank = errors.New("incorrect rank")
 
 func InitPlayerDataManager(db *database.Database, l *logger.Logger) *PlayerDataManager {
 	return &PlayerDataManager{
@@ -101,7 +87,7 @@ func (pdm *PlayerDataManager) GetRoleFromId(id string) (string, error) {
 
 	role, ok := val.(string)
 	if ok {
-		if slices.Contains(validRoles, role) {
+		if pdm.IsValidRole(role) {
 			return role, nil
 		}
 
@@ -119,7 +105,7 @@ func (pdm *PlayerDataManager) SetRoleWithPlayer(p proxy.Player, role string) err
 }
 
 func (pdm *PlayerDataManager) SetRoleWithId(id string, role string) error {
-	if !slices.Contains(validRoles, role) {
+	if !pdm.IsValidRole(role) {
 		pdm.l.Warn("playerdata incorrect role returned", "playerId", id, "returnedRole", role)
 		return ErrIncorrectRole
 	}
@@ -166,7 +152,7 @@ func (pdm *PlayerDataManager) GetRankFromId(id string) (string, error) {
 
 	rank, ok := val.(string)
 	if ok {
-		if slices.Contains(validRanks, rank) {
+		if pdm.IsValidRank(rank) {
 			return rank, nil
 		}
 
@@ -184,7 +170,7 @@ func (pdm *PlayerDataManager) SetRankWithPlayer(p proxy.Player, rank string) err
 }
 
 func (pdm *PlayerDataManager) SetRankWithId(id string, rank string) error {
-	if !slices.Contains(validRanks, rank) {
+	if !pdm.IsValidRank(rank) {
 		pdm.l.Warn("playerdata incorrect rank returned", "playerId", id, "returnedRank", rank)
 		return ErrIncorrectRank
 	}
@@ -197,4 +183,26 @@ func (pdm *PlayerDataManager) SetRankWithId(id string, rank string) error {
 	}
 
 	return err
+}
+
+var validRoles = []string{
+	RoleAdmin,
+	RoleBuilder,
+	RoleDefault,
+	RoleModerator,
+}
+
+func (pdm *PlayerDataManager) IsValidRole(role string) bool {
+	return slices.Contains(validRoles, role)
+}
+
+var validRanks = []string{
+	RankChampion,
+	RankDefault,
+	RankElite,
+	RankLegend,
+}
+
+func (pdm *PlayerDataManager) IsValidRank(rank string) bool {
+	return slices.Contains(validRanks, rank)
 }
