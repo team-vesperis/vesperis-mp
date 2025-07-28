@@ -34,31 +34,31 @@ func Init() (*Logger, error) {
 		return &Logger{}, err
 	}
 
-	config := zap.NewProductionConfig()
+	cf := zap.NewProductionConfig()
 
-	consoleEncoderConfig := zap.NewDevelopmentEncoderConfig()
-	consoleEncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(time.TimeOnly)
-	consoleEncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
-	consoleEncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	consoleEncoder := zapcore.NewConsoleEncoder(consoleEncoderConfig)
+	consoleECf := zap.NewDevelopmentEncoderConfig()
+	consoleECf.EncodeTime = zapcore.TimeEncoderOfLayout(time.TimeOnly)
+	consoleECf.EncodeCaller = zapcore.ShortCallerEncoder
+	consoleECf.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	consoleE := zapcore.NewConsoleEncoder(consoleECf)
 
-	jsonEncoderConfig := config.EncoderConfig
-	jsonEncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(time.UnixDate)
-	jsonEncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
-	jsonEncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-	jsonEncoder := zapcore.NewJSONEncoder(jsonEncoderConfig)
+	jsonECf := cf.EncoderConfig
+	jsonECf.EncodeTime = zapcore.TimeEncoderOfLayout(time.UnixDate)
+	jsonECf.EncodeCaller = zapcore.ShortCallerEncoder
+	jsonECf.EncodeLevel = zapcore.CapitalLevelEncoder
+	jsonE := zapcore.NewJSONEncoder(jsonECf)
 
-	consoleCore := zapcore.NewCore(consoleEncoder, zapcore.AddSync(zapcore.Lock(os.Stdout)), zapcore.InfoLevel)
-	fileCore := zapcore.NewCore(jsonEncoder, zapcore.AddSync(zapcore.Lock(file)), zapcore.InfoLevel)
+	consoleC := zapcore.NewCore(consoleE, zapcore.AddSync(zapcore.Lock(os.Stdout)), zapcore.InfoLevel)
+	fileC := zapcore.NewCore(jsonE, zapcore.AddSync(zapcore.Lock(file)), zapcore.InfoLevel)
 
-	core := zapcore.NewTee(consoleCore, fileCore)
+	c := zapcore.NewTee(consoleC, fileC)
 
-	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
-	sugar := logger.Sugar()
+	lg := zap.New(c, zap.AddCaller(), zap.AddCallerSkip(1))
+	s := lg.Sugar()
 
 	l := &Logger{
-		s: sugar,
-		l: logger,
+		s: s,
+		l: lg,
 	}
 
 	l.Info("loaded logger")
