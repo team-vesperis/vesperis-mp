@@ -22,12 +22,12 @@ type Database struct {
 }
 
 func Init(ctx context.Context, c *config.Config, l *logger.Logger) (*Database, error) {
-	r, err := initializeRedis(ctx, l, c)
+	r, err := initRedis(ctx, l, c)
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := initializePostgres(ctx, l, c)
+	p, err := initPostgres(ctx, l, c)
 	if err != nil {
 		return nil, err
 	}

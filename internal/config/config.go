@@ -14,13 +14,16 @@ type Config struct {
 	l *logger.Logger
 }
 
-func Init(l *logger.Logger) *Config {
+func Init(l *logger.Logger) (*Config, error) {
 	cfg := &Config{
 		l: l,
 	}
 
-	cfg.load()
-	return cfg
+	err := cfg.load()
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
 func (c *Config) load() error {

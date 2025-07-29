@@ -8,7 +8,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 )
 
-func initializeRedis(ctx context.Context, l *logger.Logger, c *config.Config) (*redis.Client, error) {
+func initRedis(ctx context.Context, l *logger.Logger, c *config.Config) (*redis.Client, error) {
 	opt, urlErr := redis.ParseURL(c.GetRedisUrl())
 	if urlErr != nil {
 		l.Error("redis parsing url error", "options", opt, "error", urlErr)

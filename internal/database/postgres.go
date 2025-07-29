@@ -8,7 +8,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 )
 
-func initializePostgres(ctx context.Context, l *logger.Logger, c *config.Config) (*pgxpool.Pool, error) {
+func initPostgres(ctx context.Context, l *logger.Logger, c *config.Config) (*pgxpool.Pool, error) {
 	p, err := pgxpool.New(ctx, c.GetPostgresUrl())
 	if err != nil {
 		l.Error("postgres connection error", "error", err)

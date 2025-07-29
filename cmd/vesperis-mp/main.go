@@ -59,7 +59,12 @@ func New(ctx context.Context) (MultiProxy, error) {
 		return MultiProxy{}, logErr
 	}
 
-	c := config.Init(l)
+	c, cfErr := config.Init(l)
+	if cfErr != nil {
+		l.Error("config initialization error")
+		return MultiProxy{}, cfErr
+	}
+
 	db, dbErr := database.Init(ctx, c, l)
 
 	if dbErr != nil {
