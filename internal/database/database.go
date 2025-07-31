@@ -152,17 +152,17 @@ func (db *Database) GetPlayerData(playerId string) (map[string]any, error) {
 
 	// redis
 	val, err := db.r.JSONGet(db.ctx, "player_data:"+playerId, "$").Result()
-	if err == nil {
+	if err != nil {
+		db.l.Warn("redis get player data error", "playerId", playerId, "error", err)
+	} else {
 		if val != "" {
 			err = json.Unmarshal([]byte(val), &playerData)
-			if err == nil {
-				return playerData, nil
-			} else {
+			if err != nil {
 				db.l.Warn("json unmarshal player data error", "playerId", playerId, "error", err)
+			} else {
+				return playerData, nil
 			}
 		}
-	} else {
-		db.l.Warn("redis get player data error", "playerId", playerId, "error", err)
 	}
 
 	// postgres
@@ -188,6 +188,10 @@ func (db *Database) GetAllPlayerIds() ([]string, error) {
 
 func (db *Database) SetPlayerDataField(playerId, field string, val any) error {
 	// redis
+	err := db.r.JSONSet(db.ctx, "player_data:"+playerId, "$."+field, val).Err()
+	if err != nil {
+
+	}
 
 	// postgres
 
@@ -195,11 +199,29 @@ func (db *Database) SetPlayerDataField(playerId, field string, val any) error {
 }
 
 func (db *Database) GetPlayerDataField(playerId, field string) (any, error) {
+	var playerData any
 	// redis
+	val, err := db.r.JSONGet(db.ctx, "player_data:"+playerId, "$."+field).Result()
+	if err != nil {
+
+	} else {
+		if val != "" {
+			err = json.Unmarshal([]byte(val), &playerData)
+			if err != nil {
+
+			} else {
+				return playerData, nil
+			}
+		}
+	}
 
 	// postgres
 
 	// update redis
+	err = db.r.JSONSet(db.ctx, "player_data:"+playerId, "$."+field, playerData).Err()
+	if err != nil {
+
+	}
 
 	return nil, nil
 }
