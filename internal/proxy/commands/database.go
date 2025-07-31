@@ -13,7 +13,7 @@ func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuild
 		Then(brigodier.Literal("get").
 			Then(brigodier.Argument("key", brigodier.SingleWord).
 				Executes(command.Command(func(c *command.Context) error {
-					v, err := cm.db.Get(c.String("key"))
+					v, err := cm.db.GetData(c.String("key"))
 					val, _ := v.(string)
 
 					if err != nil {
@@ -36,7 +36,7 @@ func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuild
 			Then(brigodier.Argument("key", brigodier.SingleWord).
 				Then(brigodier.Argument("value", brigodier.SingleWord).
 					Executes(command.Command(func(c *command.Context) error {
-						err := cm.db.Set(c.String("key"), c.String("value"))
+						err := cm.db.SetData(c.String("key"), c.String("value"))
 						if err != nil {
 							c.SendMessage(&component.Text{
 								Content: "Error setting value in database: " + err.Error(),

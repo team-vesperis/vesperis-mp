@@ -34,7 +34,7 @@ func initPostgres(ctx context.Context, l *logger.Logger, c *config.Config) (*pgx
 func createTables(ctx context.Context, p *pgxpool.Pool, l *logger.Logger) error {
 	playerDataTable := `
 	CREATE TABLE IF NOT EXISTS player_data (
-		playerId TEXT PRIMARY KEY,
+		playerId UUID PRIMARY KEY,
 		playerData JSONB NOT NULL
 	);
 	`

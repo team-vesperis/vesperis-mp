@@ -9,60 +9,48 @@ import (
 )
 
 type MultiPlayerManager struct {
-	MultiPlayerMap sync.Map
+	multiPlayerMap sync.Map
 
 	l  *logger.Logger
 	db *database.Database
 }
 
-func InitMultiPlayerManager() {
-
-}
-
-type MultiPlayer struct {
-	// The proxy id on which the underlying player is located
-	// Can be nil if not online!
-	p string
-
-	// The backend id on which the underlying player is located
-	// Can be nil if not online!
-	b string
-
-	// The id of the underlying player
-	id string
-
-	// The username of the underlying player
-	name string
-
-	online bool
-
-	// List of friends
-	// Holds the id of the friend
-	friends []string
-
-	mu sync.RWMutex
-}
-
-// New returns a new MultiPlayer
-func New(p proxy.Player, p_id, b_id string, m *MultiPlayerManager) *MultiPlayer {
-	mp := &MultiPlayer{
-		p:    p_id,
-		b:    b_id,
-		id:   p.ID().String(),
-		name: p.Username(),
+func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlayerManager {
+	m := &MultiPlayerManager{
+		multiPlayerMap: sync.Map{},
+		l:              l,
+		db:             db,
 	}
 
-	m.MultiPlayerMap.Store(mp.id, mp)
-	m.l.Info("created new multiplayer", "mp", mp, "playerId", p.ID().String())
-	return mp
+	// fill map
+	m.GetAllMultiPlayers()
+	return m
 }
 
-func Get(id string, m *MultiPlayerManager) *MultiPlayer {
-	val, ok := m.MultiPlayerMap.Load(id)
+func (m *MultiPlayerManager) GetAllMultiPlayers() []*MultiPlayer {
+	var l []*MultiPlayer
+
+	i, err := m.db.GetAllPlayerIds()
+	if err != nil {
+		return l
+	}
+
+	for _, id := range i {
+		mp := m.GetMultiPlayer(id)
+		l = append(l, mp)
+	}
+
+	return l
+}
+
+func (m *MultiPlayerManager) GetMultiPlayer(id string) *MultiPlayer {
+	val, ok := m.multiPlayerMap.Load(id)
 	if ok {
 		mp, ok := val.(*MultiPlayer)
 		if ok {
 			return mp
+		} else {
+			m.multiPlayerMap.Delete(id)
 		}
 	}
 
@@ -70,9 +58,12 @@ func Get(id string, m *MultiPlayerManager) *MultiPlayer {
 	if err != nil || data == nil {
 		return nil
 	}
+
 	mp := &MultiPlayer{
 		id: id,
+		m:  m,
 	}
+
 	if v, ok := data["p"].(string); ok {
 		mp.p = v
 	}
@@ -85,7 +76,93 @@ func Get(id string, m *MultiPlayerManager) *MultiPlayer {
 	if v, ok := data["online"].(bool); ok {
 		mp.online = v
 	}
-	m.MultiPlayerMap.Store(id, mp)
+
+	m.multiPlayerMap.Store(id, mp)
+	return mp
+}
+
+type MultiPlayer struct {
+	// The proxy id on which the underlying player is located.
+	// Can be nil if not online!
+	p string
+
+	// The backend id on which the underlying player is located.
+	// Can be nil if not online!
+	b string
+
+	// The id of the underlying player
+	id string
+
+	// The username of the underlying player
+	name string
+
+	online bool
+
+	// List of friends.
+	// Holds the id of the friend
+	friends []string
+
+	mu sync.RWMutex
+
+	m *MultiPlayerManager
+}
+
+// New returns a new MultiPlayer
+func New(p proxy.Player, proxyId string, m *MultiPlayerManager) (*MultiPlayer, error) {
+	mp := &MultiPlayer{
+		p:    proxyId,
+		b:    p.CurrentServer().Server().ServerInfo().Name(),
+		id:   p.ID().String(),
+		name: p.Username(),
+		m:    m,
+	}
+
+	m.multiPlayerMap.Store(mp.id, mp)
+
+	err := mp.SaveAll()
+	if err != nil {
+		return nil, err
+	}
+
+	m.l.Info("created new multiplayer", "mp", mp, "playerId", p.ID().String())
+	return mp, nil
+}
+
+func Get(id string, m *MultiPlayerManager) *MultiPlayer {
+	val, ok := m.multiPlayerMap.Load(id)
+	if ok {
+		mp, ok := val.(*MultiPlayer)
+		if ok {
+			return mp
+		}
+	}
+
+	data, err := m.db.GetPlayerData(id)
+	if err != nil || data == nil {
+		return nil
+	}
+
+	mp := &MultiPlayer{
+		id: id,
+	}
+
+	if v, ok := data["p"].(string); ok {
+		mp.p = v
+	}
+
+	if v, ok := data["b"].(string); ok {
+		mp.b = v
+	}
+
+	if v, ok := data["name"].(string); ok {
+		mp.name = v
+	}
+
+	if v, ok := data["online"].(bool); ok {
+		mp.online = v
+	}
+
+	m.multiPlayerMap.Store(id, mp)
 	return mp
 }
 
@@ -93,35 +170,51 @@ const multiPlayerUpdateChannel = "update_mp"
 
 // Updates the multi player into the database
 // Notifies other proxies to update
-func (mp *MultiPlayer) SaveAll(m *MultiPlayerManager) error {
-	data := map[string]any{
-		"p":       mp.p,
-		"b":       mp.b,
-		"id":      mp.id,
-		"name":    mp.name,
-		"online":  mp.online,
-		"friends": mp.friends,
-	}
-	for k, v := range data {
-		if err := m.db.SetPlayerDataField(mp.id, k, v); err != nil {
-			return err
-		}
+func (mp *MultiPlayer) SaveAll() error {
+	err := mp.Save("p", mp.GetProxyId())
+	if err != nil {
+		return err
 	}
 
-	return m.db.Publish(multiPlayerUpdateChannel, mp.id)
+	err = mp.Save("b", mp.GetBackendId())
+	if err != nil {
+		return err
+	}
+
+	err = mp.Save("id", mp.GetId())
+	if err != nil {
+		return err
+	}
+
+	err = mp.Save("name", mp.GetName())
+	if err != nil {
+		return err
+	}
+
+	err = mp.Save("online", mp.IsOnline())
+
+	return nil
 }
 
-func (mp *MultiPlayer) Save() {
+// Update specific value of the multi player into the database
+// Notifies other proxies to update that value
+func (mp *MultiPlayer) Save(key string, value any) error {
+	err := mp.m.db.SetPlayerDataField(mp.id, key, value)
+	if err != nil {
+		return err
+	}
 
+	m := mp.id + "_-_" + key
+	return mp.m.db.Publish(multiPlayerUpdateChannel, m)
 }
 
-func (mp *MultiPlayer) ProxyId() string {
+func (mp *MultiPlayer) GetProxyId() string {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 	return mp.p
 }
 
-func (mp *MultiPlayer) BackendId() string {
+func (mp *MultiPlayer) GetBackendId() string {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 	return mp.b
@@ -130,17 +223,17 @@ func (mp *MultiPlayer) BackendId() string {
 func (mp *MultiPlayer) SetBackendId(b string) {
 	mp.mu.Lock()
 	mp.b = b
+	mp.Save("b", b)
 	mp.mu.Unlock()
-	mp.Save()
 }
 
-func (mp *MultiPlayer) Id() string {
+func (mp *MultiPlayer) GetId() string {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 	return mp.id
 }
 
-func (mp *MultiPlayer) Name() string {
+func (mp *MultiPlayer) GetName() string {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 	return mp.name
@@ -155,6 +248,6 @@ func (mp *MultiPlayer) IsOnline() bool {
 func (mp *MultiPlayer) SetOnline(online bool) {
 	mp.mu.Lock()
 	mp.online = online
+	mp.Save("online", online)
 	mp.mu.Unlock()
-	mp.Save()
 }
