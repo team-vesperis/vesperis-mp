@@ -118,6 +118,11 @@ func main() {
 		return
 	}
 
+	testErr := mp.db.TestDatabase()
+	if testErr != nil {
+		return
+	}
+
 	mp.p = gate.Java()
 	event.Subscribe(mp.p.Event(), 0, mp.onShutdown)
 
