@@ -202,7 +202,10 @@ func (db *Database) GetPlayerData(playerId string) (map[string]any, error) {
 	}
 
 	// update redis
-	_ = db.r.JSONSet(db.ctx, "player_data:"+playerId, "$", dbData).Err()
+	err = db.r.JSONSet(db.ctx, "player_data:"+playerId, "$", dbData).Err()
+	if err != nil {
+		db.l.Warn("redis set player data error", "playerId", playerId, "playerData", dbData, "error", err)
+	}
 
 	return dbData, nil
 }
