@@ -209,9 +209,16 @@ func (db *Database) GetPlayerData(playerId string) (map[string]any, error) {
 		return nil, err
 	}
 
-	// Cache Redis
-	_ = db.r.JSONSet(db.ctx, key, "$", dbData).Err()
-	_ = db.r.Expire(db.ctx, key, redisTTL).Err()
+	// update redis
+	err = db.r.JSONSet(db.ctx, "player_data:"+playerId, "$", dbData).Err()
+	if err != nil {
+		db.l.Warn("redis set player data error", "playerId", playerId, "playerData", dbData, "error", err)
+	}
+
+	err = db.r.Expire(db.ctx, key, redisTTL).Err()
+	if err != nil {
+		db.l.Warn("redis ttl player data error", "error", err)
+	}
 
 	return dbData, nil
 }
