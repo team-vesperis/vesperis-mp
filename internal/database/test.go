@@ -28,13 +28,21 @@ func (db *Database) testPlayerData() error {
 	now := time.Now()
 	data, err1 := db.GetPlayerData(id)
 	if err1 != nil {
-		return err1
+		if err1 == ErrDataNotFound {
+			// create default
+			db.SetPlayerData(id, map[string]any{
+				"not anymore": true,
+			})
+		} else {
+			return err1
+
+		}
 	}
 
 	db.l.Info("returned data 1", "data", data, "duration", time.Since(now))
 
 	data["test"] = "hi"
-	data["online"] = "false"
+	data["online"] = false
 
 	now = time.Now()
 	err2 := db.SetPlayerData(id, data)
@@ -52,12 +60,52 @@ func (db *Database) testPlayerData() error {
 	db.l.Info("returned data 3", "data", data2, "duration", time.Since(now))
 
 	now = time.Now()
-	val, err4 := db.GetPlayerDataField(id, "not found!")
+	val, err4 := db.GetPlayerDataField(id, "online")
 	if err4 != nil {
 		return err4
 	}
 
+	if val == false {
+		db.l.Info("correctly turned value into bool")
+	}
+
 	db.l.Info("returned data field 4", "value", val, "duration", time.Since(now))
+
+	now = time.Now()
+	val2, err5 := db.GetPlayerDataField(id, "not_found")
+	if err5 != nil {
+		// value not found -> set default
+		if err5 == ErrDataFieldNotFound {
+			data := []string{
+				"hello",
+				"more strings",
+				"this saves correctly",
+			}
+
+			db.SetPlayerDataField(id, "not_found", data)
+		} else {
+			db.l.Info("error 5", "error", err5)
+			return err5 // unknown error. handle accordingly
+		}
+	}
+
+	db.l.Info("returned data field 5", "value", val2, "duration", time.Since(now))
+
+	val, err6 := db.GetPlayerDataField(id, "not_found")
+	if err6 != nil {
+		return err6
+	}
+
+	list, ok := val.([]any)
+	if ok {
+
+		for _, a := range list {
+			s, ok := a.(string)
+			if ok {
+				db.l.Info(s)
+			}
+		}
+	}
 
 	return nil
 }
