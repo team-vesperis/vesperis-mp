@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -74,7 +75,7 @@ func (db *Database) GetData(key string) (any, error) {
 	val, err := db.r.Get(db.ctx, "data:"+key).Result()
 	if err != redis.Nil {
 		if err != nil {
-			db.l.Warn("redis get error", "key", key, "error", err)
+			db.l.Warn("redis data get error", "key", key, "error", err)
 		} else {
 			return val, nil
 		}
@@ -84,25 +85,24 @@ func (db *Database) GetData(key string) (any, error) {
 	query := "SELECT dataValue FROM data WHERE dataKey = $1"
 	r, err := db.p.Query(db.ctx, query, key)
 	if err != nil {
-		db.l.Error("postgres query error", "key", key, "error", err)
+		db.l.Error("postgres data query error", "key", key, "error", err)
 		return "", err
 	}
 	defer r.Close()
 	for r.Next() {
 		scanErr := r.Scan(&val)
 		if scanErr != nil {
-			db.l.Error("postgres scan error", "key", key, "error", scanErr)
+			db.l.Error("postgres data scan error", "key", key, "error", scanErr)
 			return "", scanErr
 		}
 
 		if r.Err() != nil {
-			db.l.Error("postgres rows error", "key", key, "error", r.Err())
+			db.l.Error("postgres data rows error", "key", key, "error", r.Err())
 			return "", r.Err()
 		}
 	}
 
 	if val == nil || val == "" {
-		db.l.Warn("Value not found in both databases")
 		return "", nil
 	}
 
@@ -124,9 +124,10 @@ func (db *Database) SetData(key string, val any) error {
 
 	// postgres
 	query := `
-		INSERT INTO data 
-		(dataKey, dataValue) VALUES ($1, $2) 
-		ON CONFLICT (dataKey) DO UPDATE SET dataValue = $2
+		INSERT INTO data (dataKey, dataValue) 
+		VALUES ($1, $2) 
+		ON CONFLICT (dataKey) DO 
+		UPDATE SET dataValue = $2
 	`
 	_, err = db.p.Exec(db.ctx, query, key, val)
 	if err != nil {
@@ -137,37 +138,26 @@ func (db *Database) SetData(key string, val any) error {
 	return nil
 }
 
-func redisKey(playerId string) string {
-	return "player_data:" + playerId
+func redisKeyTranslator(playerId, field string) string {
+	return fmt.Sprintf("player_data:%s:%s", playerId, field)
 }
 
 func (db *Database) SetPlayerData(playerId string, playerData map[string]any) error {
-	key := redisKey(playerId)
-
-	// Redis
-	err := db.r.JSONSet(db.ctx, key, "$", playerData).Err()
-	if err != nil {
-		db.l.Warn("redis set player data error", "playerId", playerId, "error", err)
-	}
-	if ttlErr := db.r.Expire(db.ctx, key, redisTTL).Err(); ttlErr != nil {
-		db.l.Warn("redis ttl error", "playerId", playerId, "error", ttlErr)
-	}
-
-	// Postgres
 	jsonData, err := json.Marshal(playerData)
 	if err != nil {
-		db.l.Error("marshal error", "playerId", playerId, "error", err)
+		db.l.Error("json player data marshal error", "playerId", playerId, "error", err)
 		return err
 	}
 
 	query := `
 		INSERT INTO player_data (playerId, playerData)
 		VALUES ($1, $2::jsonb)
-		ON CONFLICT (playerId) DO UPDATE SET playerData = $2::jsonb
+		ON CONFLICT (playerId) DO 
+		UPDATE SET playerData = $2::jsonb
 	`
 	_, err = db.p.Exec(db.ctx, query, playerId, jsonData)
 	if err != nil {
-		db.l.Error("postgres upsert error", "playerId", playerId, "error", err)
+		db.l.Error("postgres player data upsert error", "playerId", playerId, "error", err)
 		return err
 	}
 
@@ -175,81 +165,56 @@ func (db *Database) SetPlayerData(playerId string, playerData map[string]any) er
 }
 
 func (db *Database) GetPlayerData(playerId string) (map[string]any, error) {
-	key := redisKey(playerId)
-
-	// Redis
-	val, err := db.r.JSONGet(db.ctx, key, "$").Result()
-	if err == nil && val != "" {
-		var arr []map[string]any
-		err := json.Unmarshal([]byte(val), &arr)
-
-		if err != nil {
-			db.l.Warn("redis field unmarshal failed", "playerId", playerId, "error", err)
-		} else if len(arr) > 0 {
-			return arr[0], nil
-		}
-	}
-
-	// Postgres fallback
 	var jsonData []byte
-	query := `SELECT playerData FROM player_data WHERE playerId = $1`
-	err = db.p.QueryRow(db.ctx, query, playerId).Scan(&jsonData)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			db.l.Warn("no data found", "playerId", playerId)
-			return map[string]any{}, ErrDataNotFound
-		}
-		db.l.Error("postgres read error", "playerId", playerId, "error", err)
+
+	query := `
+		SELECT playerData 
+		FROM player_data 
+		WHERE playerId = $1
+	`
+	err := db.p.QueryRow(db.ctx, query, playerId).Scan(&jsonData)
+	if err != nil && err != pgx.ErrNoRows {
+		db.l.Error("postgres player data read error", "playerId", playerId, "error", err)
 		return nil, err
 	}
 
-	var dbData map[string]any
-	if err := json.Unmarshal(jsonData, &dbData); err != nil {
-		db.l.Error("json unmarshal error", "playerId", playerId, "error", err)
+	if jsonData == nil {
+		return nil, ErrDataNotFound
+	}
+
+	var data map[string]any
+	err = json.Unmarshal(jsonData, &data)
+	if err != nil {
+		db.l.Error("json player data unmarshal error", "playerId", playerId, "error", err)
 		return nil, err
 	}
 
-	// update redis
-	err = db.r.JSONSet(db.ctx, "player_data:"+playerId, "$", dbData).Err()
-	if err != nil {
-		db.l.Warn("redis set player data error", "playerId", playerId, "playerData", dbData, "error", err)
-	}
-
-	err = db.r.Expire(db.ctx, key, redisTTL).Err()
-	if err != nil {
-		db.l.Warn("redis ttl player data error", "error", err)
-	}
-
-	return dbData, nil
+	return data, nil
 }
 
 func (db *Database) SetPlayerDataField(playerId, field string, val any) error {
-	key := redisKey(playerId)
-
-	// Redis
-	err := db.r.JSONSet(db.ctx, key, "$."+field, val).Err()
+	data, err := json.Marshal(val)
 	if err != nil {
-		db.l.Warn("redis set field error", "playerId", playerId, "field", field, "error", err)
-	}
-	if ttlErr := db.r.Expire(db.ctx, key, redisTTL).Err(); ttlErr != nil {
-		db.l.Warn("redis ttl error", "playerId", playerId, "field", field, "error", ttlErr)
-	}
-
-	// Postgres
-	jsonVal, err := json.Marshal(val)
-	if err != nil {
-		db.l.Error("marshal error", "playerId", playerId, "field", field, "error", err)
+		db.l.Error("json player data marshal error", "playerId", playerId, "field", field, "error", err)
 		return err
 	}
 
+	// redis
+	key := redisKeyTranslator(playerId, field)
+	err = db.r.Set(db.ctx, key, data, redisTTL).Err()
+	if err != nil {
+		db.l.Warn("redis player data set error", "playerId", playerId, "field", field, "error", err)
+	}
+
+	// postgres
 	query := `
 		UPDATE player_data
 		SET playerData = jsonb_set(playerData, $1, $2::jsonb, true)
 		WHERE playerId = $3
 	`
-	_, err = db.p.Exec(db.ctx, query, "{"+field+"}", jsonVal, playerId)
+	_, err = db.p.Exec(db.ctx, query, "{"+field+"}", data, playerId)
 	if err != nil {
-		db.l.Error("postgres update error", "playerId", playerId, "field", field, "error", err)
+		db.l.Error("postgres player data update error", "playerId", playerId, "field", field, "error", err)
 		return err
 	}
 
@@ -257,50 +222,48 @@ func (db *Database) SetPlayerDataField(playerId, field string, val any) error {
 }
 
 func (db *Database) GetPlayerDataField(playerId, field string) (any, error) {
-	key := redisKey(playerId)
-
-	// Redis
-	val, err := db.r.JSONGet(db.ctx, key, "$."+field).Result()
+	// redis
+	key := redisKeyTranslator(playerId, field)
+	val, err := db.r.Get(db.ctx, key).Result()
 	if err == nil && val != "" {
-		var arr []any
-		err := json.Unmarshal([]byte(val), &arr)
-
-		if err != nil {
-			db.l.Warn("redis field unmarshal failed", "playerId", playerId, "field", field, "error", err)
-
-		} else {
-			if len(arr) > 0 {
-				return arr[0], nil
-			}
+		var result any
+		err := json.Unmarshal([]byte(val), &result)
+		if err == nil {
+			return result, nil
 		}
+
+		db.l.Warn("redis player data unmarshal error", "playerId", playerId, "field", field, "error", err)
 	}
 
-	// Postgres
+	// postgres
 	var fieldData []byte
-	query := `SELECT playerData->$1 FROM player_data WHERE playerId = $2`
+	query := `
+		SELECT playerData->$1 
+		FROM player_data 
+		WHERE playerId = $2
+	`
 	err = db.p.QueryRow(db.ctx, query, field, playerId).Scan(&fieldData)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, ErrDataFieldNotFound
-		}
-		db.l.Error("postgres read error", "playerId", playerId, "field", field, "error", err)
+	if err != nil && err != pgx.ErrNoRows {
+		db.l.Error("postgres player data read error", "playerId", playerId, "field", field, "error", err)
 		return nil, err
 	}
 
 	if fieldData == nil {
-		return "", ErrDataFieldNotFound
+		return nil, ErrDataFieldNotFound
 	}
 
 	var result any
 	err = json.Unmarshal(fieldData, &result)
 	if err != nil {
-		db.l.Error("json unmarshal error", "playerId", playerId, "field", field, "error", err)
+		db.l.Error("json player data unmarshal error", "playerId", playerId, "field", field, "error", err)
 		return nil, err
 	}
 
-	// Cache Redis
-	_ = db.r.JSONSet(db.ctx, key, "$."+field, result).Err()
-	_ = db.r.Expire(db.ctx, key, redisTTL).Err()
+	// cache redis
+	err = db.r.Set(db.ctx, key, fieldData, redisTTL).Err()
+	if err != nil {
+		db.l.Warn("redis player data set error", "playerId", playerId, "key")
+	}
 
 	return result, nil
 }

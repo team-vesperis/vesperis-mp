@@ -30,9 +30,14 @@ func (db *Database) testPlayerData() error {
 	if err1 != nil {
 		if err1 == ErrDataNotFound {
 			// create default
-			db.SetPlayerData(id, map[string]any{
-				"not anymore": true,
-			})
+			data = map[string]any{
+				"permission": map[string]string{
+					"rank": "default",
+					"role": "default",
+				},
+			}
+
+			db.SetPlayerData(id, data)
 		} else {
 			return err1
 
@@ -58,6 +63,28 @@ func (db *Database) testPlayerData() error {
 	}
 
 	db.l.Info("returned data 3", "data", data2, "duration", time.Since(now))
+
+	perm, errer := db.GetPlayerDataField(id, "permission")
+	if errer != nil {
+		return errer
+	}
+
+	db.l.Info("permission returned", "perm", perm)
+	// Convert map[string]any to map[string]string
+	permissionMap := map[string]string{}
+	if permission, ok := perm.(map[string]any); ok {
+		for k, v := range permission {
+			if str, ok := v.(string); ok {
+				permissionMap[k] = str
+			}
+		}
+		db.l.Info("hi")
+		role := permissionMap["role"]
+		db.l.Info("role", "role", role)
+
+		rank := permissionMap["rank"]
+		db.l.Info("rank", "rank", rank)
+	}
 
 	now = time.Now()
 	val, err4 := db.GetPlayerDataField(id, "online")
@@ -96,13 +123,39 @@ func (db *Database) testPlayerData() error {
 		return err6
 	}
 
-	list, ok := val.([]any)
+	list, ok := val.([]string)
 	if ok {
+		db.l.Info("found!", "list", list)
+	} else {
+		v, ok := val.([]any)
+		if ok {
+			for _, a := range v {
+				s, ok := a.(string)
+				if ok {
+					db.l.Info(s)
+				}
+			}
+		}
+	}
 
-		for _, a := range list {
-			s, ok := a.(string)
-			if ok {
-				db.l.Info(s)
+	time.Sleep(20 * time.Second)
+	// redis is gone -> using postgres
+	val2, err7 := db.GetPlayerDataField(id, "not_found")
+	if err7 != nil {
+		return err7
+	}
+
+	l, ok := val2.([]string)
+	if ok {
+		db.l.Info("found!", "list", l)
+	} else {
+		v, ok := val2.([]any)
+		if ok {
+			for _, a := range v {
+				s, ok := a.(string)
+				if ok {
+					db.l.Info(s)
+				}
 			}
 		}
 	}
