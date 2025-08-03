@@ -13,22 +13,23 @@ type CommandManager struct {
 	l   *logger.Logger
 	db  *database.Database
 	pdm *multiplayer.PlayerDataManager
+	mpm *multiplayer.MultiPlayerManager
 }
 
-func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, pdm *multiplayer.PlayerDataManager) *CommandManager {
+func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, pdm *multiplayer.PlayerDataManager, mpm *multiplayer.MultiPlayerManager) *CommandManager {
 	cm := &CommandManager{
 		m:   p.Command(),
 		l:   l,
 		db:  db,
 		pdm: pdm,
+		mpm: mpm,
 	}
 
 	cm.registerCommands()
 	return cm
 }
 
-func (cm CommandManager) registerCommands() error {
+func (cm CommandManager) registerCommands() {
 	cm.m.Register(cm.databaseCommand("database"))
 	cm.m.Register(cm.databaseCommand("db"))
-	return nil
 }

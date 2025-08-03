@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -59,7 +60,7 @@ type listenManager struct {
 	wg sync.WaitGroup
 }
 
-const redisTTL = 15 * time.Second
+const redisTTL = 15 * time.Minute
 
 func (db *Database) GetData(key string) (any, error) {
 	/*
@@ -139,11 +140,51 @@ func (db *Database) SetData(key string, val any) error {
 }
 
 func redisKeyTranslator(playerId, field string) string {
-	return fmt.Sprintf("player_data:%s:%s", playerId, field)
+	return fmt.Sprintf("player_data:%s:%s", playerId, strings.ReplaceAll(field, ":", "_"))
+}
+
+func safeJsonPath(field string) string {
+	parts := strings.Split(field, ".")
+	for i, part := range parts {
+		if strings.ContainsAny(part, ` ."`) {
+			parts[i] = `"` + strings.ReplaceAll(part, `"`, `\"`) + `"`
+		}
+	}
+	return "{" + strings.Join(parts, ",") + "}"
+}
+
+func buildNestedMap(flat map[string]any) map[string]any {
+	nested := make(map[string]any)
+
+	for flatKey, val := range flat {
+		parts := strings.Split(flatKey, ".")
+		curr := nested
+
+		for i, part := range parts {
+			if i == len(parts)-1 {
+				curr[part] = val
+			} else {
+				if _, ok := curr[part]; !ok {
+					curr[part] = make(map[string]any)
+				}
+				if next, ok := curr[part].(map[string]any); ok {
+					curr = next
+				} else {
+					// Overwrite conflicting non-map value
+					curr[part] = make(map[string]any)
+					curr = curr[part].(map[string]any)
+				}
+			}
+		}
+	}
+
+	return nested
 }
 
 func (db *Database) SetPlayerData(playerId string, playerData map[string]any) error {
-	jsonData, err := json.Marshal(playerData)
+	data := buildNestedMap(playerData)
+
+	jsonData, err := json.Marshal(data)
 	if err != nil {
 		db.l.Error("json player data marshal error", "playerId", playerId, "error", err)
 		return err
@@ -199,20 +240,21 @@ func (db *Database) SetPlayerDataField(playerId, field string, val any) error {
 		return err
 	}
 
-	// redis
-	key := redisKeyTranslator(playerId, field)
-	err = db.r.Set(db.ctx, key, data, redisTTL).Err()
-	if err != nil {
-		db.l.Warn("redis player data set error", "playerId", playerId, "field", field, "error", err)
+	// Redis
+	k := redisKeyTranslator(playerId, field)
+	if redisErr := db.r.Set(db.ctx, k, data, redisTTL).Err(); redisErr != nil {
+		db.l.Warn("redis player data set error", "playerId", playerId, "field", field, "error", redisErr)
 	}
 
-	// postgres
+	// Postgres
 	query := `
 		UPDATE player_data
 		SET playerData = jsonb_set(playerData, $1, $2::jsonb, true)
 		WHERE playerId = $3
 	`
-	_, err = db.p.Exec(db.ctx, query, "{"+field+"}", data, playerId)
+
+	path := safeJsonPath(field)
+	_, err = db.p.Exec(db.ctx, query, path, data, playerId)
 	if err != nil {
 		db.l.Error("postgres player data update error", "playerId", playerId, "field", field, "error", err)
 		return err
@@ -222,9 +264,9 @@ func (db *Database) SetPlayerDataField(playerId, field string, val any) error {
 }
 
 func (db *Database) GetPlayerDataField(playerId, field string) (any, error) {
-	// redis
-	key := redisKeyTranslator(playerId, field)
-	val, err := db.r.Get(db.ctx, key).Result()
+	// Redis
+	k := redisKeyTranslator(playerId, field)
+	val, err := db.r.Get(db.ctx, k).Result()
 	if err == nil && val != "" {
 		var result any
 		err := json.Unmarshal([]byte(val), &result)
@@ -235,14 +277,15 @@ func (db *Database) GetPlayerDataField(playerId, field string) (any, error) {
 		db.l.Warn("redis player data unmarshal error", "playerId", playerId, "field", field, "error", err)
 	}
 
-	// postgres
+	// Postgres
 	var fieldData []byte
 	query := `
-		SELECT playerData->$1 
+		SELECT playerData #> $1
 		FROM player_data 
 		WHERE playerId = $2
 	`
-	err = db.p.QueryRow(db.ctx, query, field, playerId).Scan(&fieldData)
+	path := safeJsonPath(field)
+	err = db.p.QueryRow(db.ctx, query, path, playerId).Scan(&fieldData)
 	if err != nil && err != pgx.ErrNoRows {
 		db.l.Error("postgres player data read error", "playerId", playerId, "field", field, "error", err)
 		return nil, err
@@ -260,16 +303,36 @@ func (db *Database) GetPlayerDataField(playerId, field string) (any, error) {
 	}
 
 	// cache redis
-	err = db.r.Set(db.ctx, key, fieldData, redisTTL).Err()
+	err = db.r.Set(db.ctx, k, fieldData, redisTTL).Err()
 	if err != nil {
-		db.l.Warn("redis player data set error", "playerId", playerId, "key")
+		db.l.Warn("redis player data set error", "playerId", playerId, "field", field, "error", err)
 	}
 
 	return result, nil
 }
 
 func (db *Database) GetAllPlayerIds() ([]string, error) {
+	query := `SELECT playerId FROM player_data`
+	rows, err := db.p.Query(db.ctx, query)
+	if err != nil {
+		db.l.Error("postgres get all player ids error", "error", err)
+		return nil, err
+	}
+	defer rows.Close()
+
 	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			db.l.Error("postgres scan player id error", "error", err)
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if rows.Err() != nil {
+		db.l.Error("postgres rows error", "error", rows.Err())
+		return nil, rows.Err()
+	}
 
 	return ids, nil
 }

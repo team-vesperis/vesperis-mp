@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -49,6 +50,8 @@ type MultiProxy struct {
 	// The command manager used in the mp.
 	cm *commands.CommandManager
 
+	mpm *multiplayer.MultiPlayerManager
+
 	// The player data manager uses in the mp.
 	pdm *multiplayer.PlayerDataManager
 }
@@ -87,6 +90,8 @@ func New(ctx context.Context) (MultiProxy, error) {
 
 	pdm := multiplayer.InitPlayerDataManager(db, l)
 
+	mpm := multiplayer.InitMultiPlayerManager(l, db)
+
 	return MultiProxy{
 		db:  db,
 		id:  id,
@@ -94,6 +99,7 @@ func New(ctx context.Context) (MultiProxy, error) {
 		c:   c,
 		ctx: ctx,
 		pdm: pdm,
+		mpm: mpm,
 	}, nil
 }
 
@@ -101,12 +107,14 @@ func main() {
 	ctx, canc := context.WithCancel(context.Background())
 	defer canc()
 
+	now := time.Now()
+
 	// Create the MultiProxy structure and initialize its values
 	mp, err := New(ctx)
 	if err != nil {
 		return
 	}
-	mp.l.Info("created MultiProxy")
+	mp.l.Info("created MultiProxy", "duration", time.Since(now))
 
 	cfg, err := gate.LoadConfig(mp.c.V)
 	gate, err := gate.New(gate.Options{
@@ -118,25 +126,21 @@ func main() {
 		return
 	}
 
-	testErr := mp.db.TestDatabase()
-	if testErr != nil {
-		return
-	}
-
 	mp.p = gate.Java()
 	event.Subscribe(mp.p.Event(), 0, mp.onShutdown)
 
-	mp.cm = commands.Init(mp.p, mp.l, mp.db, mp.pdm)
+	mp.cm = commands.Init(mp.p, mp.l, mp.db, mp.pdm, mp.mpm)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
+		now = time.Now()
 		mp.p.Shutdown(&component.Text{
 			Content: "This proxy has been manually shut using the terminal.",
 			S:       component.Style{Color: color.Red},
 		})
-		mp.l.Info("stopped MultiProxy")
+		mp.l.Info("stopped MultiProxy", "duration", time.Since(now))
 		os.Exit(0)
 	}()
 
