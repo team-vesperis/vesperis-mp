@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
@@ -15,6 +16,7 @@ type Config struct {
 }
 
 func Init(l *logger.Logger) (*Config, error) {
+	now := time.Now()
 	cfg := &Config{
 		l: l,
 	}
@@ -23,6 +25,8 @@ func Init(l *logger.Logger) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	cfg.l.Info("loaded config", "duration", time.Since(now))
 	return cfg, nil
 }
 
@@ -48,7 +52,6 @@ func (c *Config) load() error {
 		return err
 	}
 
-	c.l.Info("loaded config")
 	return nil
 }
 

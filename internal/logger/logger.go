@@ -21,6 +21,8 @@ type Logger struct {
 }
 
 func Init() (*Logger, error) {
+	now := time.Now()
+
 	if err := os.MkdirAll(logDir, os.ModePerm); err != nil {
 		log.Printf("Failed to create log directory: %v", err)
 		return &Logger{}, err
@@ -61,7 +63,7 @@ func Init() (*Logger, error) {
 		l: lg,
 	}
 
-	l.Info("loaded logger")
+	l.Info("loaded logger", "duration", time.Since(now))
 	err = l.manageLogFiles()
 
 	return l, err
@@ -94,6 +96,8 @@ func (l *Logger) Warn(msg string, keysAndValues ...any) {
 
 // Checks folder, counts files and checks if it reaches file limit. Removes oldest files until under limit.
 func (l *Logger) manageLogFiles() error {
+	now := time.Now()
+
 	files, err := os.ReadDir(logDir)
 	if err != nil {
 		l.Error("logger read directory error", "files", files, "error", err)
@@ -125,6 +129,6 @@ func (l *Logger) manageLogFiles() error {
 		}
 	}
 
-	l.Info("logger files updated")
+	l.Info("logger files updated", "duration", time.Since(now))
 	return nil
 }

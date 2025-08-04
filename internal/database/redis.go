@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
@@ -9,6 +10,7 @@ import (
 )
 
 func initRedis(ctx context.Context, l *logger.Logger, c *config.Config) (*redis.Client, error) {
+	now := time.Now()
 	opt, urlErr := redis.ParseURL(c.GetRedisUrl())
 	if urlErr != nil {
 		l.Error("redis parsing url error", "options", opt, "error", urlErr)
@@ -23,6 +25,6 @@ func initRedis(ctx context.Context, l *logger.Logger, c *config.Config) (*redis.
 		return nil, pingErr
 	}
 
-	l.Info("initialized redis")
+	l.Info("initialized redis", "duration", time.Since(now))
 	return r, nil
 }

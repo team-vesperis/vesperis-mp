@@ -1,8 +1,10 @@
 package multiplayer
 
 import (
+	"strings"
 	"sync"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 )
@@ -15,52 +17,114 @@ type MultiPlayerManager struct {
 }
 
 func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlayerManager {
-	m := &MultiPlayerManager{
+	mpm := &MultiPlayerManager{
 		multiPlayerMap: sync.Map{},
 		l:              l,
 		db:             db,
 	}
 
+	// start update listener
+	mpm.db.CreateListener(multiPlayerUpdateChannel, func(msg *redis.Message) {
+		m := msg.Payload
+		mpm.l.Info(m)
+
+		s := strings.Split(m, "_")
+		id := s[0]
+		key := s[1]
+
+		mp := mpm.GetMultiPlayer(id)
+		val, err := mpm.db.GetPlayerDataField(id, key)
+		if err != nil {
+			mpm.l.Warn("multiplayer update channel error", "error", err)
+			return
+		}
+
+		switch key {
+		case "p":
+			p, ok := val.(string)
+			if ok {
+				mp.SetProxyId(p, false)
+			}
+		case "b":
+			b, ok := val.(string)
+			if ok {
+				mp.SetBackendId(b, false)
+			}
+		case "name":
+			name, ok := val.(string)
+			if ok {
+				mp.SetName(name, false)
+			}
+		case "online":
+			online, ok := val.(bool)
+			if ok {
+				mp.SetOnline(online, false)
+			}
+		case "vanished":
+			vanished, ok := val.(bool)
+			if ok {
+				mp.SetVanished(vanished, false)
+			}
+		case "friends":
+			// database values that are saved as []string will return as []any
+			list, ok := val.([]any)
+			if ok {
+				var friends []*MultiPlayer
+				for _, f := range list {
+					id, ok := f.(string)
+					if ok {
+						friend := mpm.GetMultiPlayer(id)
+						friends = append(friends, friend)
+					}
+				}
+
+				mp.SetFriends(friends, false)
+
+			}
+		}
+	})
+
 	// fill map
-	m.GetAllMultiPlayers()
-	return m
+	mpm.GetAllMultiPlayers()
+
+	return mpm
 }
 
-func (m *MultiPlayerManager) GetAllMultiPlayers() []*MultiPlayer {
+func (mpm *MultiPlayerManager) GetAllMultiPlayers() []*MultiPlayer {
 	var l []*MultiPlayer
 
-	i, err := m.db.GetAllPlayerIds()
+	i, err := mpm.db.GetAllPlayerIds()
 	if err != nil {
 		return l
 	}
 
 	for _, id := range i {
-		mp := m.GetMultiPlayer(id)
+		mp := mpm.GetMultiPlayer(id)
 		l = append(l, mp)
 	}
 
 	return l
 }
 
-func (m *MultiPlayerManager) GetMultiPlayer(id string) *MultiPlayer {
-	val, ok := m.multiPlayerMap.Load(id)
+func (mpm *MultiPlayerManager) GetMultiPlayer(id string) *MultiPlayer {
+	val, ok := mpm.multiPlayerMap.Load(id)
 	if ok {
 		mp, ok := val.(*MultiPlayer)
 		if ok {
 			return mp
 		} else {
-			m.multiPlayerMap.Delete(id)
+			mpm.multiPlayerMap.Delete(id)
 		}
 	}
 
-	data, err := m.db.GetPlayerData(id)
-	if err != nil || data == nil {
+	data, err := mpm.db.GetPlayerData(id)
+	if err != nil {
 		return nil
 	}
 
 	mp := &MultiPlayer{
-		id: id,
-		m:  m,
+		id:  id,
+		mpm: mpm,
 	}
 
 	if v, ok := data["p"].(string); ok {
@@ -76,6 +140,6 @@ func (m *MultiPlayerManager) GetMultiPlayer(id string) *MultiPlayer {
 		mp.online = v
 	}
 
-	m.multiPlayerMap.Store(id, mp)
+	mpm.multiPlayerMap.Store(id, mp)
 	return mp
 }

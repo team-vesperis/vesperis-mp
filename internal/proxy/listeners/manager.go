@@ -11,17 +11,19 @@ type ListenerManager struct {
 	m   event.Manager
 	l   *logger.Logger
 	db  *database.Database
-	pdm *multiplayer.PlayerDataManager
+	ppm *multiplayer.PlayerPermissionManager
 	mpm *multiplayer.MultiPlayerManager
+	id  string
 }
 
-func Init(m event.Manager, l *logger.Logger, db *database.Database, pdm *multiplayer.PlayerDataManager, mpm *multiplayer.MultiPlayerManager) *ListenerManager {
+func Init(m event.Manager, l *logger.Logger, db *database.Database, ppm *multiplayer.PlayerPermissionManager, mpm *multiplayer.MultiPlayerManager, id string) *ListenerManager {
 	lm := &ListenerManager{
 		m:   m,
 		l:   l,
 		db:  db,
-		pdm: pdm,
+		ppm: ppm,
 		mpm: mpm,
+		id:  id,
 	}
 
 	lm.registerListeners()
@@ -29,5 +31,8 @@ func Init(m event.Manager, l *logger.Logger, db *database.Database, pdm *multipl
 }
 
 func (lm *ListenerManager) registerListeners() {
-	event.Subscribe(lm.m, 0, lm.onJoin)
+	event.Subscribe(lm.m, 0, lm.onProxyJoin)
+	event.Subscribe(lm.m, 0, lm.onServerJoin)
+	event.Subscribe(lm.m, 0, lm.onLogin)
+	event.Subscribe(lm.m, 0, lm.onDisconnect)
 }

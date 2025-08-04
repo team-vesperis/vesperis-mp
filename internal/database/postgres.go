@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
@@ -9,6 +10,7 @@ import (
 )
 
 func initPostgres(ctx context.Context, l *logger.Logger, c *config.Config) (*pgxpool.Pool, error) {
+	now := time.Now()
 	p, err := pgxpool.New(ctx, c.GetPostgresUrl())
 	if err != nil {
 		l.Error("postgres connection error", "error", err)
@@ -27,7 +29,7 @@ func initPostgres(ctx context.Context, l *logger.Logger, c *config.Config) (*pgx
 		return nil, err
 	}
 
-	l.Info("initialized postgres")
+	l.Info("initialized postgres", "duration", time.Since(now))
 	return p, nil
 }
 
