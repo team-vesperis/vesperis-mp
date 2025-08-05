@@ -35,10 +35,11 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 		mp := mpm.GetMultiPlayer(id)
 		val, err := mpm.db.GetPlayerDataField(id, key)
 		if err != nil {
-			mpm.l.Warn("multiplayer update channel error", "error", err)
+			mpm.l.Warn("multiplayer update channel get player data field error", "error", err)
 			return
 		}
 
+		// don't notify so there will be no loop created
 		switch key {
 		case "p":
 			p, ok := val.(string)
@@ -60,6 +61,11 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 			if ok {
 				mp.SetRole(role, false)
 			}
+		case "permission.rank":
+			rank, ok := val.(string)
+			if ok {
+				mp.SetRank(rank, false)
+			}
 		case "online":
 			online, ok := val.(bool)
 			if ok {
@@ -79,12 +85,13 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 					id, ok := f.(string)
 					if ok {
 						friend := mpm.GetMultiPlayer(id)
-						friends = append(friends, friend)
+						if friend != nil {
+							friends = append(friends, friend)
+						}
 					}
 				}
 
 				mp.SetFriends(friends, false)
-
 			}
 		}
 	})

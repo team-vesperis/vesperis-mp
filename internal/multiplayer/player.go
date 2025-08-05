@@ -69,32 +69,6 @@ func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager) (*Multi
 
 const multiPlayerUpdateChannel = "update_mp"
 
-// Updates the multi player into the database
-// Notifies other proxies to update
-func (mp *MultiPlayer) SaveAll() error {
-	err := mp.Save("p", mp.GetProxyId())
-	if err != nil {
-		return err
-	}
-
-	err = mp.Save("b", mp.GetBackendId())
-	if err != nil {
-		return err
-	}
-
-	err = mp.Save("name", mp.GetName())
-	if err != nil {
-		return err
-	}
-
-	err = mp.Save("online", mp.IsOnline())
-	if err != nil {
-		return err
-	}
-
-	return err
-}
-
 // Update specific value of the multi player into the database
 // Notifies other proxies to update that value
 func (mp *MultiPlayer) Save(key string, value any) error {
