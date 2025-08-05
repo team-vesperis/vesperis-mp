@@ -9,12 +9,10 @@ import (
 )
 
 type MultiPlayer struct {
-	// The proxy id on which the underlying player is located.
-	// Can be nil if not online!
+	// The proxy id on which the underlying player is/was located
 	p string
 
-	// The backend id on which the underlying player is located.
-	// Can be nil if not online!
+	// The backend id on which the underlying player is/was located
 	b string
 
 	// The id of the underlying player
