@@ -54,8 +54,10 @@ func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager) (*Multi
 
 	defaultPlayerData := map[string]any{
 		"name":            p.Username(),
-		"permission.role": "default",
-		"permission.rank": "default",
+		"permission.role": RoleDefault,
+		"permission.rank": RankDefault,
+		"online":          false,
+		"vanished":        false,
 	}
 
 	err := db.SetPlayerData(id, defaultPlayerData)
