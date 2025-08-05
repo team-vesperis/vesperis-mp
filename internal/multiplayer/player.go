@@ -23,6 +23,10 @@ type MultiPlayer struct {
 	// The username of the underlying player
 	name string
 
+	role string
+
+	rank string
+
 	online bool
 
 	vanished bool
@@ -33,12 +37,10 @@ type MultiPlayer struct {
 	mu sync.RWMutex
 
 	mpm *MultiPlayerManager
-
-	ppm *PlayerPermissionManager
 }
 
 // New returns a new MultiPlayer
-func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager, ppm *PlayerPermissionManager) (*MultiPlayer, error) {
+func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager) (*MultiPlayer, error) {
 	now := time.Now()
 	id := p.ID().String()
 
@@ -46,7 +48,6 @@ func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager, ppm *Pl
 		id:   id,
 		name: p.Username(),
 		mpm:  mpm,
-		ppm:  ppm,
 	}
 
 	mpm.multiPlayerMap.Store(mp.id, mp)
@@ -87,8 +88,11 @@ func (mp *MultiPlayer) SaveAll() error {
 	}
 
 	err = mp.Save("online", mp.IsOnline())
+	if err != nil {
+		return err
+	}
 
-	return nil
+	return err
 }
 
 // Update specific value of the multi player into the database
@@ -110,14 +114,18 @@ func (mp *MultiPlayer) GetProxyId() string {
 	return mp.p
 }
 
-func (mp *MultiPlayer) SetProxyId(id string, notify bool) {
+func (mp *MultiPlayer) SetProxyId(id string, notify bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.p = id
+
+	var err error
 	if notify {
-		mp.Save("p", id)
+		err = mp.Save("p", id)
 	}
+
+	return err
 }
 
 func (mp *MultiPlayer) GetBackendId() string {
@@ -127,14 +135,18 @@ func (mp *MultiPlayer) GetBackendId() string {
 	return mp.b
 }
 
-func (mp *MultiPlayer) SetBackendId(id string, notify bool) {
+func (mp *MultiPlayer) SetBackendId(id string, notify bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.b = id
+
+	var err error
 	if notify {
-		mp.Save("b", id)
+		err = mp.Save("b", id)
 	}
+
+	return err
 }
 
 func (mp *MultiPlayer) GetId() string {
@@ -148,32 +160,76 @@ func (mp *MultiPlayer) GetName() string {
 	return mp.name
 }
 
-func (mp *MultiPlayer) SetName(name string, notify bool) {
+func (mp *MultiPlayer) SetName(name string, notify bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.name = name
+
+	var err error
 	if notify {
-		mp.Save("name", name)
+		err = mp.Save("name", name)
 	}
+
+	return err
 }
 
 func (mp *MultiPlayer) GetRole() string {
-	role, _ := mp.ppm.GetRoleFromId(mp.id)
-	return role
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+
+	return mp.role
 }
 
-func (mp *MultiPlayer) SetRole(role string) error {
-	return mp.ppm.SetRoleWithId(mp.id, role)
+func (mp *MultiPlayer) SetRole(role string, notify bool) error {
+	if !IsValidRole(role) {
+		return ErrIncorrectRole
+	}
+
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
+	mp.role = role
+
+	var err error
+	if notify {
+		err = mp.Save("permission.role", role)
+	}
+
+	return err
+}
+
+// Check if multiplayer has one of the following roles: admin, builder or moderator.
+func (mp *MultiPlayer) IsPrivileged() bool {
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+
+	return mp.role == RoleAdmin || mp.role == RoleBuilder || mp.role == RoleModerator
 }
 
 func (mp *MultiPlayer) GetRank() string {
-	rank, _ := mp.ppm.GetRankFromId(mp.id)
-	return rank
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+
+	return mp.rank
 }
 
-func (mp *MultiPlayer) SetRank(rank string) error {
-	return mp.ppm.SetRankWithId(mp.id, rank)
+func (mp *MultiPlayer) SetRank(rank string, notify bool) error {
+	if !IsValidRank(rank) {
+		return ErrIncorrectRank
+	}
+
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
+	mp.rank = rank
+
+	var err error
+	if notify {
+		err = mp.Save("permission.rank", rank)
+	}
+
+	return err
 }
 
 func (mp *MultiPlayer) IsOnline() bool {
@@ -183,14 +239,18 @@ func (mp *MultiPlayer) IsOnline() bool {
 	return mp.online
 }
 
-func (mp *MultiPlayer) SetOnline(online bool, notify bool) {
+func (mp *MultiPlayer) SetOnline(online bool, notify bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.online = online
+
+	var err error
 	if notify {
-		mp.Save("online", online)
+		err = mp.Save("online", online)
 	}
+
+	return err
 }
 
 func (mp *MultiPlayer) IsVanished() bool {
@@ -200,14 +260,18 @@ func (mp *MultiPlayer) IsVanished() bool {
 	return mp.vanished
 }
 
-func (mp *MultiPlayer) SetVanished(vanished bool, notify bool) {
+func (mp *MultiPlayer) SetVanished(vanished bool, notify bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.vanished = vanished
+
+	var err error
 	if notify {
-		mp.Save("vanished", vanished)
+		err = mp.Save("vanished", vanished)
 	}
+
+	return err
 }
 
 func (mp *MultiPlayer) GetFriends() []*MultiPlayer {
@@ -217,17 +281,21 @@ func (mp *MultiPlayer) GetFriends() []*MultiPlayer {
 	return mp.friends
 }
 
-func (mp *MultiPlayer) SetFriends(friends []*MultiPlayer, notify bool) {
+func (mp *MultiPlayer) SetFriends(friends []*MultiPlayer, notify bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.friends = friends
+
+	var err error
 	if notify {
-		mp.Save("friends", friends)
+		err = mp.Save("friends", friends)
 	}
+
+	return err
 }
 
-func (mp *MultiPlayer) AddFriend(friend *MultiPlayer, notify bool) {
+func (mp *MultiPlayer) AddFriend(friend *MultiPlayer, notify bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
@@ -238,7 +306,10 @@ func (mp *MultiPlayer) AddFriend(friend *MultiPlayer, notify bool) {
 		ids = append(ids, friend.id)
 	}
 
+	var err error
 	if notify {
-		mp.Save("friends", ids)
+		err = mp.Save("friends", ids)
 	}
+
+	return err
 }

@@ -56,9 +56,6 @@ type MultiProxy struct {
 
 	// The multiplayer manager used in the mp.
 	mpm *multiplayer.MultiPlayerManager
-
-	// The player permission manager used in the mp.
-	ppm *multiplayer.PlayerPermissionManager
 }
 
 func New(ctx context.Context) (MultiProxy, error) {
@@ -93,8 +90,6 @@ func New(ctx context.Context) (MultiProxy, error) {
 	lr := zapr.NewLogger(l.GetLogger())
 	ctx = logr.NewContext(ctx, lr)
 
-	ppm := multiplayer.InitPlayerPermissionManager(db, l)
-
 	mpm := multiplayer.InitMultiPlayerManager(l, db)
 
 	return MultiProxy{
@@ -103,7 +98,6 @@ func New(ctx context.Context) (MultiProxy, error) {
 		l:   l,
 		c:   c,
 		ctx: ctx,
-		ppm: ppm,
 		mpm: mpm,
 	}, nil
 }
@@ -134,8 +128,8 @@ func main() {
 	mp.p = gate.Java()
 	event.Subscribe(mp.p.Event(), 0, mp.onShutdown)
 
-	mp.cm = commands.Init(mp.p, mp.l, mp.db, mp.ppm, mp.mpm)
-	mp.lm = listeners.Init(mp.p.Event(), mp.l, mp.db, mp.ppm, mp.mpm, mp.id)
+	mp.cm = commands.Init(mp.p, mp.l, mp.db, mp.mpm)
+	mp.lm = listeners.Init(mp.p.Event(), mp.l, mp.db, mp.mpm, mp.id)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)

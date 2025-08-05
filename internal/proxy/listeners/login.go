@@ -15,7 +15,7 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 	// player hasn't joined before -> creating default mp
 	if mp == nil {
 		var err error
-		mp, err = multiplayer.New(p, lm.db, lm.mpm, lm.ppm)
+		mp, err = multiplayer.New(p, lm.db, lm.mpm)
 		if err != nil {
 			lm.l.Error("error creating multiplayer", "playerId", id, "error", err)
 			e.Deny(&component.Text{

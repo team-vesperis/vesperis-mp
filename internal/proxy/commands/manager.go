@@ -12,16 +12,14 @@ type CommandManager struct {
 	m   *command.Manager
 	l   *logger.Logger
 	db  *database.Database
-	ppm *multiplayer.PlayerPermissionManager
 	mpm *multiplayer.MultiPlayerManager
 }
 
-func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, ppm *multiplayer.PlayerPermissionManager, mpm *multiplayer.MultiPlayerManager) *CommandManager {
+func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mpm *multiplayer.MultiPlayerManager) *CommandManager {
 	cm := &CommandManager{
 		m:   p.Command(),
 		l:   l,
 		db:  db,
-		ppm: ppm,
 		mpm: mpm,
 	}
 

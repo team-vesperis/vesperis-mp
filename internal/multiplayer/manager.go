@@ -55,6 +55,11 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 			if ok {
 				mp.SetName(name, false)
 			}
+		case "permission.role":
+			role, ok := val.(string)
+			if ok {
+				mp.SetRole(role, false)
+			}
 		case "online":
 			online, ok := val.(bool)
 			if ok {
