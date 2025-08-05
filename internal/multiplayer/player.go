@@ -1,10 +1,10 @@
 package multiplayer
 
 import (
-	"log"
 	"sync"
 	"time"
 
+	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
@@ -38,43 +38,31 @@ type MultiPlayer struct {
 }
 
 // New returns a new MultiPlayer
-func New(p proxy.Player, proxyId string, mpm *MultiPlayerManager, ppm *PlayerPermissionManager) (*MultiPlayer, error) {
+func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager, ppm *PlayerPermissionManager) (*MultiPlayer, error) {
 	now := time.Now()
+	id := p.ID().String()
 
-	log.Print("hi")
 	mp := &MultiPlayer{
-		p:    proxyId,
-		b:    p.CurrentServer().Server().ServerInfo().Name(),
-		id:   p.ID().String(),
+		id:   id,
 		name: p.Username(),
 		mpm:  mpm,
 		ppm:  ppm,
 	}
-	log.Print("hi")
 
 	mpm.multiPlayerMap.Store(mp.id, mp)
 
-	log.Print("hi")
+	defaultPlayerData := map[string]any{
+		"name":            p.Username(),
+		"permission.role": "default",
+		"permission.rank": "default",
+	}
 
-	err := mp.SetRole(RoleDefault)
+	err := db.SetPlayerData(id, defaultPlayerData)
 	if err != nil {
 		return nil, err
 	}
-	log.Print("hi")
 
-	err = mp.SetRank(RankDefault)
-	if err != nil {
-		return nil, err
-	}
-	log.Print("hi")
-
-	err = mp.SaveAll()
-	if err != nil {
-		return nil, err
-	}
-	log.Print("hi")
-
-	mpm.l.Info("created new multiplayer", "mp", mp, "playerId", p.ID().String(), "duration", time.Since(now))
+	mpm.l.Info("created new multiplayer", "mp", mp, "playerId", id, "duration", time.Since(now))
 	return mp, nil
 }
 

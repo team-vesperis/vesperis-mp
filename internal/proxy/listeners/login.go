@@ -1,7 +1,6 @@
 package listeners
 
 import (
-	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
@@ -11,9 +10,12 @@ import (
 func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 	p := e.Player()
 	id := p.ID().String()
-	_, err := lm.db.GetPlayerData(id)
-	if err == database.ErrDataNotFound {
-		mp, err := multiplayer.New(p, lm.id, lm.mpm, lm.ppm)
+
+	mp := lm.mpm.GetMultiPlayer(id)
+	// player hasn't joined before -> creating default mp
+	if mp == nil {
+		var err error
+		mp, err = multiplayer.New(p, lm.db, lm.mpm, lm.ppm)
 		if err != nil {
 			lm.l.Error("error creating multiplayer", "playerId", id, "error", err)
 			e.Deny(&component.Text{
@@ -24,10 +26,9 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 			})
 			return
 		}
-
-		lm.l.Info("heello?")
-		mp.SetOnline(true, true)
 	}
+
+	mp.SetOnline(true, true)
 }
 
 func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
