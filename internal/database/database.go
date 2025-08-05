@@ -397,14 +397,11 @@ func (db *Database) CreateListener(channel string, handler func(msg *redis.Messa
 
 	go func() {
 		for {
-			msg, err := pubsub.ReceiveMessage(db.ctx)
-			if err != nil {
-				if err == context.Canceled {
-					return
-				}
-				db.l.Error("redis receiving message error", "channel", channel, "error", err)
-				continue
+			msg, ok := <-pubsub.Channel()
+			if !ok {
+				return
 			}
+
 			db.lm.wg.Add(1)
 			handler(msg)
 			db.lm.wg.Done()
@@ -427,35 +424,43 @@ func (db *Database) DeleteListener(channel string) error {
 		db.l.Error("redis closing pubsub error", "channel", channel, "error", err)
 		return err
 	}
+
 	return nil
 }
 
 func (db *Database) DeleteAllListeners() error {
 	db.lm.mu.Lock()
-	defer db.lm.mu.Unlock()
+	listeners := db.lm.m
+	db.lm.mu.Unlock()
 
 	var firstErr error
-	for channel := range db.lm.m {
+	for channel := range listeners {
 		err := db.DeleteListener(channel)
 		if err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
 
+	db.lm.mu.Lock()
 	db.lm.m = make(map[string]*redis.PubSub)
+	db.lm.mu.Unlock()
 	return firstErr
 }
 
 // Close the database. Closes the connection with Redis and PostgreSQL
-func (db *Database) Close(ctx context.Context) {
-	db.DeleteAllListeners()
+func (db *Database) Close() {
+	err := db.DeleteAllListeners()
+	if err != nil {
+		db.l.Error("database deleting all listeners error", "error", err)
+	}
 
-	err := db.r.Close()
+	err = db.r.Close()
 	if err != nil {
 		db.l.Error("redis close error", "error", err)
 	}
 
-	ctx, canc := context.WithTimeout(ctx, 30*time.Second)
+	var canc context.CancelFunc
+	db.ctx, canc = context.WithTimeout(db.ctx, 30*time.Second)
 	defer canc()
 
 	done := make(chan struct{})
@@ -467,7 +472,9 @@ func (db *Database) Close(ctx context.Context) {
 	select {
 	case <-done:
 		// closed successfully
-	case <-ctx.Done():
-		db.l.Error("postgres close timeout", "error", ctx.Err())
+		return
+	case <-db.ctx.Done():
+		db.l.Error("postgres close timeout", "error", db.ctx.Err())
+		return
 	}
 }

@@ -1,6 +1,7 @@
 package multiplayer
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -40,6 +41,7 @@ type MultiPlayer struct {
 func New(p proxy.Player, proxyId string, mpm *MultiPlayerManager, ppm *PlayerPermissionManager) (*MultiPlayer, error) {
 	now := time.Now()
 
+	log.Print("hi")
 	mp := &MultiPlayer{
 		p:    proxyId,
 		b:    p.CurrentServer().Server().ServerInfo().Name(),
@@ -48,23 +50,29 @@ func New(p proxy.Player, proxyId string, mpm *MultiPlayerManager, ppm *PlayerPer
 		mpm:  mpm,
 		ppm:  ppm,
 	}
+	log.Print("hi")
 
 	mpm.multiPlayerMap.Store(mp.id, mp)
+
+	log.Print("hi")
 
 	err := mp.SetRole(RoleDefault)
 	if err != nil {
 		return nil, err
 	}
+	log.Print("hi")
 
 	err = mp.SetRank(RankDefault)
 	if err != nil {
 		return nil, err
 	}
+	log.Print("hi")
 
 	err = mp.SaveAll()
 	if err != nil {
 		return nil, err
 	}
+	log.Print("hi")
 
 	mpm.l.Info("created new multiplayer", "mp", mp, "playerId", p.ID().String(), "duration", time.Since(now))
 	return mp, nil

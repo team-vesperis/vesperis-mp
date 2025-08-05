@@ -25,6 +25,7 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 			return
 		}
 
+		lm.l.Info("heello?")
 		mp.SetOnline(true, true)
 	}
 }

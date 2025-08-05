@@ -15,6 +15,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/commands"
+	"github.com/team-vesperis/vesperis-mp/internal/proxy/listeners"
 
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
@@ -49,6 +50,9 @@ type MultiProxy struct {
 
 	// The command manager used in the mp.
 	cm *commands.CommandManager
+
+	// The listener manager in the mp.
+	lm *listeners.ListenerManager
 
 	// The multiplayer manager used in the mp.
 	mpm *multiplayer.MultiPlayerManager
@@ -131,6 +135,7 @@ func main() {
 	event.Subscribe(mp.p.Event(), 0, mp.onShutdown)
 
 	mp.cm = commands.Init(mp.p, mp.l, mp.db, mp.ppm, mp.mpm)
+	mp.lm = listeners.Init(mp.p.Event(), mp.l, mp.db, mp.ppm, mp.mpm, mp.id)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -151,6 +156,6 @@ func main() {
 
 func (mp *MultiProxy) onShutdown(event *proxy.ShutdownEvent) {
 	mp.l.Info("Stopping...")
-	mp.db.Close(mp.ctx)
+	mp.db.Close()
 	mp.l.Close()
 }
