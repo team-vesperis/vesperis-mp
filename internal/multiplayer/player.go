@@ -1,11 +1,14 @@
 package multiplayer
 
 import (
+	"errors"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
+	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type MultiPlayer struct {
@@ -16,7 +19,7 @@ type MultiPlayer struct {
 	b string
 
 	// The id of the underlying player
-	id string
+	id uuid.UUID
 
 	// The username of the underlying player
 	name string
@@ -37,10 +40,10 @@ type MultiPlayer struct {
 	mpm *MultiPlayerManager
 }
 
-// New returns a new MultiPlayer
+// New returns a new multiplayer
 func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager) (*MultiPlayer, error) {
 	now := time.Now()
-	id := p.ID().String()
+	id := p.ID()
 
 	mp := &MultiPlayer{
 		id:   id,
@@ -77,7 +80,7 @@ func (mp *MultiPlayer) Save(key string, value any) error {
 		return err
 	}
 
-	m := mp.id + "_" + key
+	m := mp.id.String() + "_" + key
 	return mp.mpm.db.Publish(multiPlayerUpdateChannel, m)
 }
 
@@ -123,7 +126,7 @@ func (mp *MultiPlayer) SetBackendId(id string, notify bool) error {
 	return err
 }
 
-func (mp *MultiPlayer) GetId() string {
+func (mp *MultiPlayer) GetId() uuid.UUID {
 	return mp.id
 }
 
@@ -274,7 +277,7 @@ func (mp *MultiPlayer) AddFriend(friend *MultiPlayer, notify bool) error {
 	defer mp.mu.Unlock()
 
 	mp.friends = append(mp.friends, friend)
-	var ids []string
+	var ids []uuid.UUID
 
 	for _, friend := range mp.friends {
 		ids = append(ids, friend.id)
@@ -283,6 +286,30 @@ func (mp *MultiPlayer) AddFriend(friend *MultiPlayer, notify bool) error {
 	var err error
 	if notify {
 		err = mp.Save("friends", ids)
+	}
+
+	return err
+}
+
+var ErrFriendNotFound = errors.New("friend not found")
+
+func (mp *MultiPlayer) RemoveFriend(friend *MultiPlayer, notify bool) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
+	if !slices.Contains(mp.friends, friend) {
+		return ErrFriendNotFound
+	}
+
+	for i, f := range mp.friends {
+		if f == friend {
+			mp.friends = slices.Delete(mp.friends, i, i+1)
+		}
+	}
+
+	var err error
+	if notify {
+		err = mp.Save("friends", mp.friends)
 	}
 
 	return err

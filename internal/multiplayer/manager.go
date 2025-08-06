@@ -7,6 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
+	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type MultiPlayerManager struct {
@@ -29,13 +30,19 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 		mpm.l.Info(m)
 
 		s := strings.Split(m, "_")
-		id := s[0]
+
+		id, err := uuid.Parse(s[0])
+		if err != nil {
+			mpm.l.Error("multiplayer update channel parse uuid error", "error", err)
+			return
+		}
+
 		key := s[1]
 
-		mp := mpm.GetMultiPlayer(id)
+		mp, _ := mpm.GetMultiPlayer(id)
 		val, err := mpm.db.GetPlayerDataField(id, key)
 		if err != nil {
-			mpm.l.Warn("multiplayer update channel get player data field error", "error", err)
+			mpm.l.Error("multiplayer update channel get player data field error", "error", err)
 			return
 		}
 
@@ -82,9 +89,9 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 			if ok {
 				var friends []*MultiPlayer
 				for _, f := range list {
-					id, ok := f.(string)
+					id, ok := f.(uuid.UUID)
 					if ok {
-						friend := mpm.GetMultiPlayer(id)
+						friend, _ := mpm.GetMultiPlayer(id)
 						if friend != nil {
 							friends = append(friends, friend)
 						}
@@ -102,28 +109,20 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 	return mpm
 }
 
-func (mpm *MultiPlayerManager) GetAllMultiPlayers() []*MultiPlayer {
-	var l []*MultiPlayer
+/*
+Gets a multiplayer in two ways:
 
-	i, err := mpm.db.GetAllPlayerIds()
-	if err != nil {
-		return l
-	}
+1. Use the map with all multiplayers.
+This method will be used the most since all existing players are in the map located.
 
-	for _, id := range i {
-		mp := mpm.GetMultiPlayer(id)
-		l = append(l, mp)
-	}
-
-	return l
-}
-
-func (mpm *MultiPlayerManager) GetMultiPlayer(id string) *MultiPlayer {
+2. Create a new multiplayer based on the player data from the database.
+*/
+func (mpm *MultiPlayerManager) GetMultiPlayer(id uuid.UUID) (*MultiPlayer, error) {
 	val, ok := mpm.multiPlayerMap.Load(id)
 	if ok {
 		mp, ok := val.(*MultiPlayer)
 		if ok {
-			return mp
+			return mp, nil
 		} else {
 			mpm.multiPlayerMap.Delete(id)
 		}
@@ -131,7 +130,7 @@ func (mpm *MultiPlayerManager) GetMultiPlayer(id string) *MultiPlayer {
 
 	data, err := mpm.db.GetPlayerData(id)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	mp := &MultiPlayer{
@@ -153,5 +152,43 @@ func (mpm *MultiPlayerManager) GetMultiPlayer(id string) *MultiPlayer {
 	}
 
 	mpm.multiPlayerMap.Store(id, mp)
-	return mp
+	return mp, nil
+}
+
+func (mpm *MultiPlayerManager) GetAllMultiPlayers() ([]*MultiPlayer, error) {
+	var l []*MultiPlayer
+
+	i, err := mpm.db.GetAllPlayerIds()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, id := range i {
+		mp, err := mpm.GetMultiPlayer(id)
+		// this is not possible... probably
+		if err != nil {
+			return nil, err
+		}
+
+		l = append(l, mp)
+	}
+
+	return l, nil
+}
+
+func (mpm *MultiPlayerManager) GetAllOnlinePlayers() ([]*MultiPlayer, error) {
+	var l []*MultiPlayer
+
+	all, err := mpm.GetAllMultiPlayers()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, mp := range all {
+		if mp.IsOnline() {
+			l = append(l, mp)
+		}
+	}
+
+	return l, nil
 }

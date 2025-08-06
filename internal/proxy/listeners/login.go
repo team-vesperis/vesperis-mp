@@ -1,40 +1,54 @@
 package listeners
 
 import (
+	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
+var loginDenyComponent = &component.Text{
+	Content: "There was an error with the login. Please try again later.",
+	S: component.Style{
+		Color: color.Red,
+	},
+}
+
 func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 	p := e.Player()
-	id := p.ID().String()
+	id := p.ID()
 
-	mp := lm.mpm.GetMultiPlayer(id)
+	mp, err := lm.mpm.GetMultiPlayer(id)
 	// player hasn't joined before -> creating default mp
-	if mp == nil {
+	if err == database.ErrDataNotFound {
 		var err error
 		mp, err = multiplayer.New(p, lm.db, lm.mpm)
 		if err != nil {
-			lm.l.Error("error creating multiplayer", "playerId", id, "error", err)
-			e.Deny(&component.Text{
-				Content: "There was an error with the login. Please try again later.",
-				S: component.Style{
-					Color: color.Red,
-				},
-			})
+			lm.l.Error("player login create new multiplayer error", "playerId", id, "error", err)
+			e.Deny(loginDenyComponent)
 			return
 		}
+	} else if err != nil {
+		lm.l.Error("player login get multiplayer error", "playerId", id, "error", err)
+		e.Deny(loginDenyComponent)
+		return
 	}
 
-	mp.SetOnline(true, true)
+	err = mp.SetOnline(true, true)
+	if err != nil {
+		lm.l.Error("player login set online error", "playerId", id, "error", err)
+		e.Deny(loginDenyComponent)
+	}
 }
 
 func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
-	id := e.Player().ID().String()
-	mp := lm.mpm.GetMultiPlayer(id)
-	if mp != nil {
-		mp.SetOnline(false, true)
+	id := e.Player().ID()
+	mp, err := lm.mpm.GetMultiPlayer(id)
+	if err == nil {
+		err := mp.SetOnline(false, true)
+		if err != nil {
+			lm.l.Error("listener manager ")
+		}
 	}
 }

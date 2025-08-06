@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
+	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type Database struct {
@@ -139,8 +139,8 @@ func (db *Database) SetData(key string, val any) error {
 	return nil
 }
 
-func redisKeyTranslator(playerId, field string) string {
-	return fmt.Sprintf("player_data:%s:%s", playerId, strings.ReplaceAll(field, ":", "_"))
+func redisKeyTranslator(playerId uuid.UUID, field string) string {
+	return "player_data:" + playerId.String() + ":" + strings.ReplaceAll(field, ":", "_")
 }
 
 func safeJsonPath(field string) string {
@@ -181,7 +181,7 @@ func buildNestedMap(flat map[string]any) map[string]any {
 	return nested
 }
 
-func (db *Database) SetPlayerData(playerId string, playerData map[string]any) error {
+func (db *Database) SetPlayerData(playerId uuid.UUID, playerData map[string]any) error {
 	data := buildNestedMap(playerData)
 
 	jsonData, err := json.Marshal(data)
@@ -205,7 +205,7 @@ func (db *Database) SetPlayerData(playerId string, playerData map[string]any) er
 	return nil
 }
 
-func (db *Database) GetPlayerData(playerId string) (map[string]any, error) {
+func (db *Database) GetPlayerData(playerId uuid.UUID) (map[string]any, error) {
 	var jsonData []byte
 
 	query := `
@@ -233,7 +233,7 @@ func (db *Database) GetPlayerData(playerId string) (map[string]any, error) {
 	return data, nil
 }
 
-func (db *Database) SetPlayerDataField(playerId, field string, val any) error {
+func (db *Database) SetPlayerDataField(playerId uuid.UUID, field string, val any) error {
 	data, err := json.Marshal(val)
 	if err != nil {
 		db.l.Error("json player data marshal error", "playerId", playerId, "field", field, "error", err)
@@ -263,7 +263,7 @@ func (db *Database) SetPlayerDataField(playerId, field string, val any) error {
 	return nil
 }
 
-func (db *Database) GetPlayerDataField(playerId, field string) (any, error) {
+func (db *Database) GetPlayerDataField(playerId uuid.UUID, field string) (any, error) {
 	// Redis
 	k := redisKeyTranslator(playerId, field)
 	val, err := db.r.Get(db.ctx, k).Result()
@@ -311,7 +311,7 @@ func (db *Database) GetPlayerDataField(playerId, field string) (any, error) {
 	return result, nil
 }
 
-func (db *Database) GetAllPlayerIds() ([]string, error) {
+func (db *Database) GetAllPlayerIds() ([]uuid.UUID, error) {
 	query := `SELECT playerId FROM player_data`
 	rows, err := db.p.Query(db.ctx, query)
 	if err != nil {
@@ -320,9 +320,9 @@ func (db *Database) GetAllPlayerIds() ([]string, error) {
 	}
 	defer rows.Close()
 
-	var ids []string
+	var ids []uuid.UUID
 	for rows.Next() {
-		var id string
+		var id uuid.UUID
 		if err := rows.Scan(&id); err != nil {
 			db.l.Error("postgres scan player id error", "error", err)
 			return nil, err
