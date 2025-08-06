@@ -25,11 +25,11 @@ type MultiPlayer struct {
 	name string
 
 	// The permission role of the player. 
-	// It can be one of the following: admin, builder, default, moderator
+	// It can be one of the following: admin, builder, default or moderator
 	role string
 
 	// The permission rank of the player.
-	// It can be one of the following: default
+	// It can be one of the following: champion, default, elite or legend
 	rank string
 
 	online bool
