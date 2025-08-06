@@ -128,6 +128,10 @@ func (mpm *MultiPlayerManager) GetMultiPlayer(id uuid.UUID) (*MultiPlayer, error
 		}
 	}
 
+	return mpm.CreateMultiPlayerFromDatabase(id)
+}
+
+func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*MultiPlayer, error) {
 	data, err := mpm.db.GetPlayerData(id)
 	if err != nil {
 		return nil, err
@@ -138,17 +142,34 @@ func (mpm *MultiPlayerManager) GetMultiPlayer(id uuid.UUID) (*MultiPlayer, error
 		mpm: mpm,
 	}
 
-	if v, ok := data["p"].(string); ok {
-		mp.p = v
+	p, ok := data["p"].(string)
+	if ok {
+		mp.p = p
 	}
-	if v, ok := data["b"].(string); ok {
-		mp.b = v
+
+	b, ok := data["b"].(string)
+	if ok {
+		mp.b = b
 	}
-	if v, ok := data["name"].(string); ok {
-		mp.name = v
+
+	name, ok := data["name"].(string)
+	if ok {
+		mp.name = name
 	}
-	if v, ok := data["online"].(bool); ok {
-		mp.online = v
+
+	role, ok := data["role"].(string)
+	if ok {
+		mp.role = role
+	}
+
+	rank, ok := data["rank"].(string)
+	if ok {
+		mp.rank = rank
+	}
+
+	online, ok := data["online"].(bool)
+	if ok {
+		mp.online = online
 	}
 
 	mpm.multiPlayerMap.Store(id, mp)

@@ -45,14 +45,6 @@ func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager) (*Multi
 	now := time.Now()
 	id := p.ID()
 
-	mp := &MultiPlayer{
-		id:   id,
-		name: p.Username(),
-		mpm:  mpm,
-	}
-
-	mpm.multiPlayerMap.Store(mp.id, mp)
-
 	defaultPlayerData := map[string]any{
 		"name":            p.Username(),
 		"permission.role": RoleDefault,
@@ -66,6 +58,11 @@ func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager) (*Multi
 		return nil, err
 	}
 
+	mp, err := mpm.CreateMultiPlayerFromDatabase(id)
+	if err != nil {
+		return nil, err
+	}
+
 	mpm.l.Info("created new multiplayer", "mp", mp, "playerId", id, "duration", time.Since(now))
 	return mp, nil
 }
@@ -74,7 +71,7 @@ const multiPlayerUpdateChannel = "update_mp"
 
 // Update specific value of the multi player into the database
 // Notifies other proxies to update that value
-func (mp *MultiPlayer) Save(key string, value any) error {
+func (mp *MultiPlayer) save(key string, value any) error {
 	err := mp.mpm.db.SetPlayerDataField(mp.id, key, value)
 	if err != nil {
 		return err
@@ -99,7 +96,7 @@ func (mp *MultiPlayer) SetProxyId(id string, notify bool) error {
 
 	var err error
 	if notify {
-		err = mp.Save("p", id)
+		err = mp.save("p", id)
 	}
 
 	return err
@@ -120,7 +117,7 @@ func (mp *MultiPlayer) SetBackendId(id string, notify bool) error {
 
 	var err error
 	if notify {
-		err = mp.Save("b", id)
+		err = mp.save("b", id)
 	}
 
 	return err
@@ -145,7 +142,7 @@ func (mp *MultiPlayer) SetName(name string, notify bool) error {
 
 	var err error
 	if notify {
-		err = mp.Save("name", name)
+		err = mp.save("name", name)
 	}
 
 	return err
@@ -170,7 +167,7 @@ func (mp *MultiPlayer) SetRole(role string, notify bool) error {
 
 	var err error
 	if notify {
-		err = mp.Save("permission.role", role)
+		err = mp.save("permission.role", role)
 	}
 
 	return err
@@ -203,7 +200,7 @@ func (mp *MultiPlayer) SetRank(rank string, notify bool) error {
 
 	var err error
 	if notify {
-		err = mp.Save("permission.rank", rank)
+		err = mp.save("permission.rank", rank)
 	}
 
 	return err
@@ -224,7 +221,7 @@ func (mp *MultiPlayer) SetOnline(online bool, notify bool) error {
 
 	var err error
 	if notify {
-		err = mp.Save("online", online)
+		err = mp.save("online", online)
 	}
 
 	return err
@@ -245,7 +242,7 @@ func (mp *MultiPlayer) SetVanished(vanished bool, notify bool) error {
 
 	var err error
 	if notify {
-		err = mp.Save("vanished", vanished)
+		err = mp.save("vanished", vanished)
 	}
 
 	return err
@@ -266,7 +263,7 @@ func (mp *MultiPlayer) SetFriends(friends []*MultiPlayer, notify bool) error {
 
 	var err error
 	if notify {
-		err = mp.Save("friends", friends)
+		err = mp.save("friends", friends)
 	}
 
 	return err
@@ -285,7 +282,7 @@ func (mp *MultiPlayer) AddFriend(friend *MultiPlayer, notify bool) error {
 
 	var err error
 	if notify {
-		err = mp.Save("friends", ids)
+		err = mp.save("friends", ids)
 	}
 
 	return err
@@ -309,7 +306,7 @@ func (mp *MultiPlayer) RemoveFriend(friend *MultiPlayer, notify bool) error {
 
 	var err error
 	if notify {
-		err = mp.Save("friends", mp.friends)
+		err = mp.save("friends", mp.friends)
 	}
 
 	return err
