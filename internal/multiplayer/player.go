@@ -24,8 +24,12 @@ type MultiPlayer struct {
 	// The username of the underlying player
 	name string
 
+	// The permission role of the player. 
+	// It can be one of the following: admin, builder, default, moderator
 	role string
 
+	// The permission rank of the player.
+	// It can be one of the following: default
 	rank string
 
 	online bool
