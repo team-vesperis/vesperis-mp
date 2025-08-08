@@ -84,21 +84,20 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 				mp.SetVanished(vanished, false)
 			}
 		case "friends":
-			// database values that are saved as []string will return as []any
 			list, ok := val.([]any)
 			if ok {
-				var friends []*MultiPlayer
-				for _, f := range list {
-					id, ok := f.(uuid.UUID)
+				var mp_list []*MultiPlayer
+				for _, l := range list {
+					id, ok := l.(uuid.UUID)
 					if ok {
-						friend, _ := mpm.GetMultiPlayer(id)
-						if friend != nil {
-							friends = append(friends, friend)
+						mp, err := mpm.GetMultiPlayer(id)
+						if err != nil {
+							mp_list = append(mp_list, mp)
 						}
 					}
 				}
 
-				mp.SetFriends(friends, false)
+				mp.SetFriends(mp_list, false)
 			}
 		}
 	})
@@ -157,19 +156,27 @@ func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*Mul
 		mp.name = name
 	}
 
-	role, ok := data["role"].(string)
+	permission, ok := data["permission"].(map[string]any)
 	if ok {
-		mp.role = role
-	}
+		role, ok := permission["role"].(string)
+		if ok {
+			mp.role = role
+		}
 
-	rank, ok := data["rank"].(string)
-	if ok {
-		mp.rank = rank
+		rank, ok := permission["rank"].(string)
+		if ok {
+			mp.rank = rank
+		}
 	}
 
 	online, ok := data["online"].(bool)
 	if ok {
 		mp.online = online
+	}
+
+	vanished, ok := data["vanished"].(bool)
+	if ok {
+		mp.vanished = vanished
 	}
 
 	mpm.multiPlayerMap.Store(id, mp)

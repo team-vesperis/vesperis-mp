@@ -45,10 +45,13 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 	id := e.Player().ID()
 	mp, err := lm.mpm.GetMultiPlayer(id)
-	if err == nil {
-		err := mp.SetOnline(false, true)
-		if err != nil {
-			lm.l.Error("listener manager ")
-		}
+	if err != nil {
+		lm.l.Error("player disconnect get multiplayer error", "playerId", id, "error", err)
+		return
+	}
+
+	err = mp.SetOnline(false, true)
+	if err != nil {
+		lm.l.Error("player disconnect set online error", "playerId", id, "error", err)
 	}
 }

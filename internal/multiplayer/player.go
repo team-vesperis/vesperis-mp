@@ -24,7 +24,7 @@ type MultiPlayer struct {
 	// The username of the underlying player
 	name string
 
-	// The permission role of the player. 
+	// The permission role of the player.
 	// It can be one of the following: admin, builder, default or moderator
 	role string
 
@@ -67,7 +67,7 @@ func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager) (*Multi
 		return nil, err
 	}
 
-	mpm.l.Info("created new multiplayer", "mp", mp, "playerId", id, "duration", time.Since(now))
+	mpm.l.Info("created new multiplayer", "playerId", id, "duration", time.Since(now))
 	return mp, nil
 }
 
@@ -259,15 +259,23 @@ func (mp *MultiPlayer) GetFriends() []*MultiPlayer {
 	return mp.friends
 }
 
+func (mp *MultiPlayer) GetFriendsIds() []uuid.UUID {
+	var ids []uuid.UUID
+	for _, f := range mp.GetFriends() {
+		ids = append(ids, f.id)
+	}
+
+	return ids
+}
+
 func (mp *MultiPlayer) SetFriends(friends []*MultiPlayer, notify bool) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
 	mp.friends = friends
+	mp.mu.Unlock()
 
 	var err error
 	if notify {
-		err = mp.save("friends", friends)
+		err = mp.save("friends", mp.GetFriendsIds())
 	}
 
 	return err
@@ -275,18 +283,12 @@ func (mp *MultiPlayer) SetFriends(friends []*MultiPlayer, notify bool) error {
 
 func (mp *MultiPlayer) AddFriend(friend *MultiPlayer, notify bool) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
 	mp.friends = append(mp.friends, friend)
-	var ids []uuid.UUID
-
-	for _, friend := range mp.friends {
-		ids = append(ids, friend.id)
-	}
+	mp.mu.Unlock()
 
 	var err error
 	if notify {
-		err = mp.save("friends", ids)
+		err = mp.save("friends", mp.GetFriendsIds())
 	}
 
 	return err
@@ -296,8 +298,6 @@ var ErrFriendNotFound = errors.New("friend not found")
 
 func (mp *MultiPlayer) RemoveFriend(friend *MultiPlayer, notify bool) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
 	if !slices.Contains(mp.friends, friend) {
 		return ErrFriendNotFound
 	}
@@ -305,12 +305,14 @@ func (mp *MultiPlayer) RemoveFriend(friend *MultiPlayer, notify bool) error {
 	for i, f := range mp.friends {
 		if f == friend {
 			mp.friends = slices.Delete(mp.friends, i, i+1)
+			break
 		}
 	}
+	mp.mu.Unlock()
 
 	var err error
 	if notify {
-		err = mp.save("friends", mp.friends)
+		err = mp.save("friends", mp.GetFriendsIds())
 	}
 
 	return err
