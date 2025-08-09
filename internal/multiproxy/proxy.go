@@ -94,7 +94,7 @@ func New(ctx context.Context) (MultiProxy, error) {
 		mpm: mpm,
 	}
 
-	cfg, err := gate.LoadConfig(mp.c.V)
+	cfg, err := gate.LoadConfig(mp.c.GetViper())
 	gate, err := gate.New(gate.Options{
 		Config:   cfg,
 		EventMgr: event.New(),
