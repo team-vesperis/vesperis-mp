@@ -30,6 +30,8 @@ var (
 )
 
 func Init(ctx context.Context, c *config.Config, l *logger.Logger) (*Database, error) {
+	now := time.Now()
+
 	r, err := initRedis(ctx, l, c)
 	if err != nil {
 		return nil, err
@@ -44,13 +46,16 @@ func Init(ctx context.Context, c *config.Config, l *logger.Logger) (*Database, e
 		m: make(map[string]*redis.PubSub),
 	}
 
-	return &Database{
+	db := &Database{
 		r:   r,
 		l:   l,
 		lm:  lm,
 		ctx: ctx,
 		p:   p,
-	}, nil
+	}
+
+	db.l.Info("initialized database", "duration", time.Since(now))
+	return db, nil
 }
 
 // handles all the listeners that are actively listening for messages

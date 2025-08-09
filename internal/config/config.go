@@ -26,7 +26,7 @@ func Init(l *logger.Logger) (*Config, error) {
 		return nil, err
 	}
 
-	cfg.l.Info("loaded config", "duration", time.Since(now))
+	cfg.l.Info("initialized config", "duration", time.Since(now))
 	return cfg, nil
 }
 
@@ -53,15 +53,6 @@ func (c *Config) load() error {
 	}
 
 	return nil
-}
-
-func (c *Config) GetProxyId() string {
-	return c.V.GetString("proxy_id")
-}
-
-func (c *Config) SetProxyId(id string) error {
-	c.V.Set("proxy_id", id)
-	return c.V.WriteConfig()
 }
 
 func (c *Config) SetBind(bind string) error {

@@ -13,11 +13,11 @@ func (lm *ListenerManager) onProxyJoin(e *proxy.PostLoginEvent) {
 		return
 	}
 
-	err = mp.SetProxyId(lm.id, true)
-	if err != nil {
-		lm.l.Error("player post login set proxy id error", "playerId", id, "error", err)
-		p.Disconnect(loginDenyComponent)
-		return
+	if p.Username() != mp.GetName() {
+		err := mp.SetName(p.Username(), true)
+		if err != nil {
+			lm.l.Error("player post login set name error", "playerId", id, "error", err)
+		}
 	}
 }
 

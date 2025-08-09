@@ -3,6 +3,7 @@ package multiplayer
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
@@ -18,6 +19,8 @@ type MultiPlayerManager struct {
 }
 
 func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlayerManager {
+	now := time.Now()
+
 	mpm := &MultiPlayerManager{
 		multiPlayerMap: sync.Map{},
 		l:              l,
@@ -103,8 +106,12 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 	})
 
 	// fill map
-	mpm.GetAllMultiPlayers()
+	_, err := mpm.GetAllMultiPlayers()
+	if err != nil {
+		mpm.l.Error("filling up multiplayer map error", "error", err)
+	}
 
+	mpm.l.Info("initialized multiplayer manager", "duration", time.Since(now))
 	return mpm
 }
 

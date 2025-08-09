@@ -63,7 +63,7 @@ func Init() (*Logger, error) {
 		l: lg,
 	}
 
-	l.Info("loaded logger", "duration", time.Since(now))
+	l.Info("initialized logger", "duration", time.Since(now))
 	err = l.manageLogFiles()
 
 	return l, err
@@ -119,7 +119,7 @@ func (l *Logger) manageLogFiles() error {
 			return fileInfos[i].ModTime().Before(fileInfos[j].ModTime())
 		})
 
-		for i := 0; i < len(fileInfos)-maxLogFiles; i++ {
+		for i := range len(fileInfos) - maxLogFiles {
 			fileDirectory := filepath.Join(logDir, fileInfos[i].Name())
 			err := os.Remove(fileDirectory)
 			if err != nil {
