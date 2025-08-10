@@ -24,13 +24,11 @@ type MultiPlayer struct {
 	// The username of the underlying player
 	name string
 
-	// The permission role of the player.
-	// It can be one of the following: admin, builder, default or moderator
-	role string
+	// The permission info of the multiplayer.
+	pi *permissionInfo
 
-	// The permission rank of the player.
-	// It can be one of the following: champion, default, elite or legend
-	rank string
+	// The ban info of the multiplayer.
+	bi *banInfo
 
 	online bool
 
@@ -152,62 +150,12 @@ func (mp *MultiPlayer) SetName(name string, notify bool) error {
 	return err
 }
 
-func (mp *MultiPlayer) GetRole() string {
-	mp.mu.RLock()
-	defer mp.mu.RUnlock()
-
-	return mp.role
+func (mp *MultiPlayer) GetPermissionInfo() *permissionInfo {
+	return mp.pi
 }
 
-func (mp *MultiPlayer) SetRole(role string, notify bool) error {
-	if !IsValidRole(role) {
-		return ErrIncorrectRole
-	}
-
-	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
-	mp.role = role
-
-	var err error
-	if notify {
-		err = mp.save("permission.role", role)
-	}
-
-	return err
-}
-
-// Check if multiplayer has one of the following roles: admin, builder or moderator.
-func (mp *MultiPlayer) IsPrivileged() bool {
-	mp.mu.RLock()
-	defer mp.mu.RUnlock()
-
-	return mp.role == RoleAdmin || mp.role == RoleBuilder || mp.role == RoleModerator
-}
-
-func (mp *MultiPlayer) GetRank() string {
-	mp.mu.RLock()
-	defer mp.mu.RUnlock()
-
-	return mp.rank
-}
-
-func (mp *MultiPlayer) SetRank(rank string, notify bool) error {
-	if !IsValidRank(rank) {
-		return ErrIncorrectRank
-	}
-
-	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
-	mp.rank = rank
-
-	var err error
-	if notify {
-		err = mp.save("permission.rank", rank)
-	}
-
-	return err
+func (mp *MultiPlayer) GetBanInfo() *banInfo {
+	return mp.bi
 }
 
 func (mp *MultiPlayer) IsOnline() bool {

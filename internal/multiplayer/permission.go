@@ -3,7 +3,84 @@ package multiplayer
 import (
 	"errors"
 	"slices"
+	"sync"
 )
+
+type permissionInfo struct {
+	role string
+	rank string
+
+	mu sync.RWMutex
+
+	mp *MultiPlayer
+}
+
+func newPermissionInfo(mp *MultiPlayer) *permissionInfo {
+	pi := &permissionInfo{
+		role: RoleDefault,
+		rank: RankDefault,
+		mp:   mp,
+	}
+
+	return pi
+}
+
+func (pi *permissionInfo) GetRole() string {
+	pi.mu.RLock()
+	defer pi.mu.RUnlock()
+
+	return pi.role
+}
+
+func (pi *permissionInfo) SetRole(role string, notify bool) error {
+	if !IsValidRole(role) {
+		return ErrIncorrectRole
+	}
+
+	pi.mu.Lock()
+	defer pi.mu.Unlock()
+
+	pi.role = role
+
+	var err error
+	if notify {
+		err = pi.mp.save("permission.role", role)
+	}
+
+	return err
+}
+
+func (pi *permissionInfo) IsPrivileged() bool {
+	pi.mu.RLock()
+	defer pi.mu.RUnlock()
+
+	return pi.role == RoleAdmin || pi.role == RoleBuilder || pi.role == RoleModerator
+}
+
+func (pi *permissionInfo) GetRank() string {
+	pi.mu.RLock()
+	defer pi.mu.RUnlock()
+
+	return pi.rank
+}
+
+func (pi *permissionInfo) SetRank(rank string, notify bool) error {
+	if !IsValidRank(rank) {
+		return ErrIncorrectRank
+	}
+
+	pi.mu.Lock()
+	defer pi.mu.Unlock()
+
+	pi.rank = rank
+
+	var err error
+	if notify {
+		err = pi.mp.save("permission.rank", rank)
+	}
+
+	return err
+}
 
 var ErrIncorrectValueType = errors.New("incorrect value type returned from database")
 

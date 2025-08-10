@@ -69,12 +69,12 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 		case "permission.role":
 			role, ok := val.(string)
 			if ok {
-				mp.SetRole(role, false)
+				mp.pi.SetRole(role, false)
 			}
 		case "permission.rank":
 			rank, ok := val.(string)
 			if ok {
-				mp.SetRank(rank, false)
+				mp.pi.SetRank(rank, false)
 			}
 		case "online":
 			online, ok := val.(bool)
@@ -148,6 +148,9 @@ func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*Mul
 		mpm: mpm,
 	}
 
+	mp.pi = newPermissionInfo(mp)
+	mp.bi = newBanInfo()
+
 	p, ok := data["p"].(string)
 	if ok {
 		mp.p = p
@@ -167,12 +170,12 @@ func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*Mul
 	if ok {
 		role, ok := permission["role"].(string)
 		if ok {
-			mp.role = role
+			mp.pi.role = role
 		}
 
 		rank, ok := permission["rank"].(string)
 		if ok {
-			mp.rank = rank
+			mp.pi.rank = rank
 		}
 	}
 
