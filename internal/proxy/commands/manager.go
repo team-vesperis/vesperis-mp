@@ -6,6 +6,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
+	"go.minekube.com/brigodier"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
@@ -51,9 +52,22 @@ var (
 	ErrOnlyPlayersSubCommand = errors.New("only players can use this sub command")
 )
 
-func (cm CommandManager) registerCommands() {
+func (cm *CommandManager) registerCommands() {
 	cm.m.Register(cm.databaseCommand("database"))
 	cm.m.Register(cm.databaseCommand("db"))
 	cm.m.Register(cm.vanishCommand("vanish"))
 	cm.m.Register(cm.vanishCommand("v"))
+}
+
+func (cm *CommandManager) SuggestAllMultiPlayers() brigodier.SuggestionProvider {
+	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+		// dynamically update suggestions based on which players are suggested
+		//r := b.Remaining
+
+		return b.Build()
+	})
+}
+
+func (cm *CommandManager) SuggestAllOnlineMultiPlayers() {
+
 }

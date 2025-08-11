@@ -2,6 +2,7 @@ package multiproxy
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -84,6 +85,18 @@ func New(ctx context.Context) (MultiProxy, error) {
 	ctx = logr.NewContext(ctx, lr)
 
 	mpm := multiplayer.InitMultiPlayerManager(l, db)
+
+	now := time.Now()
+	for range 100000 {
+		mpm.GetAllMultiPlayersWay1()
+	}
+	l.Info("way 1", "duration", time.Since(now))
+
+	now = time.Now()
+	for range 100000 {
+		mpm.GetAllMultiPlayersWay2()
+	}
+	l.Info("way 2", "duration", time.Since(now))
 
 	mp := MultiProxy{
 		db:  db,
