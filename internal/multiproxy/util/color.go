@@ -17,7 +17,7 @@ var StyleColorOrange = component.Style{
 	Color: ColorOrange,
 }
 
-var ColorRed, _ = color.Hex("#e6201c")
+var ColorRed, _ = color.Hex("#f72421")
 
 var StyleColorRed = component.Style{
 	Color: ColorRed,

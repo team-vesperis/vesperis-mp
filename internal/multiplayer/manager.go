@@ -36,16 +36,24 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 
 		id, err := uuid.Parse(s[0])
 		if err != nil {
-			mpm.l.Error("multiplayer update channel parse uuid error", "error", err)
+			mpm.l.Error("multiplayer update channel parse uuid error", "parsed uuid", s[0], "error", err)
 			return
 		}
 
 		key := s[1]
 
-		mp, _ := mpm.GetMultiPlayer(id)
+		mp, err := mpm.GetMultiPlayer(id)
+		if err != nil {
+			mpm.l.Error("multiplayer update channel get multiplayer error", "playerId", id, "error", err)
+		}
+
+		if key == "new" {
+			return
+		}
+
 		val, err := mpm.db.GetPlayerDataField(id, key)
 		if err != nil {
-			mpm.l.Error("multiplayer update channel get player data field error", "error", err)
+			mpm.l.Error("multiplayer update channel get player data field error", "playerId", id, "error", err)
 			return
 		}
 
@@ -106,7 +114,7 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 	})
 
 	// fill map
-	_, err := mpm.GetAllMultiPlayersWay1()
+	_, err := mpm.GetAllMultiPlayersFromDatabase()
 	if err != nil {
 		mpm.l.Error("filling up multiplayer map error", "error", err)
 	}
@@ -193,7 +201,25 @@ func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*Mul
 	return mp, nil
 }
 
-func (mpm *MultiPlayerManager) GetAllMultiPlayersWay1() ([]*MultiPlayer, error) {
+func (mpm *MultiPlayerManager) GetAllMultiPlayers() ([]*MultiPlayer, error) {
+	var l []*MultiPlayer
+
+	mpm.multiPlayerMap.Range(func(key, value any) bool {
+		mp, ok := value.(*MultiPlayer)
+		if !ok {
+			mpm.l.Info("detected incorrect value saved in the multiplayer map", "key", key, "value", value)
+			mpm.multiPlayerMap.Delete(key)
+		} else {
+			l = append(l, mp)
+		}
+
+		return true
+	})
+
+	return l, nil
+}
+
+func (mpm *MultiPlayerManager) GetAllMultiPlayersFromDatabase() ([]*MultiPlayer, error) {
 	var l []*MultiPlayer
 
 	i, err := mpm.db.GetAllPlayerIds()
@@ -214,28 +240,10 @@ func (mpm *MultiPlayerManager) GetAllMultiPlayersWay1() ([]*MultiPlayer, error) 
 	return l, nil
 }
 
-func (mpm *MultiPlayerManager) GetAllMultiPlayersWay2() ([]*MultiPlayer, error) {
-	var l []*MultiPlayer
-
-	mpm.multiPlayerMap.Range(func(key, value any) bool {
-		mp, ok := value.(*MultiPlayer)
-		if !ok {
-			mpm.l.Info("detected incorrect value saved in the multiplayer map", "key", key, "value", value)
-			mpm.multiPlayerMap.Delete(key)
-		} else {
-			l = append(l, mp)
-		}
-
-		return true
-	})
-
-	return l, nil
-}
-
 func (mpm *MultiPlayerManager) GetAllOnlinePlayers() ([]*MultiPlayer, error) {
 	var l []*MultiPlayer
 
-	all, err := mpm.GetAllMultiPlayersWay1()
+	all, err := mpm.GetAllMultiPlayers()
 	if err != nil {
 		return nil, err
 	}

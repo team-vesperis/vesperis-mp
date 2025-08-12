@@ -65,6 +65,13 @@ func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager) (*Multi
 		return nil, err
 	}
 
+	// update every proxies' map
+	m := id.String() + "_new"
+	err = mpm.db.Publish(multiPlayerUpdateChannel, m)
+	if err != nil {
+		return nil, err
+	}
+
 	mpm.l.Info("created new multiplayer", "playerId", id, "duration", time.Since(now))
 	return mp, nil
 }
