@@ -17,7 +17,15 @@ func main() {
 	defer canc()
 
 	now := time.Now()
-	mp, err := multiproxy.New(ctx)
+	mpm, err := multiproxy.InitManager(ctx)
+	if err != nil {
+		return
+	}
+
+	mpm.GetLogger().Info("initialized MultiProxy manager", "duration", time.Since(now))
+
+	now = time.Now()
+	mp, err := multiproxy.New(mpm)
 	if err != nil {
 		return
 	}

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
@@ -62,23 +63,17 @@ func (cm *CommandManager) registerCommands() {
 }
 
 var ErrTargetNotFound = errors.New("target not found")
+var ComponentTargetNotFound = &component.Text{
+	Content: "Target not found.",
+	S:       util.StyleColorOrange,
+}
 
 func (cm *CommandManager) getMultiPlayerFromTarget(t string, c *command.Context) (*multiplayer.MultiPlayer, error) {
 	// target can be a player name or an uuid
 	id, err := uuid.Parse(t)
 	if err != nil {
 		// try to get the id from a player name
-		l, err := cm.mpm.GetAllMultiPlayers()
-		if err != nil {
-			c.SendMessage(&component.Text{
-				Content: "Could not get vanish.",
-				S: component.Style{
-					Color:      util.ColorRed,
-					HoverEvent: component.ShowText(&component.Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
-				},
-			})
-			return nil, err
-		}
+		l := cm.mpm.GetAllMultiPlayers()
 
 		id = uuid.Nil
 		for _, mp := range l {
@@ -89,16 +84,18 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string, c *command.Context)
 		}
 
 		if id == uuid.Nil {
-			c.SendMessage(&component.Text{
-				Content: "Target not found.",
-				S:       util.StyleColorOrange,
-			})
+			c.SendMessage(ComponentTargetNotFound)
 			return nil, ErrTargetNotFound
 		}
 	}
 
 	mp, err := cm.mpm.GetMultiPlayer(id)
 	if err != nil {
+		if err == database.ErrDataNotFound {
+			c.SendMessage(ComponentTargetNotFound)
+			return nil, ErrTargetNotFound
+		}
+
 		c.SendMessage(&component.Text{
 			Content: "Could not get vanish.",
 			S: component.Style{
@@ -112,15 +109,55 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string, c *command.Context)
 	return mp, nil
 }
 
-func (cm *CommandManager) SuggestAllMultiPlayers() brigodier.SuggestionProvider {
+// suggests all multiplayers, online and offline.
+// vanished players are hidden from non-privileged players
+func (cm *CommandManager) SuggestAllMultiPlayers(onlyOnline bool) brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
-		// dynamically update suggestions based on which players are suggested
-		//r := b.Remaining
+		r := b.RemainingLowerCase
+
+		if len(r) < 1 {
+			b.Suggest("type a playerName or UUID")
+			return b.Build()
+		}
+
+		// use list to get all names and ids
+		var l []*multiplayer.MultiPlayer
+		if onlyOnline {
+			l = cm.mpm.GetAllOnlinePlayers()
+		} else {
+			l = cm.mpm.GetAllMultiPlayers()
+		}
+
+		hidden := false
+		p, ok := c.Source.(proxy.Player)
+		if ok {
+			mp, err := cm.mpm.GetMultiPlayer(p.ID())
+			if err != nil {
+				cm.l.Error("suggest all multiplayers get multiplayer error", "error", err)
+				return b.Build()
+			}
+
+			if !mp.GetPermissionInfo().IsPrivileged() {
+				hidden = true
+			}
+		}
+
+		for _, mp := range l {
+			if hidden == true && mp.IsVanished() {
+				continue
+			}
+
+			name := mp.GetName()
+			if strings.HasPrefix(strings.ToLower(name), r) {
+				b.Suggest(name)
+			}
+
+			id := mp.GetId().String()
+			if len(r) > 1 && strings.HasPrefix(strings.ToLower(id), r) {
+				b.Suggest(id)
+			}
+		}
 
 		return b.Build()
 	})
-}
-
-func (cm *CommandManager) SuggestAllOnlineMultiPlayers() {
-
 }

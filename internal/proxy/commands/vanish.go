@@ -45,6 +45,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 				return nil
 			})).
 			Then(brigodier.Argument("target", brigodier.SingleWord).
+				Suggests(cm.SuggestAllMultiPlayers(false)).
 				Executes(command.Command(func(c *command.Context) error {
 					t := c.String("target")
 					mp, err := cm.getMultiPlayerFromTarget(t, c)

@@ -42,19 +42,19 @@ type MultiPlayer struct {
 	mpm *MultiPlayerManager
 }
 
+var defaultPlayerData = map[string]any{
+	"permission.role": RoleDefault,
+	"permission.rank": RankDefault,
+	"online":          false,
+	"vanished":        false,
+}
+
 // New returns a new multiplayer
 func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager) (*MultiPlayer, error) {
 	now := time.Now()
 	id := p.ID()
 
-	defaultPlayerData := map[string]any{
-		"name":            p.Username(),
-		"permission.role": RoleDefault,
-		"permission.rank": RankDefault,
-		"online":          false,
-		"vanished":        false,
-	}
-
+	defaultPlayerData["name"] = p.Username()
 	err := db.SetPlayerData(id, defaultPlayerData)
 	if err != nil {
 		return nil, err

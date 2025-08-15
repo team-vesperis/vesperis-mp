@@ -18,7 +18,7 @@ type MultiPlayerManager struct {
 	db *database.Database
 }
 
-func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlayerManager {
+func InitManager(l *logger.Logger, db *database.Database) *MultiPlayerManager {
 	now := time.Now()
 
 	mpm := &MultiPlayerManager{
@@ -28,7 +28,20 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 	}
 
 	// start update listener
-	mpm.db.CreateListener(multiPlayerUpdateChannel, func(msg *redis.Message) {
+	mpm.db.CreateListener(multiPlayerUpdateChannel, mpm.createUpdateListener())
+
+	// fill map
+	_, err := mpm.GetAllMultiPlayersFromDatabase()
+	if err != nil {
+		mpm.l.Error("filling up multiplayer map error", "error", err)
+	}
+
+	mpm.l.Info("initialized multiplayer manager", "duration", time.Since(now))
+	return mpm
+}
+
+func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
+	return func(msg *redis.Message) {
 		m := msg.Payload
 		mpm.l.Info(m)
 
@@ -111,16 +124,7 @@ func InitMultiPlayerManager(l *logger.Logger, db *database.Database) *MultiPlaye
 				mp.SetFriends(mp_list, false)
 			}
 		}
-	})
-
-	// fill map
-	_, err := mpm.GetAllMultiPlayersFromDatabase()
-	if err != nil {
-		mpm.l.Error("filling up multiplayer map error", "error", err)
 	}
-
-	mpm.l.Info("initialized multiplayer manager", "duration", time.Since(now))
-	return mpm
 }
 
 /*
@@ -201,7 +205,7 @@ func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*Mul
 	return mp, nil
 }
 
-func (mpm *MultiPlayerManager) GetAllMultiPlayers() ([]*MultiPlayer, error) {
+func (mpm *MultiPlayerManager) GetAllMultiPlayers() []*MultiPlayer {
 	var l []*MultiPlayer
 
 	mpm.multiPlayerMap.Range(func(key, value any) bool {
@@ -216,7 +220,7 @@ func (mpm *MultiPlayerManager) GetAllMultiPlayers() ([]*MultiPlayer, error) {
 		return true
 	})
 
-	return l, nil
+	return l
 }
 
 func (mpm *MultiPlayerManager) GetAllMultiPlayersFromDatabase() ([]*MultiPlayer, error) {
@@ -240,13 +244,10 @@ func (mpm *MultiPlayerManager) GetAllMultiPlayersFromDatabase() ([]*MultiPlayer,
 	return l, nil
 }
 
-func (mpm *MultiPlayerManager) GetAllOnlinePlayers() ([]*MultiPlayer, error) {
+func (mpm *MultiPlayerManager) GetAllOnlinePlayers() []*MultiPlayer {
 	var l []*MultiPlayer
 
-	all, err := mpm.GetAllMultiPlayers()
-	if err != nil {
-		return nil, err
-	}
+	all := mpm.GetAllMultiPlayers()
 
 	for _, mp := range all {
 		if mp.IsOnline() {
@@ -254,5 +255,5 @@ func (mpm *MultiPlayerManager) GetAllOnlinePlayers() ([]*MultiPlayer, error) {
 		}
 	}
 
-	return l, nil
+	return l
 }
