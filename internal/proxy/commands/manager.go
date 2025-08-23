@@ -23,7 +23,7 @@ type CommandManager struct {
 	mpm *multiplayer.MultiPlayerManager
 }
 
-func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mpm *multiplayer.MultiPlayerManager) *CommandManager {
+func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mpm *multiplayer.MultiPlayerManager) (*CommandManager, error) {
 	cm := &CommandManager{
 		m:   p.Command(),
 		l:   l,
@@ -32,7 +32,7 @@ func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mpm *multipla
 	}
 
 	cm.registerCommands()
-	return cm
+	return cm, nil
 }
 
 var (

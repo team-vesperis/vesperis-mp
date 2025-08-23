@@ -25,8 +25,9 @@ type Database struct {
 }
 
 var (
-	ErrDataFieldNotFound = errors.New("data field not found")
-	ErrDataNotFound      = errors.New("data not found")
+	ErrDataFieldNotFound  = errors.New("data field not found")
+	ErrDataNotFound       = errors.New("data not found")
+	ErrIncorrectValueType = errors.New("incorrect value type returned from database")
 )
 
 func Init(ctx context.Context, c *config.Config, l *logger.Logger) (*Database, error) {
@@ -109,7 +110,7 @@ func (db *Database) GetData(key string) (any, error) {
 	}
 
 	if val == nil || val == "" {
-		return "", nil
+		return "", ErrDataNotFound
 	}
 
 	// 3.

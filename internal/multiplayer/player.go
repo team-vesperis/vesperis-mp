@@ -13,10 +13,10 @@ import (
 
 type MultiPlayer struct {
 	// The proxy id on which the underlying player is/was located
-	p string
+	p uuid.UUID
 
 	// The backend id on which the underlying player is/was located
-	b string
+	b uuid.UUID
 
 	// The id of the underlying player
 	id uuid.UUID
@@ -90,14 +90,14 @@ func (mp *MultiPlayer) save(key string, value any) error {
 	return mp.mpm.db.Publish(multiPlayerUpdateChannel, m)
 }
 
-func (mp *MultiPlayer) GetProxyId() string {
+func (mp *MultiPlayer) GetProxyId() uuid.UUID {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
 	return mp.p
 }
 
-func (mp *MultiPlayer) SetProxyId(id string, notify bool) error {
+func (mp *MultiPlayer) SetProxyId(id uuid.UUID, notify bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
@@ -111,14 +111,14 @@ func (mp *MultiPlayer) SetProxyId(id string, notify bool) error {
 	return err
 }
 
-func (mp *MultiPlayer) GetBackendId() string {
+func (mp *MultiPlayer) GetBackendId() uuid.UUID {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
 	return mp.b
 }
 
-func (mp *MultiPlayer) SetBackendId(id string, notify bool) error {
+func (mp *MultiPlayer) SetBackendId(id uuid.UUID, notify bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 

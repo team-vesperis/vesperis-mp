@@ -14,7 +14,7 @@ import (
 type MultiProxy struct {
 	// The id of the mp.
 	// Used to differentiate the proxy from others.
-	id string
+	id uuid.UUID
 
 	// The gate proxy used in the mp.
 	p *proxy.Proxy
@@ -36,7 +36,7 @@ func New(mpm *MultiProxyManager) (MultiProxy, error) {
 	// 	id = "proxy_" + uuid.New().Undashed()
 	// }
 
-	id := "proxy_" + uuid.New().Undashed()
+	id := uuid.New()
 
 	mp := MultiProxy{
 		id:  id,
@@ -56,8 +56,15 @@ func New(mpm *MultiProxyManager) (MultiProxy, error) {
 	mp.p = gate.Java()
 	event.Subscribe(mp.p.Event(), 0, mp.onShutdown)
 
-	mp.cm = commands.Init(mp.p, mp.mpm.l, mp.mpm.db, mp.mpm.mpm)
-	mp.lm = listeners.Init(mp.p.Event(), mp.mpm.l, mp.mpm.db, mp.mpm.mpm, mp.id)
+	mp.cm, err = commands.Init(mp.p, mp.mpm.l, mp.mpm.db, mp.mpm.mpm)
+	if err != nil {
+		return mp, nil
+	}
+
+	mp.lm, err = listeners.Init(mp.p.Event(), mp.mpm.l, mp.mpm.db, mp.mpm.mpm, mp.id)
+	if err != nil {
+		return mp, err
+	}
 
 	mpm.multiProxyMap.Store(id, mp)
 
@@ -81,4 +88,15 @@ func (mp *MultiProxy) GetLogger() *logger.Logger {
 
 func (mp *MultiProxy) onShutdown(event *proxy.ShutdownEvent) {
 	mp.mpm.Close()
+}
+
+// creates id and checks if available
+func (mpm *MultiProxyManager) createNewProxyId() uuid.UUID {
+	id := uuid.New()
+	mp, _ := mpm.GetMultiProxy(id)
+	if mp == nil {
+		return id
+	}
+
+	return mpm.createNewProxyId()
 }

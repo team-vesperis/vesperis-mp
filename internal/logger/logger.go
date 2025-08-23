@@ -18,6 +18,7 @@ const maxLogFiles = 20
 type Logger struct {
 	s *zap.SugaredLogger
 	l *zap.Logger
+	g *zap.Logger
 }
 
 func Init() (*Logger, error) {
@@ -55,12 +56,14 @@ func Init() (*Logger, error) {
 
 	c := zapcore.NewTee(consoleC, fileC)
 
-	lg := zap.New(c, zap.AddCaller(), zap.AddCallerSkip(1))
+	lg := zap.New(c, zap.AddCaller(), zap.AddCallerSkip(1)).Named("mp")
+	g := zap.New(c, zap.AddCaller(), zap.AddCallerSkip(1)).Named("gate")
 	s := lg.Sugar()
 
 	l := &Logger{
 		s: s,
 		l: lg,
+		g: g,
 	}
 
 	l.Info("initialized logger", "duration", time.Since(now))
@@ -75,6 +78,10 @@ func (l *Logger) GetSugaredLogger() *zap.SugaredLogger {
 
 func (l *Logger) GetLogger() *zap.Logger {
 	return l.l
+}
+
+func (l *Logger) GetGateLogger() *zap.Logger {
+	return l.g
 }
 
 func (l *Logger) Close() {

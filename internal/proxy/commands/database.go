@@ -1,8 +1,9 @@
 package commands
 
 import (
+	"github.com/team-vesperis/vesperis-mp/internal/database"
+	"github.com/team-vesperis/vesperis-mp/internal/multiproxy/util"
 	"go.minekube.com/brigodier"
-	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
 )
@@ -14,40 +15,54 @@ func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuild
 			Then(brigodier.Argument("key", brigodier.SingleWord).
 				Executes(command.Command(func(c *command.Context) error {
 					v, err := cm.db.GetData(c.String("key"))
+					if err == database.ErrDataNotFound {
+						c.SendMessage(&component.Text{
+							Content: "No value found in the database.",
+							S:       util.StyleColorOrange,
+						})
+						return nil
+					}
+
 					val, _ := v.(string)
 
 					if err != nil {
 						c.SendMessage(&component.Text{
-							Content: "Error getting value from database: " + err.Error(),
-							S:       component.Style{Color: color.Red},
+							Content: "Could not get value from database.",
+							S: component.Style{
+								Color:      util.ColorRed,
+								HoverEvent: component.ShowText(&component.Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
+							},
 						})
-					} else {
-
-						c.SendMessage(&component.Text{
-							Content: "Returned value: " + val,
-							S:       component.Style{Color: color.Green},
-						})
-
+						return err
 					}
+
+					c.SendMessage(&component.Text{
+						Content: "Returned value: " + val,
+						S:       util.StyleColorLightGreen,
+					})
 
 					return nil
 				})))).
 		Then(brigodier.Literal("set").
 			Then(brigodier.Argument("key", brigodier.SingleWord).
-				Then(brigodier.Argument("value", brigodier.SingleWord).
+				Then(brigodier.Argument("value", brigodier.StringPhrase).
 					Executes(command.Command(func(c *command.Context) error {
 						err := cm.db.SetData(c.String("key"), c.String("value"))
 						if err != nil {
 							c.SendMessage(&component.Text{
-								Content: "Error setting value in database: " + err.Error(),
-								S:       component.Style{Color: color.Red},
+								Content: "Could not set value from database.",
+								S: component.Style{
+									Color:      util.ColorRed,
+									HoverEvent: component.ShowText(&component.Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
+								},
 							})
-						} else {
-							c.SendMessage(&component.Text{
-								Content: "Successfully set value in database",
-								S:       component.Style{Color: color.Green},
-							})
+							return err
 						}
+
+						c.SendMessage(&component.Text{
+							Content: "Successfully set value in database.",
+							S:       util.StyleColorLightGreen,
+						})
 
 						return nil
 					})))))

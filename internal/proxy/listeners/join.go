@@ -1,6 +1,9 @@
 package listeners
 
-import "go.minekube.com/gate/pkg/edition/java/proxy"
+import (
+	"go.minekube.com/gate/pkg/edition/java/proxy"
+	"go.minekube.com/gate/pkg/util/uuid"
+)
 
 func (lm *ListenerManager) onProxyJoin(e *proxy.PostLoginEvent) {
 	p := e.Player()
@@ -32,7 +35,9 @@ func (lm *ListenerManager) onServerJoin(e *proxy.ServerPostConnectEvent) {
 		return
 	}
 
-	backendId := p.CurrentServer().Server().ServerInfo().Name()
+	//backendId := p.CurrentServer().Server().ServerInfo().Name()
+	backendId := uuid.New()
+
 	err = mp.SetBackendId(backendId, true)
 	if err != nil {
 		lm.l.Error("player server post connect set backend id error", "playerId", id, "backendId", backendId, "error", err)

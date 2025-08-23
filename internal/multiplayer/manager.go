@@ -73,12 +73,12 @@ func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 		// don't notify so there will be no loop created
 		switch key {
 		case "p":
-			p, ok := val.(string)
+			p, ok := val.(uuid.UUID)
 			if ok {
 				mp.SetProxyId(p, false)
 			}
 		case "b":
-			b, ok := val.(string)
+			b, ok := val.(uuid.UUID)
 			if ok {
 				mp.SetBackendId(b, false)
 			}
@@ -163,12 +163,12 @@ func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*Mul
 	mp.pi = newPermissionInfo(mp)
 	mp.bi = newBanInfo()
 
-	p, ok := data["p"].(string)
+	p, ok := data["p"].(uuid.UUID)
 	if ok {
 		mp.p = p
 	}
 
-	b, ok := data["b"].(string)
+	b, ok := data["b"].(uuid.UUID)
 	if ok {
 		mp.b = b
 	}

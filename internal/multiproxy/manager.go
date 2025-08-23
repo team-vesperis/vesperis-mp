@@ -10,6 +10,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
+	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type MultiProxyManager struct {
@@ -41,9 +42,6 @@ func InitManager(ctx context.Context) (*MultiProxyManager, error) {
 		return &MultiProxyManager{}, logErr
 	}
 
-	lr := zapr.NewLogger(l.GetLogger())
-	ctx = logr.NewContext(ctx, lr)
-
 	c, cfErr := config.Init(l)
 	if cfErr != nil {
 		l.Error("config initialization error")
@@ -63,11 +61,25 @@ func InitManager(ctx context.Context) (*MultiProxyManager, error) {
 		l:             l,
 		c:             c,
 		db:            db,
-		ctx:           ctx,
+		ctx:           logr.NewContext(ctx, zapr.NewLogger(l.GetGateLogger())),
 		mpm:           mplayerm,
 	}
 
 	return mproxym, nil
+}
+
+func (mpm *MultiProxyManager) GetMultiProxy(id uuid.UUID) (*MultiProxy, error) {
+	val, ok := mpm.multiProxyMap.Load(id)
+	if ok {
+		mp, ok := val.(*MultiProxy)
+		if ok {
+			return mp, nil
+		}
+
+		mpm.multiProxyMap.Delete(id)
+	}
+
+	return nil, nil
 }
 
 func (mpm *MultiProxyManager) GetLogger() *logger.Logger {

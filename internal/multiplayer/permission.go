@@ -82,8 +82,6 @@ func (pi *permissionInfo) SetRank(rank string, notify bool) error {
 	return err
 }
 
-var ErrIncorrectValueType = errors.New("incorrect value type returned from database")
-
 const (
 	RoleAdmin     = "admin"
 	RoleBuilder   = "builder"

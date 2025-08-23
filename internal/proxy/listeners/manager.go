@@ -1,10 +1,13 @@
 package listeners
 
 import (
+	"time"
+
 	"github.com/robinbraemer/event"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
+	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type ListenerManager struct {
@@ -12,10 +15,11 @@ type ListenerManager struct {
 	l   *logger.Logger
 	db  *database.Database
 	mpm *multiplayer.MultiPlayerManager
-	id  string
+	id  uuid.UUID
 }
 
-func Init(m event.Manager, l *logger.Logger, db *database.Database, mpm *multiplayer.MultiPlayerManager, id string) *ListenerManager {
+func Init(m event.Manager, l *logger.Logger, db *database.Database, mpm *multiplayer.MultiPlayerManager, id uuid.UUID) (*ListenerManager, error) {
+	now := time.Now()
 	lm := &ListenerManager{
 		m:   m,
 		l:   l,
@@ -24,8 +28,15 @@ func Init(m event.Manager, l *logger.Logger, db *database.Database, mpm *multipl
 		id:  id,
 	}
 
+	err := lm.initFavicon()
+	if err != nil {
+		return nil, err
+	}
+
 	lm.registerListeners()
-	return lm
+
+	lm.l.Info("initialized listener manager", "duration", time.Since(now))
+	return lm, nil
 }
 
 func (lm *ListenerManager) registerListeners() {
@@ -33,4 +44,5 @@ func (lm *ListenerManager) registerListeners() {
 	event.Subscribe(lm.m, 0, lm.onServerJoin)
 	event.Subscribe(lm.m, 0, lm.onLogin)
 	event.Subscribe(lm.m, 0, lm.onDisconnect)
+	event.Subscribe(lm.m, 0, lm.onPing)
 }
