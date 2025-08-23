@@ -32,7 +32,7 @@ func (pi *permissionInfo) GetRole() string {
 	return pi.role
 }
 
-func (pi *permissionInfo) SetRole(role string, notify bool) error {
+func (pi *permissionInfo) SetRole(role string) error {
 	if !IsValidRole(role) {
 		return ErrIncorrectRole
 	}
@@ -42,12 +42,7 @@ func (pi *permissionInfo) SetRole(role string, notify bool) error {
 
 	pi.role = role
 
-	var err error
-	if notify {
-		err = pi.mp.save("permission.role", role)
-	}
-
-	return err
+	return pi.mp.save("permission.role", role)
 }
 
 func (pi *permissionInfo) IsPrivileged() bool {
@@ -64,7 +59,7 @@ func (pi *permissionInfo) GetRank() string {
 	return pi.rank
 }
 
-func (pi *permissionInfo) SetRank(rank string, notify bool) error {
+func (pi *permissionInfo) SetRank(rank string) error {
 	if !IsValidRank(rank) {
 		return ErrIncorrectRank
 	}
@@ -74,12 +69,7 @@ func (pi *permissionInfo) SetRank(rank string, notify bool) error {
 
 	pi.rank = rank
 
-	var err error
-	if notify {
-		err = pi.mp.save("permission.rank", rank)
-	}
-
-	return err
+	return pi.mp.save("permission.rank", rank)
 }
 
 const (

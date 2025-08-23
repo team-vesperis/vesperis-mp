@@ -63,7 +63,6 @@ func Init(ctx context.Context, c *config.Config, l *logger.Logger) (*Database, e
 type listenManager struct {
 	m  map[string]*redis.PubSub
 	mu sync.Mutex
-	wg sync.WaitGroup
 }
 
 const redisTTL = 15 * time.Minute
@@ -408,9 +407,7 @@ func (db *Database) CreateListener(channel string, handler func(msg *redis.Messa
 				return
 			}
 
-			db.lm.wg.Add(1)
 			handler(msg)
-			db.lm.wg.Done()
 		}
 	}()
 }

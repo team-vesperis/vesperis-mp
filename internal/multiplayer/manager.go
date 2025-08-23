@@ -14,17 +14,20 @@ import (
 type MultiPlayerManager struct {
 	multiPlayerMap sync.Map
 
+	ownerProxyId uuid.UUID
+
 	l  *logger.Logger
 	db *database.Database
 }
 
-func InitManager(l *logger.Logger, db *database.Database) *MultiPlayerManager {
+func InitManager(l *logger.Logger, db *database.Database, id uuid.UUID) *MultiPlayerManager {
 	now := time.Now()
 
 	mpm := &MultiPlayerManager{
 		multiPlayerMap: sync.Map{},
 		l:              l,
 		db:             db,
+		ownerProxyId:   id,
 	}
 
 	// start update listener
@@ -43,17 +46,24 @@ func InitManager(l *logger.Logger, db *database.Database) *MultiPlayerManager {
 func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
 		m := msg.Payload
-		mpm.l.Info(m)
 
+		mpm.l.Info("received update message ")
 		s := strings.Split(m, "_")
 
-		id, err := uuid.Parse(s[0])
-		if err != nil {
-			mpm.l.Error("multiplayer update channel parse uuid error", "parsed uuid", s[0], "error", err)
+		originProxy := s[0]
+		if mpm.ownerProxyId.String() == originProxy {
 			return
 		}
 
-		key := s[1]
+		mpm.l.Info(m)
+
+		id, err := uuid.Parse(s[1])
+		if err != nil {
+			mpm.l.Error("multiplayer update channel parse uuid error", "parsed uuid", s[1], "error", err)
+			return
+		}
+
+		key := s[2]
 
 		mp, err := mpm.GetMultiPlayer(id)
 		if err != nil {
@@ -70,42 +80,55 @@ func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 			return
 		}
 
-		// don't notify so there will be no loop created
 		switch key {
 		case "p":
 			p, ok := val.(uuid.UUID)
 			if ok {
-				mp.SetProxyId(p, false)
+				mp.mu.Lock()
+				mp.p = p
+				mp.mu.Unlock()
 			}
 		case "b":
 			b, ok := val.(uuid.UUID)
 			if ok {
-				mp.SetBackendId(b, false)
+				mp.mu.Lock()
+				mp.b = b
+				mp.mu.Unlock()
 			}
 		case "name":
 			name, ok := val.(string)
 			if ok {
-				mp.SetName(name, false)
+				mp.mu.Lock()
+				mp.name = name
+				mp.mu.Unlock()
 			}
 		case "permission.role":
 			role, ok := val.(string)
 			if ok {
-				mp.pi.SetRole(role, false)
+				mp.pi.mu.Lock()
+				mp.pi.role = role
+				mp.pi.mu.Unlock()
 			}
 		case "permission.rank":
 			rank, ok := val.(string)
 			if ok {
-				mp.pi.SetRank(rank, false)
+				mp.pi.mu.Lock()
+				mp.pi.rank = rank
+				mp.pi.mu.Unlock()
 			}
 		case "online":
 			online, ok := val.(bool)
 			if ok {
-				mp.SetOnline(online, false)
+				mp.mu.Lock()
+				mp.online = online
+				mp.mu.Unlock()
 			}
 		case "vanished":
 			vanished, ok := val.(bool)
 			if ok {
-				mp.SetVanished(vanished, false)
+				mp.mu.Lock()
+				mp.vanished = vanished
+				mp.mu.Unlock()
 			}
 		case "friends":
 			list, ok := val.([]any)
@@ -121,7 +144,9 @@ func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 					}
 				}
 
-				mp.SetFriends(mp_list, false)
+				mp.mu.Lock()
+				mp.friends = mp_list
+				mp.mu.Unlock()
 			}
 		}
 	}

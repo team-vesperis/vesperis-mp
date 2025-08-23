@@ -86,7 +86,7 @@ func (mp *MultiPlayer) save(key string, value any) error {
 		return err
 	}
 
-	m := mp.id.String() + "_" + key
+	m := mp.mpm.ownerProxyId.String() + "_" + mp.id.String() + "_" + key
 	return mp.mpm.db.Publish(multiPlayerUpdateChannel, m)
 }
 
@@ -97,18 +97,13 @@ func (mp *MultiPlayer) GetProxyId() uuid.UUID {
 	return mp.p
 }
 
-func (mp *MultiPlayer) SetProxyId(id uuid.UUID, notify bool) error {
+func (mp *MultiPlayer) SetProxyId(id uuid.UUID) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.p = id
 
-	var err error
-	if notify {
-		err = mp.save("p", id)
-	}
-
-	return err
+	return mp.save("p", id)
 }
 
 func (mp *MultiPlayer) GetBackendId() uuid.UUID {
@@ -118,18 +113,13 @@ func (mp *MultiPlayer) GetBackendId() uuid.UUID {
 	return mp.b
 }
 
-func (mp *MultiPlayer) SetBackendId(id uuid.UUID, notify bool) error {
+func (mp *MultiPlayer) SetBackendId(id uuid.UUID) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.b = id
 
-	var err error
-	if notify {
-		err = mp.save("b", id)
-	}
-
-	return err
+	return mp.save("b", id)
 }
 
 func (mp *MultiPlayer) GetId() uuid.UUID {
@@ -143,18 +133,13 @@ func (mp *MultiPlayer) GetName() string {
 	return mp.name
 }
 
-func (mp *MultiPlayer) SetName(name string, notify bool) error {
+func (mp *MultiPlayer) SetName(name string) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.name = name
 
-	var err error
-	if notify {
-		err = mp.save("name", name)
-	}
-
-	return err
+	return mp.save("name", name)
 }
 
 func (mp *MultiPlayer) GetPermissionInfo() *permissionInfo {
@@ -172,18 +157,13 @@ func (mp *MultiPlayer) IsOnline() bool {
 	return mp.online
 }
 
-func (mp *MultiPlayer) SetOnline(online bool, notify bool) error {
+func (mp *MultiPlayer) SetOnline(online bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.online = online
 
-	var err error
-	if notify {
-		err = mp.save("online", online)
-	}
-
-	return err
+	return mp.save("online", online)
 }
 
 func (mp *MultiPlayer) IsVanished() bool {
@@ -193,18 +173,13 @@ func (mp *MultiPlayer) IsVanished() bool {
 	return mp.vanished
 }
 
-func (mp *MultiPlayer) SetVanished(vanished bool, notify bool) error {
+func (mp *MultiPlayer) SetVanished(vanished bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
 	mp.vanished = vanished
 
-	var err error
-	if notify {
-		err = mp.save("vanished", vanished)
-	}
-
-	return err
+	return mp.save("vanished", vanished)
 }
 
 func (mp *MultiPlayer) GetFriends() []*MultiPlayer {
@@ -223,35 +198,25 @@ func (mp *MultiPlayer) GetFriendsIds() []uuid.UUID {
 	return ids
 }
 
-func (mp *MultiPlayer) SetFriends(friends []*MultiPlayer, notify bool) error {
+func (mp *MultiPlayer) SetFriends(friends []*MultiPlayer) error {
 	mp.mu.Lock()
 	mp.friends = friends
 	mp.mu.Unlock()
 
-	var err error
-	if notify {
-		err = mp.save("friends", mp.GetFriendsIds())
-	}
-
-	return err
+	return mp.save("friends", mp.GetFriendsIds())
 }
 
-func (mp *MultiPlayer) AddFriend(friend *MultiPlayer, notify bool) error {
+func (mp *MultiPlayer) AddFriend(friend *MultiPlayer) error {
 	mp.mu.Lock()
 	mp.friends = append(mp.friends, friend)
 	mp.mu.Unlock()
 
-	var err error
-	if notify {
-		err = mp.save("friends", mp.GetFriendsIds())
-	}
-
-	return err
+	return mp.save("friends", mp.GetFriendsIds())
 }
 
 var ErrFriendNotFound = errors.New("friend not found")
 
-func (mp *MultiPlayer) RemoveFriend(friend *MultiPlayer, notify bool) error {
+func (mp *MultiPlayer) RemoveFriend(friend *MultiPlayer) error {
 	mp.mu.Lock()
 	if !slices.Contains(mp.friends, friend) {
 		return ErrFriendNotFound
@@ -265,10 +230,5 @@ func (mp *MultiPlayer) RemoveFriend(friend *MultiPlayer, notify bool) error {
 	}
 	mp.mu.Unlock()
 
-	var err error
-	if notify {
-		err = mp.save("friends", mp.GetFriendsIds())
-	}
-
-	return err
+	return mp.save("friends", mp.GetFriendsIds())
 }

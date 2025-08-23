@@ -36,7 +36,7 @@ type MultiProxyManager struct {
 	mpm *multiplayer.MultiPlayerManager
 }
 
-func InitManager(ctx context.Context) (*MultiProxyManager, error) {
+func InitManager(id uuid.UUID, ctx context.Context) (*MultiProxyManager, error) {
 	l, logErr := logger.Init()
 	if logErr != nil {
 		return &MultiProxyManager{}, logErr
@@ -54,7 +54,7 @@ func InitManager(ctx context.Context) (*MultiProxyManager, error) {
 		return &MultiProxyManager{}, dbErr
 	}
 
-	mplayerm := multiplayer.InitManager(l, db)
+	mplayerm := multiplayer.InitManager(l, db, id)
 
 	mproxym := &MultiProxyManager{
 		multiProxyMap: sync.Map{},

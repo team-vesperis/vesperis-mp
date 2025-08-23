@@ -28,16 +28,7 @@ type MultiProxy struct {
 	mpm *MultiProxyManager
 }
 
-func New(mpm *MultiProxyManager) (MultiProxy, error) {
-	// if id == "" || db.CheckIfProxyIdIsAvailable(id) == false {
-	// 	// set to a unique id
-	// 	// TODO: create standalone function
-	// 	// for creating unique id to check if the new id is not used
-	// 	id = "proxy_" + uuid.New().Undashed()
-	// }
-
-	id := uuid.New()
-
+func New(id uuid.UUID, mpm *MultiProxyManager) (MultiProxy, error) {
 	mp := MultiProxy{
 		id:  id,
 		mpm: mpm,

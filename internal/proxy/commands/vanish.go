@@ -99,7 +99,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 						return nil
 					}
 
-					err = mp.SetVanished(true, true)
+					err = mp.SetVanished(true)
 					if err != nil {
 						c.SendMessage(&component.Text{
 							Content: "Could not turn on vanish.",
@@ -146,7 +146,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 						return nil
 					}
 
-					err = mp.SetVanished(false, true)
+					err = mp.SetVanished(false)
 					if err != nil {
 						c.SendMessage(&component.Text{
 							Content: "Could not turn off vanish: error getting multiplayer.",

@@ -17,7 +17,7 @@ func (lm *ListenerManager) onProxyJoin(e *proxy.PostLoginEvent) {
 	}
 
 	if p.Username() != mp.GetName() {
-		err := mp.SetName(p.Username(), true)
+		err := mp.SetName(p.Username())
 		if err != nil {
 			lm.l.Error("player post login set name error", "playerId", id, "error", err)
 		}
@@ -38,7 +38,7 @@ func (lm *ListenerManager) onServerJoin(e *proxy.ServerPostConnectEvent) {
 	//backendId := p.CurrentServer().Server().ServerInfo().Name()
 	backendId := uuid.New()
 
-	err = mp.SetBackendId(backendId, true)
+	err = mp.SetBackendId(backendId)
 	if err != nil {
 		lm.l.Error("player server post connect set backend id error", "playerId", id, "backendId", backendId, "error", err)
 		p.Disconnect(loginDenyComponent)

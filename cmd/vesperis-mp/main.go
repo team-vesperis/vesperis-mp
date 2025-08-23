@@ -10,6 +10,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multiproxy"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
+	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 func main() {
@@ -17,7 +18,9 @@ func main() {
 	defer canc()
 
 	now := time.Now()
-	mpm, err := multiproxy.InitManager(ctx)
+	id := uuid.New()
+
+	mpm, err := multiproxy.InitManager(id, ctx)
 	if err != nil {
 		return
 	}
@@ -25,7 +28,7 @@ func main() {
 	mpm.GetLogger().Info("initialized MultiProxy manager", "duration", time.Since(now))
 
 	now = time.Now()
-	mp, err := multiproxy.New(mpm)
+	mp, err := multiproxy.New(id, mpm)
 	if err != nil {
 		return
 	}
@@ -46,6 +49,6 @@ func main() {
 		defer os.Exit(0)
 	}()
 
-	// blocks
+	mp.GetLogger().GetGateLogger().Info("starting internal gate proxy")
 	mp.Start()
 }

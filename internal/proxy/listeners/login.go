@@ -35,13 +35,13 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 		return
 	}
 
-	err = mp.SetOnline(true, true)
+	err = mp.SetOnline(true)
 	if err != nil {
 		lm.l.Error("player login set online error", "playerId", id, "error", err)
 		e.Deny(loginDenyComponent)
 	}
 
-	err = mp.SetProxyId(lm.id, true)
+	err = mp.SetProxyId(lm.id)
 	if err != nil {
 		lm.l.Error("player post login set proxy id error", "playerId", id, "error", err)
 		e.Deny(loginDenyComponent)
@@ -57,7 +57,7 @@ func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 		return
 	}
 
-	err = mp.SetOnline(false, true)
+	err = mp.SetOnline(false)
 	if err != nil {
 		lm.l.Error("player disconnect set online error", "playerId", id, "error", err)
 	}
