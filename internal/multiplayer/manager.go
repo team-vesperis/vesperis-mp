@@ -133,19 +133,16 @@ func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 		case "friends":
 			list, ok := val.([]any)
 			if ok {
-				var mp_list []*MultiPlayer
+				var mp_list []uuid.UUID
 				for _, l := range list {
 					id, ok := l.(uuid.UUID)
 					if ok {
-						mp, err := mpm.GetMultiPlayer(id)
-						if err != nil {
-							mp_list = append(mp_list, mp)
-						}
+						mp_list = append(mp_list, id)
 					}
 				}
 
 				mp.mu.Lock()
-				mp.friends = mp_list
+				mp.friendIds = mp_list
 				mp.mu.Unlock()
 			}
 		}

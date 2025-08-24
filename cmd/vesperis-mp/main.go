@@ -10,7 +10,6 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multiproxy"
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
-	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 func main() {
@@ -18,9 +17,8 @@ func main() {
 	defer canc()
 
 	now := time.Now()
-	id := uuid.New()
 
-	mpm, err := multiproxy.InitManager(id, ctx)
+	mpm, id, err := multiproxy.InitManager(ctx)
 	if err != nil {
 		return
 	}
@@ -40,7 +38,7 @@ func main() {
 	go func() {
 		<-c
 		now = time.Now()
-		mp.Shutdown(component.Text{
+		mpm.GetOwnerGate().Shutdown(&component.Text{
 			Content: "This proxy has been manually shut using the terminal.",
 			S:       component.Style{Color: color.Red},
 		})
@@ -49,6 +47,6 @@ func main() {
 		defer os.Exit(0)
 	}()
 
-	mp.GetLogger().GetGateLogger().Info("starting internal gate proxy")
-	mp.Start()
+	mpm.GetLogger().GetGateLogger().Info("starting internal gate proxy")
+	mpm.Start()
 }

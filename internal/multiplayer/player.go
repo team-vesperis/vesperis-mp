@@ -34,8 +34,10 @@ type MultiPlayer struct {
 
 	vanished bool
 
-	// List of friends.
-	friends []*MultiPlayer
+	lastSeen time.Time
+
+	// List of friend UUIDs.
+	friendIds []uuid.UUID
 
 	mu sync.RWMutex
 
@@ -182,33 +184,40 @@ func (mp *MultiPlayer) SetVanished(vanished bool) error {
 	return mp.save("vanished", vanished)
 }
 
-func (mp *MultiPlayer) GetFriends() []*MultiPlayer {
+func (mp *MultiPlayer) GetLastSeen() time.Time {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
-	return mp.friends
+	return mp.lastSeen
+}
+
+// TODO: also save and listen for updates for this field
+func (mp *MultiPlayer) SetLastSeen(time time.Time) {
+	mp.mu.Lock()
+	mp.lastSeen = time
+	mp.mu.Unlock()
 }
 
 func (mp *MultiPlayer) GetFriendsIds() []uuid.UUID {
-	var ids []uuid.UUID
-	for _, f := range mp.GetFriends() {
-		ids = append(ids, f.id)
-	}
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
 
-	return ids
+	return slices.Clone(mp.friendIds)
 }
 
-func (mp *MultiPlayer) SetFriends(friends []*MultiPlayer) error {
+func (mp *MultiPlayer) SetFriendsIds(ids []uuid.UUID) error {
 	mp.mu.Lock()
-	mp.friends = friends
+	mp.friendIds = slices.Clone(ids)
 	mp.mu.Unlock()
 
-	return mp.save("friends", mp.GetFriendsIds())
+	return mp.save("friends", ids)
 }
 
-func (mp *MultiPlayer) AddFriend(friend *MultiPlayer) error {
+func (mp *MultiPlayer) AddFriendId(id uuid.UUID) error {
 	mp.mu.Lock()
-	mp.friends = append(mp.friends, friend)
+	if !slices.Contains(mp.friendIds, id) {
+		mp.friendIds = append(mp.friendIds, id)
+	}
 	mp.mu.Unlock()
 
 	return mp.save("friends", mp.GetFriendsIds())
@@ -216,18 +225,14 @@ func (mp *MultiPlayer) AddFriend(friend *MultiPlayer) error {
 
 var ErrFriendNotFound = errors.New("friend not found")
 
-func (mp *MultiPlayer) RemoveFriend(friend *MultiPlayer) error {
+func (mp *MultiPlayer) RemoveFriendId(id uuid.UUID) error {
 	mp.mu.Lock()
-	if !slices.Contains(mp.friends, friend) {
+	i := slices.Index(mp.friendIds, id)
+	if i == -1 {
+		mp.mu.Unlock()
 		return ErrFriendNotFound
 	}
-
-	for i, f := range mp.friends {
-		if f == friend {
-			mp.friends = slices.Delete(mp.friends, i, i+1)
-			break
-		}
-	}
+	mp.friendIds = slices.Delete(mp.friendIds, i, i+1)
 	mp.mu.Unlock()
 
 	return mp.save("friends", mp.GetFriendsIds())
