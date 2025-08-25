@@ -145,7 +145,16 @@ func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 				mp.friendIds = mp_list
 				mp.mu.Unlock()
 			}
+
+		case "last_seen":
+			time, ok := val.(time.Time)
+			if ok {
+				mp.mu.Lock()
+				mp.lastSeen = time
+				mp.mu.Unlock()
+			}
 		}
+
 	}
 }
 

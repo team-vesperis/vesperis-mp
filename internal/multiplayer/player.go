@@ -191,11 +191,13 @@ func (mp *MultiPlayer) GetLastSeen() time.Time {
 	return mp.lastSeen
 }
 
-// TODO: also save and listen for updates for this field
-func (mp *MultiPlayer) SetLastSeen(time time.Time) {
+func (mp *MultiPlayer) SetLastSeen(time time.Time) error {
 	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
 	mp.lastSeen = time
-	mp.mu.Unlock()
+
+	return mp.save("last_seen", time)
 }
 
 func (mp *MultiPlayer) GetFriendsIds() []uuid.UUID {

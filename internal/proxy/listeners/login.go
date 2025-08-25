@@ -1,6 +1,8 @@
 package listeners
 
 import (
+	"time"
+
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
 	"go.minekube.com/common/minecraft/color"
@@ -60,5 +62,10 @@ func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 	err = mp.SetOnline(false)
 	if err != nil {
 		lm.l.Error("player disconnect set online error", "playerId", id, "error", err)
+	}
+
+	err = mp.SetLastSeen(time.Now())
+	if err != nil {
+		lm.l.Error("player disconnect set last seen error", "playerId", id, "error", err)
 	}
 }
