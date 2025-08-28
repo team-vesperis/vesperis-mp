@@ -41,6 +41,7 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 	if err != nil {
 		lm.l.Error("player login set online error", "playerId", id, "error", err)
 		e.Deny(loginDenyComponent)
+		return
 	}
 
 	err = mp.SetProxyId(lm.id)
