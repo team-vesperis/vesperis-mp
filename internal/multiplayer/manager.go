@@ -33,6 +33,8 @@ func InitManager(l *logger.Logger, db *database.Database, id uuid.UUID) *MultiPl
 	// start update listener
 	mpm.db.CreateListener(multiPlayerUpdateChannel, mpm.createUpdateListener())
 
+	mpm.db.CreateListener(multiPlayerTaskChannel, mpm.createTaskListener())
+
 	// fill map
 	_, err := mpm.GetAllMultiPlayersFromDatabase()
 	if err != nil {

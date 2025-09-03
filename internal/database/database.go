@@ -369,11 +369,11 @@ func (db *Database) SubscribeWithTimeout(channel string, timeout time.Duration) 
 }
 
 // Combination of Publish & Subscribe. Publish message in a channel, wait for a return message with a time limit.
-func (db *Database) SendAndReturn(channel string, message any, timeout time.Duration) (*redis.Message, error) {
-	pubsub := db.Subscribe(channel)
+func (db *Database) SendAndReturn(publishChannel, subscribeChannel string, message any, timeout time.Duration) (*redis.Message, error) {
+	pubsub := db.Subscribe(subscribeChannel)
 	defer pubsub.Close()
 
-	err := db.Publish(channel, message)
+	err := db.Publish(publishChannel, message)
 	if err != nil {
 		return nil, err
 	}
