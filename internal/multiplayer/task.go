@@ -11,10 +11,9 @@ import (
 )
 
 type Task interface {
-	SendTask(targetProxyId uuid.UUID, responseChannel string) *TaskResponse
-	performTask() *TaskResponse
-	getTargetProxy() uuid.UUID
-	getResponseChannel() string
+	PerformTask(mpm *MultiPlayerManager) *TaskResponse
+	GetTargetProxyId() uuid.UUID
+	GetResponseChannel() string
 }
 
 const multiPlayerTaskChannel = "task_mp"
@@ -39,7 +38,7 @@ func (r *TaskResponse) GetReason() string {
 	return r.r
 }
 
-func (mpm *MultiPlayerManager) sendTask(targetProxyId uuid.UUID, t Task) *TaskResponse {
+func (mpm *MultiPlayerManager) SendTask(targetProxyId uuid.UUID, responseChannel string, t Task) *TaskResponse {
 	d, err := json.Marshal(t)
 	if err != nil {
 		return &TaskResponse{
@@ -48,7 +47,7 @@ func (mpm *MultiPlayerManager) sendTask(targetProxyId uuid.UUID, t Task) *TaskRe
 		}
 	}
 
-	msg, err := mpm.db.SendAndReturn(multiPlayerTaskChannel, t.getResponseChannel(), d, 2*time.Second)
+	msg, err := mpm.db.SendAndReturn(multiPlayerTaskChannel, t.GetResponseChannel(), d, 2*time.Second)
 	if err != nil {
 		return &TaskResponse{
 			s: false,
@@ -86,11 +85,11 @@ func (mpm *MultiPlayerManager) createTaskListener() func(msg *redis.Message) {
 			return
 		}
 
-		if mpm.ownerProxyId == t.getTargetProxy() {
-			tr := t.performTask()
+		if mpm.ownerProxyId == t.GetTargetProxyId() {
+			tr := t.PerformTask(mpm)
 			m := strconv.FormatBool(tr.s) + "_" + tr.r
 
-			err := mpm.db.Publish(t.getResponseChannel(), m)
+			err := mpm.db.Publish(t.GetResponseChannel(), m)
 			if err != nil {
 				return
 			}
