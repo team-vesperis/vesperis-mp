@@ -50,7 +50,7 @@ func (mp *MultiProxy) SetConnectedPlayers(count int) {
 	mp.connectedPlayers = count
 }
 
-// creates id and checks if available
+// creates id
 func (mpm *MultiProxyManager) createNewProxyId() uuid.UUID {
 	id := uuid.New()
 	mp, _ := mpm.GetMultiProxy(id)
@@ -58,5 +58,6 @@ func (mpm *MultiProxyManager) createNewProxyId() uuid.UUID {
 		return id
 	}
 
+	// loops until an id that is not used
 	return mpm.createNewProxyId()
 }
