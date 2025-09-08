@@ -2,6 +2,7 @@ package multiproxy
 
 import (
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
+	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
@@ -16,7 +17,7 @@ type MultiProxy struct {
 
 	address string
 
-	connectedPlayers int
+	connectedPlayers []*multiplayer.MultiPlayer
 }
 
 func New(id uuid.UUID, mpm *MultiProxyManager) (MultiProxy, error) {
@@ -38,16 +39,16 @@ func (mp *MultiProxy) GetAddress() string {
 	return mp.address
 }
 
-func (mp *MultiProxy) SetAddress(addr string) {
-	mp.address = addr
+func (mp *MultiProxy) IsInMaintenance() bool {
+	return mp.maintenance
 }
 
-func (mp *MultiProxy) GetConnectedPlayers() int {
+func (mp *MultiProxy) SetInMaintenance(maintenance bool) {
+	mp.maintenance = maintenance
+}
+
+func (mp *MultiProxy) GetConnectedPlayers() []*multiplayer.MultiPlayer {
 	return mp.connectedPlayers
-}
-
-func (mp *MultiProxy) SetConnectedPlayers(count int) {
-	mp.connectedPlayers = count
 }
 
 // creates id
