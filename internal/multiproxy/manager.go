@@ -111,7 +111,7 @@ func InitManager(ctx context.Context) (*MultiProxyManager, uuid.UUID, error) {
 		return mproxym, uuid.Nil, err
 	}
 
-	return mproxym, uuid.Nil, nil
+	return mproxym, mproxym.ownerId, nil
 }
 
 func (mpm *MultiProxyManager) GetOwnerGate() *proxy.Proxy {

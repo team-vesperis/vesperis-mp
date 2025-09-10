@@ -41,40 +41,25 @@ func (r *TaskResponse) GetReason() string {
 func (mpm *MultiPlayerManager) SendTask(targetProxyId uuid.UUID, responseChannel string, t Task) *TaskResponse {
 	d, err := json.Marshal(t)
 	if err != nil {
-		return &TaskResponse{
-			s: false,
-			r: "task confirmation could not marshal task",
-		}
+		return NewTaskResponse(false, "task confirmation could not marshal task")
 	}
 
 	msg, err := mpm.db.SendAndReturn(multiPlayerTaskChannel, t.GetResponseChannel(), d, 2*time.Second)
 	if err != nil {
-		return &TaskResponse{
-			s: false,
-			r: err.Error(),
-		}
+		return NewTaskResponse(false, err.Error())
 	}
 
 	l := strings.Split(msg.Payload, "_")
 	if len(l) != 2 {
-		return &TaskResponse{
-			s: false,
-			r: "task confirmation returned an incorrect length",
-		}
+		return NewTaskResponse(false, "task confirmation returned an incorrect length")
 	}
 
 	s, err := strconv.ParseBool(l[0])
 	if err != nil {
-		return &TaskResponse{
-			s: false,
-			r: "task confirmation returned not a bool",
-		}
+		return NewTaskResponse(false, "task confirmation returned not a bool")
 	}
 
-	return &TaskResponse{
-		s: s,
-		r: l[1],
-	}
+	return NewTaskResponse(s, l[1])
 }
 
 func (mpm *MultiPlayerManager) createTaskListener() func(msg *redis.Message) {
