@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/team-vesperis/vesperis-mp/internal/multiproxy"
-	"go.minekube.com/common/minecraft/color"
+	"github.com/team-vesperis/vesperis-mp/internal/multiproxy/util"
 	"go.minekube.com/common/minecraft/component"
 )
 
@@ -18,20 +18,12 @@ func main() {
 
 	now := time.Now()
 
-	mpm, id, err := multiproxy.InitManager(ctx)
+	mpm, err := multiproxy.InitManager(ctx)
 	if err != nil {
 		return
 	}
 
 	mpm.GetLogger().Info("initialized MultiProxy manager", "duration", time.Since(now))
-
-	now = time.Now()
-	mp, err := multiproxy.New(id, mpm)
-	if err != nil {
-		return
-	}
-
-	mp.GetLogger().Info("created MultiProxy", "duration", time.Since(now))
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -40,10 +32,10 @@ func main() {
 		now = time.Now()
 		mpm.GetOwnerGate().Shutdown(&component.Text{
 			Content: "This proxy has been manually shut using the terminal.",
-			S:       component.Style{Color: color.Red},
+			S:       util.StyleColorRed,
 		})
 
-		mp.GetLogger().Info("stopped MultiProxy", "duration", time.Since(now))
+		mpm.GetOwnerMultiProxy().GetLogger().Info("stopped MultiProxy", "duration", time.Since(now))
 		defer os.Exit(0)
 	}()
 

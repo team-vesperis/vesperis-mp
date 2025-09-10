@@ -24,6 +24,8 @@ type MultiProxyManager struct {
 	// the id of the mp that has this manager
 	ownerId uuid.UUID
 
+	ownerMultiProxy *MultiProxy
+
 	ownerGate *proxy.Proxy
 
 	// The command manager used in the mp.
@@ -52,23 +54,23 @@ type MultiProxyManager struct {
 	mpm *multiplayer.MultiPlayerManager
 }
 
-func InitManager(ctx context.Context) (*MultiProxyManager, uuid.UUID, error) {
+func InitManager(ctx context.Context) (*MultiProxyManager, error) {
 
 	l, logErr := logger.Init()
 	if logErr != nil {
-		return &MultiProxyManager{}, uuid.Nil, logErr
+		return &MultiProxyManager{}, logErr
 	}
 
 	c, cfErr := config.Init(l)
 	if cfErr != nil {
 		l.Error("config initialization error")
-		return &MultiProxyManager{}, uuid.Nil, cfErr
+		return &MultiProxyManager{}, cfErr
 	}
 
 	db, dbErr := database.Init(ctx, c, l)
 	if dbErr != nil {
 		l.Error("database initialization error")
-		return &MultiProxyManager{}, uuid.Nil, dbErr
+		return &MultiProxyManager{}, dbErr
 	}
 
 	mproxym := &MultiProxyManager{
@@ -86,7 +88,7 @@ func InitManager(ctx context.Context) (*MultiProxyManager, uuid.UUID, error) {
 	cfg, err := gate.LoadConfig(mproxym.c.GetViper())
 	if err != nil {
 		mproxym.l.Error("load config for gate error", "error", err)
-		return mproxym, uuid.Nil, err
+		return mproxym, err
 	}
 
 	gate, err := gate.New(gate.Options{
@@ -95,7 +97,7 @@ func InitManager(ctx context.Context) (*MultiProxyManager, uuid.UUID, error) {
 	})
 	if err != nil {
 		mproxym.l.Error("creating gate instance error", "error", err)
-		return mproxym, uuid.Nil, err
+		return mproxym, err
 	}
 
 	mproxym.ownerGate = gate.Java()
@@ -103,19 +105,28 @@ func InitManager(ctx context.Context) (*MultiProxyManager, uuid.UUID, error) {
 
 	mproxym.cm, err = commands.Init(mproxym.ownerGate, mproxym.l, mproxym.db, mproxym.mpm)
 	if err != nil {
-		return mproxym, uuid.Nil, nil
+		return mproxym, nil
 	}
 
 	mproxym.lm, err = listeners.Init(mproxym.ownerGate.Event(), mproxym.l, mproxym.db, mproxym.mpm, mproxym.ownerId)
 	if err != nil {
-		return mproxym, uuid.Nil, err
+		return mproxym, err
 	}
 
-	return mproxym, mproxym.ownerId, nil
+	mproxym.ownerMultiProxy, err = New(mproxym.ownerId, mproxym)
+	if err != nil {
+		return mproxym, err
+	}
+
+	return mproxym, nil
 }
 
 func (mpm *MultiProxyManager) GetOwnerGate() *proxy.Proxy {
 	return mpm.ownerGate
+}
+
+func (mpm *MultiProxyManager) GetOwnerMultiProxy() *MultiProxy {
+	return mpm.ownerMultiProxy
 }
 
 func (mpm *MultiProxyManager) Start() {
