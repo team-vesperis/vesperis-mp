@@ -22,10 +22,11 @@ type MultiProxy struct {
 	connectedPlayers []*multiplayer.MultiPlayer
 }
 
-func New(id uuid.UUID, mpm *MultiProxyManager) (*MultiProxy, error) {
+func NewMultiProxy(address string, id uuid.UUID, mpm *MultiProxyManager) (*MultiProxy, error) {
 	mp := &MultiProxy{
-		id:  id,
-		mpm: mpm,
+		id:      id,
+		mpm:     mpm,
+		address: address,
 	}
 
 	mpm.multiProxyMap.Store(id, mp)
@@ -63,12 +64,11 @@ func (mp *MultiProxy) GetConnectedPlayers() []*multiplayer.MultiPlayer {
 
 // creates id
 func (mpm *MultiProxyManager) createNewProxyId() uuid.UUID {
-	id := uuid.New()
-	mp, _ := mpm.GetMultiProxy(id)
-	if mp == nil {
-		return id
+	for {
+		id := uuid.New()
+		mp, _ := mpm.GetMultiProxy(id)
+		if mp == nil {
+			return id
+		}
 	}
-
-	// loops until an id that is not used
-	return mpm.createNewProxyId()
 }

@@ -113,7 +113,8 @@ func InitManager(ctx context.Context) (*MultiProxyManager, error) {
 		return mproxym, err
 	}
 
-	mproxym.ownerMultiProxy, err = New(mproxym.ownerId, mproxym)
+	address := "localhost:25565"
+	mproxym.ownerMultiProxy, err = NewMultiProxy(address, mproxym.ownerId, mproxym)
 	if err != nil {
 		return mproxym, err
 	}
