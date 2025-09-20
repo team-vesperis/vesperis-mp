@@ -1,4 +1,4 @@
-package multiplayer
+package multi
 
 import (
 	"errors"
@@ -6,17 +6,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/team-vesperis/vesperis-mp/internal/database"
-	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type MultiPlayer struct {
-	// The proxy id on which the underlying player is/was located
-	p uuid.UUID
+	// The MultiProxy the player is located on.
+	// can be nil!
+	mp *MultiProxy
 
-	// The backend id on which the underlying player is/was located
-	b uuid.UUID
+	// The MultiBackend the player is located on.
+	// can be nil!
+	mb *MultiBackend
 
 	// The id of the underlying player
 	id uuid.UUID
@@ -40,88 +40,166 @@ type MultiPlayer struct {
 	friendIds []uuid.UUID
 
 	mu sync.RWMutex
-
-	mpm *MultiPlayerManager
 }
 
-// New returns a new multiplayer
-func New(p proxy.Player, db *database.Database, mpm *MultiPlayerManager) (*MultiPlayer, error) {
-	now := time.Now()
-	id := p.ID()
-
-	defaultPlayerData := map[string]any{
-		"name":            p.Username(),
-		"permission.role": RoleDefault,
-		"permission.rank": RankDefault,
-		"online":          false,
-		"vanished":        false,
+func NewMultiPlayer(id uuid.UUID) *MultiPlayer {
+	mp := &MultiPlayer{
+		id: id,
 	}
 
-	err := db.SetPlayerData(id, defaultPlayerData)
-	if err != nil {
-		return nil, err
-	}
+	mp.pi = NewPermissionInfo(mp)
+	mp.bi = NewBanInfo(mp)
 
-	mp, err := mpm.CreateMultiPlayerFromDatabase(id)
-	if err != nil {
-		return nil, err
-	}
-
-	// update every proxies' map
-	m := id.String() + "_new"
-	err = mpm.db.Publish(multiPlayerUpdateChannel, m)
-	if err != nil {
-		return nil, err
-	}
-
-	mpm.l.Info("created new multiplayer", "playerId", id, "duration", time.Since(now))
-	return mp, nil
+	return mp
 }
 
-const multiPlayerUpdateChannel = "update_mp"
+func NewMultiPlayerWithData(id uuid.UUID, data map[string]any) *MultiPlayer {
+	// create an empty multiplayer, then fill in using the data
+	mp := NewMultiPlayer(id)
+
+	name, ok := data["name"].(string)
+	if ok {
+		mp.name = name
+	}
+
+	permission, ok := data["permission"].(map[string]any)
+	if ok {
+		role, ok := permission["role"].(string)
+		if ok {
+			mp.pi.role = role
+		}
+
+		rank, ok := permission["rank"].(string)
+		if ok {
+			mp.pi.rank = rank
+		}
+	}
+
+	online, ok := data["online"].(bool)
+	if ok {
+		mp.online = online
+	}
+
+	vanished, ok := data["vanished"].(bool)
+	if ok {
+		mp.vanished = vanished
+	}
+
+	return mp
+}
+
+type PlayerManager interface {
+	Save(id uuid.UUID, key string, val any) error
+}
+
+var playerManagerInstance PlayerManager
+
+func SetPlayerManager(pm PlayerManager) {
+	playerManagerInstance = pm
+}
 
 // Update specific value of the multi player into the database
 // Notifies other proxies to update that value
-func (mp *MultiPlayer) save(key string, value any) error {
-	err := mp.mpm.db.SetPlayerDataField(mp.id, key, value)
-	if err != nil {
-		return err
+func (mp *MultiPlayer) save(key string, val any) error {
+	if playerManagerInstance == nil {
+		return errors.New("player manager not set")
 	}
-
-	m := mp.mpm.ownerProxyId.String() + "_" + mp.id.String() + "_" + key
-	return mp.mpm.db.Publish(multiPlayerUpdateChannel, m)
+	return playerManagerInstance.Save(mp.id, key, val)
 }
 
-func (mp *MultiPlayer) GetProxyId() uuid.UUID {
+func (mp *MultiPlayer) Update(key string, val any) {
+	switch key {
+	case "name":
+		name, ok := val.(string)
+		if ok {
+			mp.mu.Lock()
+			mp.name = name
+			mp.mu.Unlock()
+		}
+	case "permission.role":
+		role, ok := val.(string)
+		if ok {
+			mp.pi.mu.Lock()
+			mp.pi.role = role
+			mp.pi.mu.Unlock()
+		}
+	case "permission.rank":
+		rank, ok := val.(string)
+		if ok {
+			mp.pi.mu.Lock()
+			mp.pi.rank = rank
+			mp.pi.mu.Unlock()
+		}
+	case "online":
+		online, ok := val.(bool)
+		if ok {
+			mp.mu.Lock()
+			mp.online = online
+			mp.mu.Unlock()
+		}
+	case "vanished":
+		vanished, ok := val.(bool)
+		if ok {
+			mp.mu.Lock()
+			mp.vanished = vanished
+			mp.mu.Unlock()
+		}
+	case "friends":
+		list, ok := val.([]any)
+		if ok {
+			var mp_list []uuid.UUID
+			for _, l := range list {
+				id, ok := l.(uuid.UUID)
+				if ok {
+					mp_list = append(mp_list, id)
+				}
+			}
+
+			mp.mu.Lock()
+			mp.friendIds = mp_list
+			mp.mu.Unlock()
+		}
+
+	case "last_seen":
+		time, ok := val.(time.Time)
+		if ok {
+			mp.mu.Lock()
+			mp.lastSeen = time
+			mp.mu.Unlock()
+		}
+	}
+}
+
+func (mp *MultiPlayer) GetMultiProxy() *MultiProxy {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
-	return mp.p
+	return mp.mp
 }
 
-func (mp *MultiPlayer) SetProxyId(id uuid.UUID) error {
+func (mp *MultiPlayer) SetMultiProxy(mproxy *MultiProxy) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
-	mp.p = id
+	mp.mp = mproxy
 
-	return mp.save("p", id)
+	return mp.save("mp", mproxy)
 }
 
-func (mp *MultiPlayer) GetBackendId() uuid.UUID {
+func (mp *MultiPlayer) GetMultiBackend() *MultiBackend {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
-	return mp.b
+	return mp.mb
 }
 
-func (mp *MultiPlayer) SetBackendId(id uuid.UUID) error {
+func (mp *MultiPlayer) SetMultiBackend(mb *MultiBackend) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
-	mp.b = id
+	mp.mb = mb
 
-	return mp.save("b", id)
+	return mp.save("mb", mb)
 }
 
 func (mp *MultiPlayer) GetId() uuid.UUID {

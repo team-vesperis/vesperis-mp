@@ -6,11 +6,12 @@ import (
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
-	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
-	"github.com/team-vesperis/vesperis-mp/internal/multiproxy/util"
+	"github.com/team-vesperis/vesperis-mp/internal/multi"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/common/minecraft/color"
-	"go.minekube.com/common/minecraft/component"
+	. "go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.minekube.com/gate/pkg/util/uuid"
@@ -20,10 +21,10 @@ type CommandManager struct {
 	m   *command.Manager
 	l   *logger.Logger
 	db  *database.Database
-	mpm *multiplayer.MultiPlayerManager
+	mpm *playermanager.MultiPlayerManager
 }
 
-func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mpm *multiplayer.MultiPlayerManager) (*CommandManager, error) {
+func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mpm *playermanager.MultiPlayerManager) (*CommandManager, error) {
 	cm := &CommandManager{
 		m:   p.Command(),
 		l:   l,
@@ -36,18 +37,18 @@ func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mpm *multipla
 }
 
 var (
-	ComponentOnlyPlayersCommand = &component.Text{
+	ComponentOnlyPlayersCommand = &Text{
 		Content: "Only players can use this command.",
-		S: component.Style{
+		S: Style{
 			Color: color.Red,
 		},
 	}
 
 	ErrOnlyPlayersCommand = errors.New("only players can use this command")
 
-	ComponentOnlyPlayersSubCommand = &component.Text{
+	ComponentOnlyPlayersSubCommand = &Text{
 		Content: "Only players can use this sub command.",
-		S: component.Style{
+		S: Style{
 			Color: color.Red,
 		},
 	}
@@ -63,12 +64,12 @@ func (cm *CommandManager) registerCommands() {
 }
 
 var ErrTargetNotFound = errors.New("target not found")
-var ComponentTargetNotFound = &component.Text{
+var ComponentTargetNotFound = &Text{
 	Content: "Target not found.",
 	S:       util.StyleColorOrange,
 }
 
-func (cm *CommandManager) getMultiPlayerFromTarget(t string, c *command.Context) (*multiplayer.MultiPlayer, error) {
+func (cm *CommandManager) getMultiPlayerFromTarget(t string, c *command.Context) (*multi.MultiPlayer, error) {
 	// target can be a player name or an uuid
 	id, err := uuid.Parse(t)
 	if err != nil {
@@ -96,11 +97,11 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string, c *command.Context)
 			return nil, ErrTargetNotFound
 		}
 
-		c.SendMessage(&component.Text{
+		c.SendMessage(&Text{
 			Content: "Could not get vanish.",
-			S: component.Style{
+			S: Style{
 				Color:      util.ColorRed,
-				HoverEvent: component.ShowText(&component.Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
+				HoverEvent: ShowText(&Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
 			},
 		})
 		return nil, err
@@ -121,14 +122,14 @@ func (cm *CommandManager) SuggestAllMultiPlayers(onlyOnline bool) brigodier.Sugg
 		}
 
 		// use list to get all names and ids
-		var l []*multiplayer.MultiPlayer
+		var l []*multi.MultiPlayer
 		if onlyOnline {
 			l = cm.mpm.GetAllOnlinePlayers()
 		} else {
 			l = cm.mpm.GetAllMultiPlayers()
 		}
 
-		hidden := false
+		hide_vanished := false
 		p, ok := c.Source.(proxy.Player)
 		if ok {
 			mp, err := cm.mpm.GetMultiPlayer(p.ID())
@@ -138,12 +139,12 @@ func (cm *CommandManager) SuggestAllMultiPlayers(onlyOnline bool) brigodier.Sugg
 			}
 
 			if !mp.GetPermissionInfo().IsPrivileged() {
-				hidden = true
+				hide_vanished = true
 			}
 		}
 
 		for _, mp := range l {
-			if hidden == true && mp.IsVanished() {
+			if hide_vanished && mp.IsVanished() {
 				continue
 			}
 

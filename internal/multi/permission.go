@@ -1,4 +1,4 @@
-package multiplayer
+package multi
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ type permissionInfo struct {
 	mp *MultiPlayer
 }
 
-func newPermissionInfo(mp *MultiPlayer) *permissionInfo {
+func NewPermissionInfo(mp *MultiPlayer) *permissionInfo {
 	pi := &permissionInfo{
 		role: RoleDefault,
 		rank: RankDefault,

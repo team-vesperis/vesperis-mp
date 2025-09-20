@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/team-vesperis/vesperis-mp/internal/multiproxy/util"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"

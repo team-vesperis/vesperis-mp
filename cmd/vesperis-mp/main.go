@@ -7,8 +7,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/team-vesperis/vesperis-mp/internal/multiproxy"
-	"github.com/team-vesperis/vesperis-mp/internal/multiproxy/util"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/proxymanager"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/common/minecraft/component"
 )
 
@@ -18,7 +18,7 @@ func main() {
 
 	now := time.Now()
 
-	mpm, err := multiproxy.InitManager(ctx)
+	mpm, err := proxymanager.InitMultiProxyManager(ctx)
 	if err != nil {
 		return
 	}
@@ -35,7 +35,7 @@ func main() {
 			S:       util.StyleColorRed,
 		})
 
-		mpm.GetOwnerMultiProxy().GetLogger().Info("stopped MultiProxy", "duration", time.Since(now))
+		mpm.GetLogger().Info("stopped MultiProxy", "duration", time.Since(now))
 		defer os.Exit(0)
 	}()
 

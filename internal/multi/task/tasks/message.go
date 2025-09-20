@@ -1,7 +1,8 @@
 package tasks
 
 import (
-	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
@@ -13,8 +14,8 @@ type MessageTask struct {
 	responseChannel string
 }
 
-func (mt *MessageTask) PerformTask(mpm *multiplayer.MultiPlayerManager) *multiplayer.TaskResponse {
-	return &multiplayer.TaskResponse{}
+func (mt *MessageTask) PerformTask(mpm *playermanager.MultiPlayerManager) *task.TaskResponse {
+	return &task.TaskResponse{}
 }
 
 func (mt *MessageTask) GetTargetProxyId() uuid.UUID {

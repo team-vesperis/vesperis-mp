@@ -6,7 +6,7 @@ import (
 	"github.com/robinbraemer/event"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
-	"github.com/team-vesperis/vesperis-mp/internal/multiplayer"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
@@ -14,11 +14,11 @@ type ListenerManager struct {
 	m   event.Manager
 	l   *logger.Logger
 	db  *database.Database
-	mpm *multiplayer.MultiPlayerManager
+	mpm *playermanager.MultiPlayerManager
 	id  uuid.UUID
 }
 
-func Init(m event.Manager, l *logger.Logger, db *database.Database, mpm *multiplayer.MultiPlayerManager, id uuid.UUID) (*ListenerManager, error) {
+func Init(m event.Manager, l *logger.Logger, db *database.Database, mpm *playermanager.MultiPlayerManager, id uuid.UUID) (*ListenerManager, error) {
 	now := time.Now()
 	lm := &ListenerManager{
 		m:   m,
