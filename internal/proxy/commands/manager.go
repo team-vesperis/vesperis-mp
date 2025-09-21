@@ -8,6 +8,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/common/minecraft/color"
@@ -22,14 +23,16 @@ type CommandManager struct {
 	l   *logger.Logger
 	db  *database.Database
 	mpm *playermanager.MultiPlayerManager
+	tm  *task.TaskManager
 }
 
-func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mpm *playermanager.MultiPlayerManager) (*CommandManager, error) {
+func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mpm *playermanager.MultiPlayerManager, tm *task.TaskManager) (*CommandManager, error) {
 	cm := &CommandManager{
 		m:   p.Command(),
 		l:   l,
 		db:  db,
 		mpm: mpm,
+		tm:  tm,
 	}
 
 	cm.registerCommands()
@@ -61,15 +64,25 @@ func (cm *CommandManager) registerCommands() {
 	cm.m.Register(cm.databaseCommand("db"))
 	cm.m.Register(cm.vanishCommand("vanish"))
 	cm.m.Register(cm.vanishCommand("v"))
+	cm.m.Register(cm.messageCommand("message"))
+	cm.m.Register(cm.messageCommand("msg"))
 }
 
-var ErrTargetNotFound = errors.New("target not found")
-var ComponentTargetNotFound = &Text{
-	Content: "Target not found.",
-	S:       util.StyleColorOrange,
-}
+var (
+	ErrTargetNotFound       = errors.New("target not found")
+	ComponentTargetNotFound = &Text{
+		Content: "Target not found.",
+		S:       util.StyleColorOrange,
+	}
 
-func (cm *CommandManager) getMultiPlayerFromTarget(t string, c *command.Context) (*multi.MultiPlayer, error) {
+	ErrTargetIsOffline       = errors.New("target is offline")
+	ComponentTargetIsOffline = &Text{
+		Content: "Target is offline.",
+		S:       util.StyleColorOrange,
+	}
+)
+
+func (cm *CommandManager) getMultiPlayerFromTarget(t string) (*multi.Player, error) {
 	// target can be a player name or an uuid
 	id, err := uuid.Parse(t)
 	if err != nil {
@@ -85,7 +98,6 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string, c *command.Context)
 		}
 
 		if id == uuid.Nil {
-			c.SendMessage(ComponentTargetNotFound)
 			return nil, ErrTargetNotFound
 		}
 	}
@@ -93,17 +105,9 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string, c *command.Context)
 	mp, err := cm.mpm.GetMultiPlayer(id)
 	if err != nil {
 		if err == database.ErrDataNotFound {
-			c.SendMessage(ComponentTargetNotFound)
 			return nil, ErrTargetNotFound
 		}
 
-		c.SendMessage(&Text{
-			Content: "Could not get vanish.",
-			S: Style{
-				Color:      util.ColorRed,
-				HoverEvent: ShowText(&Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
-			},
-		})
 		return nil, err
 	}
 
@@ -122,7 +126,7 @@ func (cm *CommandManager) SuggestAllMultiPlayers(onlyOnline bool) brigodier.Sugg
 		}
 
 		// use list to get all names and ids
-		var l []*multi.MultiPlayer
+		var l []*multi.Player
 		if onlyOnline {
 			l = cm.mpm.GetAllOnlinePlayers()
 		} else {

@@ -9,14 +9,14 @@ import (
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
-type MultiPlayer struct {
+type Player struct {
 	// The MultiProxy the player is located on.
 	// can be nil!
-	mp *MultiProxy
+	mp *Proxy
 
 	// The MultiBackend the player is located on.
 	// can be nil!
-	mb *MultiBackend
+	mb *Backend
 
 	// The id of the underlying player
 	id uuid.UUID
@@ -42,18 +42,18 @@ type MultiPlayer struct {
 	mu sync.RWMutex
 }
 
-func NewMultiPlayer(id uuid.UUID) *MultiPlayer {
-	mp := &MultiPlayer{
+func NewMultiPlayer(id uuid.UUID) *Player {
+	mp := &Player{
 		id: id,
 	}
 
-	mp.pi = NewPermissionInfo(mp)
-	mp.bi = NewBanInfo(mp)
+	mp.pi = newPermissionInfo(mp)
+	mp.bi = newBanInfo(mp)
 
 	return mp
 }
 
-func NewMultiPlayerWithData(id uuid.UUID, data map[string]any) *MultiPlayer {
+func NewMultiPlayerWithData(id uuid.UUID, data map[string]any) *Player {
 	// create an empty multiplayer, then fill in using the data
 	mp := NewMultiPlayer(id)
 
@@ -100,14 +100,14 @@ func SetPlayerManager(pm PlayerManager) {
 
 // Update specific value of the multi player into the database
 // Notifies other proxies to update that value
-func (mp *MultiPlayer) save(key string, val any) error {
+func (mp *Player) save(key string, val any) error {
 	if playerManagerInstance == nil {
 		return errors.New("player manager not set")
 	}
 	return playerManagerInstance.Save(mp.id, key, val)
 }
 
-func (mp *MultiPlayer) Update(key string, val any) {
+func (mp *Player) Update(key string, val any) {
 	switch key {
 	case "name":
 		name, ok := val.(string)
@@ -170,14 +170,15 @@ func (mp *MultiPlayer) Update(key string, val any) {
 	}
 }
 
-func (mp *MultiPlayer) GetMultiProxy() *MultiProxy {
+// can return nil!
+func (mp *Player) GetProxy() *Proxy {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
 	return mp.mp
 }
 
-func (mp *MultiPlayer) SetMultiProxy(mproxy *MultiProxy) error {
+func (mp *Player) SetProxy(mproxy *Proxy) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
@@ -186,14 +187,15 @@ func (mp *MultiPlayer) SetMultiProxy(mproxy *MultiProxy) error {
 	return mp.save("mp", mproxy)
 }
 
-func (mp *MultiPlayer) GetMultiBackend() *MultiBackend {
+// can return nil!
+func (mp *Player) GetBackend() *Backend {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
 	return mp.mb
 }
 
-func (mp *MultiPlayer) SetMultiBackend(mb *MultiBackend) error {
+func (mp *Player) SetBackend(mb *Backend) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
@@ -202,18 +204,18 @@ func (mp *MultiPlayer) SetMultiBackend(mb *MultiBackend) error {
 	return mp.save("mb", mb)
 }
 
-func (mp *MultiPlayer) GetId() uuid.UUID {
+func (mp *Player) GetId() uuid.UUID {
 	return mp.id
 }
 
-func (mp *MultiPlayer) GetName() string {
+func (mp *Player) GetName() string {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
 	return mp.name
 }
 
-func (mp *MultiPlayer) SetName(name string) error {
+func (mp *Player) SetName(name string) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
@@ -222,22 +224,22 @@ func (mp *MultiPlayer) SetName(name string) error {
 	return mp.save("name", name)
 }
 
-func (mp *MultiPlayer) GetPermissionInfo() *permissionInfo {
+func (mp *Player) GetPermissionInfo() *permissionInfo {
 	return mp.pi
 }
 
-func (mp *MultiPlayer) GetBanInfo() *banInfo {
+func (mp *Player) GetBanInfo() *banInfo {
 	return mp.bi
 }
 
-func (mp *MultiPlayer) IsOnline() bool {
+func (mp *Player) IsOnline() bool {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
 	return mp.online
 }
 
-func (mp *MultiPlayer) SetOnline(online bool) error {
+func (mp *Player) SetOnline(online bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
@@ -246,14 +248,14 @@ func (mp *MultiPlayer) SetOnline(online bool) error {
 	return mp.save("online", online)
 }
 
-func (mp *MultiPlayer) IsVanished() bool {
+func (mp *Player) IsVanished() bool {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
 	return mp.vanished
 }
 
-func (mp *MultiPlayer) SetVanished(vanished bool) error {
+func (mp *Player) SetVanished(vanished bool) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
@@ -262,14 +264,14 @@ func (mp *MultiPlayer) SetVanished(vanished bool) error {
 	return mp.save("vanished", vanished)
 }
 
-func (mp *MultiPlayer) GetLastSeen() time.Time {
+func (mp *Player) GetLastSeen() time.Time {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
 	return mp.lastSeen
 }
 
-func (mp *MultiPlayer) SetLastSeen(time time.Time) error {
+func (mp *Player) SetLastSeen(time time.Time) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
@@ -278,14 +280,14 @@ func (mp *MultiPlayer) SetLastSeen(time time.Time) error {
 	return mp.save("last_seen", time)
 }
 
-func (mp *MultiPlayer) GetFriendsIds() []uuid.UUID {
+func (mp *Player) GetFriendsIds() []uuid.UUID {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
 	return slices.Clone(mp.friendIds)
 }
 
-func (mp *MultiPlayer) SetFriendsIds(ids []uuid.UUID) error {
+func (mp *Player) SetFriendsIds(ids []uuid.UUID) error {
 	mp.mu.Lock()
 	mp.friendIds = slices.Clone(ids)
 	mp.mu.Unlock()
@@ -293,7 +295,7 @@ func (mp *MultiPlayer) SetFriendsIds(ids []uuid.UUID) error {
 	return mp.save("friends", ids)
 }
 
-func (mp *MultiPlayer) AddFriendId(id uuid.UUID) error {
+func (mp *Player) AddFriendId(id uuid.UUID) error {
 	mp.mu.Lock()
 	if !slices.Contains(mp.friendIds, id) {
 		mp.friendIds = append(mp.friendIds, id)
@@ -305,7 +307,7 @@ func (mp *MultiPlayer) AddFriendId(id uuid.UUID) error {
 
 var ErrFriendNotFound = errors.New("friend not found")
 
-func (mp *MultiPlayer) RemoveFriendId(id uuid.UUID) error {
+func (mp *Player) RemoveFriendId(id uuid.UUID) error {
 	mp.mu.Lock()
 	i := slices.Index(mp.friendIds, id)
 	if i == -1 {

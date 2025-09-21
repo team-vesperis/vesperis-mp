@@ -22,3 +22,9 @@ var ColorRed, _ = color.Hex("#f72421")
 var StyleColorRed = Style{
 	Color: ColorRed,
 }
+
+var ColorCyan, _ = color.Hex("#0da8ad")
+
+var StyleColorCyan = Style{
+	Color: ColorCyan,
+}

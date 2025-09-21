@@ -5,12 +5,12 @@ import (
 )
 
 type Task interface {
-	PerformTask(pm any) *TaskResponse
+	PerformTask(tm *TaskManager) *TaskResponse
 	GetTargetProxyId() uuid.UUID
 	GetResponseChannel() string
 }
 
-const TaskChannel = "task_mp"
+const taskChannel = "task_mp"
 
 type TaskResponse struct {
 	s bool

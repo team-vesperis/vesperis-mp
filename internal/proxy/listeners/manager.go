@@ -6,26 +6,29 @@ import (
 	"github.com/robinbraemer/event"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
+	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type ListenerManager struct {
-	m   event.Manager
-	l   *logger.Logger
-	db  *database.Database
-	mpm *playermanager.MultiPlayerManager
-	id  uuid.UUID
+	m               event.Manager
+	l               *logger.Logger
+	db              *database.Database
+	mpm             *playermanager.MultiPlayerManager
+	ownerId         uuid.UUID
+	ownerMultiProxy *multi.Proxy
 }
 
-func Init(m event.Manager, l *logger.Logger, db *database.Database, mpm *playermanager.MultiPlayerManager, id uuid.UUID) (*ListenerManager, error) {
+func Init(m event.Manager, l *logger.Logger, db *database.Database, mpm *playermanager.MultiPlayerManager, ownerId uuid.UUID, ownerMultiProxy *multi.Proxy) (*ListenerManager, error) {
 	now := time.Now()
 	lm := &ListenerManager{
-		m:   m,
-		l:   l,
-		db:  db,
-		mpm: mpm,
-		id:  id,
+		m:               m,
+		l:               l,
+		db:              db,
+		mpm:             mpm,
+		ownerId:         ownerId,
+		ownerMultiProxy: ownerMultiProxy,
 	}
 
 	err := lm.initFavicon()

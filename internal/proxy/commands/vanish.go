@@ -48,9 +48,10 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 				Suggests(cm.SuggestAllMultiPlayers(false)).
 				Executes(command.Command(func(c *command.Context) error {
 					t := c.String("target")
-					mp, err := cm.getMultiPlayerFromTarget(t, c)
+					mp, err := cm.getMultiPlayerFromTarget(t)
 					if err != nil {
 						if err == ErrTargetNotFound {
+							c.SendMessage(ComponentTargetNotFound)
 							return nil
 						}
 						return err

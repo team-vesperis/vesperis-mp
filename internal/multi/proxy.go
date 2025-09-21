@@ -6,7 +6,7 @@ import (
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
-type MultiProxy struct {
+type Proxy struct {
 	mu sync.RWMutex
 
 	id uuid.UUID
@@ -15,12 +15,12 @@ type MultiProxy struct {
 
 	address string
 
-	connectedBackends []*MultiBackend
-	connectedPlayers  []*MultiPlayer
+	backends map[*Backend]bool
+	players  map[*Player]bool
 }
 
-func NewMultiProxy(address string, id uuid.UUID) *MultiProxy {
-	mp := &MultiProxy{
+func NewMultiProxy(address string, id uuid.UUID) *Proxy {
+	mp := &Proxy{
 		id:      id,
 		address: address,
 	}
@@ -28,31 +28,58 @@ func NewMultiProxy(address string, id uuid.UUID) *MultiProxy {
 	return mp
 }
 
-func (mp *MultiProxy) GetAddress() string {
+func (mp *Proxy) GetId() uuid.UUID {
+	return mp.id
+}
+
+func (mp *Proxy) GetAddress() string {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 	return mp.address
 }
 
-func (mp *MultiProxy) IsInMaintenance() bool {
+func (mp *Proxy) IsInMaintenance() bool {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 	return mp.maintenance
 }
 
-func (mp *MultiProxy) SetInMaintenance(maintenance bool) {
+func (mp *Proxy) SetInMaintenance(maintenance bool) {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 	mp.maintenance = maintenance
 }
 
-func (mp *MultiProxy) GetConnectedPlayers() []*MultiPlayer {
+func (mp *Proxy) GetAllPlayers() []*Player {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
-	return mp.connectedPlayers
+
+	l := make([]*Player, 0, len(mp.players))
+	i := 0
+	for p := range mp.players {
+		l[i] = p
+		i++
+	}
+
+	return l
 }
 
-func (mp *MultiProxy) AddMultiPlayerToMultiProxy(mplayer *MultiPlayer) {
-	mp.connectedPlayers = append(mp.connectedPlayers, mplayer)
+func (mp *Proxy) AddPlayer(p *Player) {
+	mp.mu.Lock()
+	mp.players[p] = true
+	mp.mu.Unlock()
+}
 
+func (mp *Proxy) RemovePlayer(p *Player) {
+	mp.mu.Lock()
+	delete(mp.players, p)
+	mp.mu.Unlock()
+}
+
+func (mp *Proxy) IsPlayerOnProxy(p *Player) bool {
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+
+	_, exists := mp.players[p]
+	return exists
 }

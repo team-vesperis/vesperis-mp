@@ -12,10 +12,10 @@ type permissionInfo struct {
 
 	mu sync.RWMutex
 
-	mp *MultiPlayer
+	mp *Player
 }
 
-func NewPermissionInfo(mp *MultiPlayer) *permissionInfo {
+func newPermissionInfo(mp *Player) *permissionInfo {
 	pi := &permissionInfo{
 		role: RoleDefault,
 		rank: RankDefault,

@@ -43,12 +43,12 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 		return
 	}
 
-	// err = mp.SetProxyId(lm.id)
-	// if err != nil {
-	// 	lm.l.Error("player post login set proxy id error", "playerId", id, "error", err)
-	// 	e.Deny(loginDenyComponent)
-	// 	return
-	// }
+	err = mp.SetProxy(lm.ownerMultiProxy)
+	if err != nil {
+		lm.l.Error("player post login set proxy error", "playerId", id, "error", err)
+		e.Deny(loginDenyComponent)
+		return
+	}
 }
 
 func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
@@ -62,10 +62,18 @@ func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 	err = mp.SetOnline(false)
 	if err != nil {
 		lm.l.Error("player disconnect set online error", "playerId", id, "error", err)
+		return
 	}
 
 	err = mp.SetLastSeen(time.Now())
 	if err != nil {
 		lm.l.Error("player disconnect set last seen error", "playerId", id, "error", err)
+		return
+	}
+
+	err = mp.SetProxy(nil)
+	if err != nil {
+		lm.l.Error("player disconnect set proxy error", "playerId", id, "error", err)
+		return
 	}
 }

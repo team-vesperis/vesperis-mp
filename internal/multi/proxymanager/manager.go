@@ -3,6 +3,7 @@ package proxymanager
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -12,6 +13,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/commands"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/listeners"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
@@ -25,7 +27,7 @@ type MultiProxyManager struct {
 	// the id of the mp that has this manager
 	ownerId uuid.UUID
 
-	ownerMultiProxy *multi.MultiProxy
+	ownerMultiProxy *multi.Proxy
 
 	ownerGate *proxy.Proxy
 
@@ -53,6 +55,8 @@ type MultiProxyManager struct {
 
 	// The multiplayer manager used in the mp.
 	mpm *playermanager.MultiPlayerManager
+
+	tm *task.TaskManager
 }
 
 func InitMultiProxyManager(ctx context.Context) (*MultiProxyManager, error) {
@@ -74,7 +78,7 @@ func InitMultiProxyManager(ctx context.Context) (*MultiProxyManager, error) {
 		return &MultiProxyManager{}, dbErr
 	}
 
-	mproxym := &MultiProxyManager{
+	mpm := &MultiProxyManager{
 		multiProxyMap: sync.Map{},
 		l:             l,
 		c:             c,
@@ -82,14 +86,14 @@ func InitMultiProxyManager(ctx context.Context) (*MultiProxyManager, error) {
 		ctx:           logr.NewContext(ctx, zapr.NewLogger(l.GetGateLogger())),
 	}
 
-	mproxym.ownerId = mproxym.createNewProxyId()
+	mpm.ownerId = mpm.createNewProxyId()
 
-	mproxym.mpm = playermanager.InitMultiPlayerManager(l, db, mproxym.ownerId)
+	mpm.mpm = playermanager.InitMultiPlayerManager(l, db, mpm.ownerId)
 
-	cfg, err := gate.LoadConfig(mproxym.c.GetViper())
+	cfg, err := gate.LoadConfig(mpm.c.GetViper())
 	if err != nil {
-		mproxym.l.Error("load config for gate error", "error", err)
-		return mproxym, err
+		mpm.l.Error("load config for gate error", "error", err)
+		return mpm, err
 	}
 
 	gate, err := gate.New(gate.Options{
@@ -97,30 +101,30 @@ func InitMultiProxyManager(ctx context.Context) (*MultiProxyManager, error) {
 		EventMgr: event.New(),
 	})
 	if err != nil {
-		mproxym.l.Error("creating gate instance error", "error", err)
-		return mproxym, err
+		mpm.l.Error("creating gate instance error", "error", err)
+		return mpm, err
 	}
 
-	mproxym.ownerGate = gate.Java()
-	event.Subscribe(mproxym.ownerGate.Event(), 0, mproxym.onShutdown)
+	mpm.ownerGate = gate.Java()
+	event.Subscribe(mpm.ownerGate.Event(), 0, mpm.onShutdown)
 
-	mproxym.cm, err = commands.Init(mproxym.ownerGate, mproxym.l, mproxym.db, mproxym.mpm)
+	mpm.cm, err = commands.Init(mpm.ownerGate, mpm.l, mpm.db, mpm.mpm, mpm.tm)
 	if err != nil {
-		return mproxym, nil
+		return mpm, nil
 	}
 
-	mproxym.lm, err = listeners.Init(mproxym.ownerGate.Event(), mproxym.l, mproxym.db, mproxym.mpm, mproxym.mpm.GetOwnerProxyId())
+	mpm.lm, err = listeners.Init(mpm.ownerGate.Event(), mpm.l, mpm.db, mpm.mpm, mpm.mpm.GetOwnerProxyId(), mpm.ownerMultiProxy)
 	if err != nil {
-		return mproxym, err
+		return mpm, err
 	}
 
-	address := mproxym.ownerGate.Config().Bind
-	mproxym.ownerMultiProxy = mproxym.NewMultiProxy(address, mproxym.ownerId)
+	address := mpm.ownerGate.Config().Bind
+	mpm.ownerMultiProxy = mpm.NewMultiProxy(address, mpm.ownerId)
 
-	return mproxym, nil
+	return mpm, nil
 }
 
-func (mpm *MultiProxyManager) NewMultiProxy(address string, id uuid.UUID) *multi.MultiProxy {
+func (mpm *MultiProxyManager) NewMultiProxy(address string, id uuid.UUID) *multi.Proxy {
 	mp := multi.NewMultiProxy(address, id)
 	mpm.multiProxyMap.Store(id, mp)
 	return mp
@@ -130,11 +134,16 @@ func (mpm *MultiProxyManager) GetOwnerGate() *proxy.Proxy {
 	return mpm.ownerGate
 }
 
-func (mpm *MultiProxyManager) GetOwnerMultiProxy() *multi.MultiProxy {
+func (mpm *MultiProxyManager) GetOwnerMultiProxy() *multi.Proxy {
 	return mpm.ownerMultiProxy
 }
 
 func (mpm *MultiProxyManager) Start() {
+	go func() {
+		time.Sleep(5 * time.Second)
+		mpm.tm = task.InitTaskManager(mpm.db, mpm.l, mpm.ownerId, mpm.ownerGate, mpm.mpm)
+	}()
+
 	err := mpm.ownerGate.Start(mpm.ctx)
 	if err != nil {
 		mpm.l.Error("error starting proxy", "error", err)
@@ -145,10 +154,10 @@ func (mpm *MultiProxyManager) onShutdown(event *proxy.ShutdownEvent) {
 	mpm.Close()
 }
 
-func (mpm *MultiProxyManager) GetMultiProxy(id uuid.UUID) (*multi.MultiProxy, error) {
+func (mpm *MultiProxyManager) GetMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 	val, ok := mpm.multiProxyMap.Load(id)
 	if ok {
-		mp, ok := val.(*multi.MultiProxy)
+		mp, ok := val.(*multi.Proxy)
 		if ok {
 			return mp, nil
 		}

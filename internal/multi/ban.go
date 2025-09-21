@@ -4,25 +4,25 @@ import (
 	"sync"
 	"time"
 
-	. "go.minekube.com/common/minecraft/component"
+	c "go.minekube.com/common/minecraft/component"
 )
 
 type banInfo struct {
 	banned bool
-	reason Text
+	reason c.Text
 
 	permanently bool
 	expiration  time.Duration
 
 	mu sync.RWMutex
 
-	mp *MultiPlayer
+	mp *Player
 }
 
-func NewBanInfo(mp *MultiPlayer) *banInfo {
+func newBanInfo(mp *Player) *banInfo {
 	bi := &banInfo{
 		banned:      false,
-		reason:      Text{},
+		reason:      c.Text{},
 		permanently: false,
 		mp:          mp,
 	}
@@ -37,14 +37,14 @@ func (bi *banInfo) IsBanned() bool {
 	return bi.banned
 }
 
-func (bi *banInfo) GetReason() Text {
+func (bi *banInfo) GetReason() c.Text {
 	bi.mu.RLock()
 	defer bi.mu.RUnlock()
 
 	return bi.reason
 }
 
-func (bi *banInfo) Ban(reason Text) {
+func (bi *banInfo) Ban(reason c.Text) {
 	bi.mu.Lock()
 	defer bi.mu.Unlock()
 
@@ -53,7 +53,7 @@ func (bi *banInfo) Ban(reason Text) {
 	bi.permanently = true
 }
 
-func (bi *banInfo) TempBan(reason Text, expiration time.Duration) {
+func (bi *banInfo) TempBan(reason c.Text, expiration time.Duration) {
 	bi.mu.Lock()
 	defer bi.mu.Unlock()
 
