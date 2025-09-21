@@ -7,5 +7,4 @@ A proxy network using Redis and Postgres to easily handle thousands of players s
 - Efficient cache. Uses the database as little as possible, making the proxy network as fast as possible.
 
 ## Features
-[O] Ban system
-[X]
+[] Ban system
