@@ -1,5 +1,4 @@
 # Vesperis MultiProxy
-
 A proxy network using Redis and Postgres to easily handle thousands of players shared across multiple Gate proxies.
 
 ## Features
