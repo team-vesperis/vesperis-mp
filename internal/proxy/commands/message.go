@@ -1,9 +1,12 @@
 package commands
 
 import (
+	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task/tasks"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/gate/pkg/command"
+	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
 func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuilder {
@@ -11,7 +14,7 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 		Then(brigodier.Argument("target", brigodier.SingleWord).
 			Then(brigodier.Argument("message", brigodier.StringPhrase).
 				Executes(command.Command(func(c *command.Context) error {
-					mp, err := cm.getMultiPlayerFromTarget(c.String("target"))
+					t, err := cm.getMultiPlayerFromTarget(c.String("target"))
 					if err != nil {
 						if err == ErrTargetNotFound {
 							c.SendMessage(ComponentTargetNotFound)
@@ -20,17 +23,31 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 						return err
 					}
 
-					if !mp.IsOnline() {
+					if !t.IsOnline() {
 						c.SendMessage(ComponentTargetIsOffline)
 						return nil
 					}
 
-					mproxy := mp.GetProxy()
+					mproxy := t.GetProxy()
 					if mproxy == nil {
-						return nil
+						return multi.ErrProxyNilWhileOnline
 					}
 
-					cm.tm.SendTask(mp.GetProxy(), &tasks.MessageTask{})
+					var originName string
+					p, ok := c.Source.(proxy.Player)
+					if ok {
+						mp, err := cm.mpm.GetMultiPlayer(p.ID())
+						if err != nil {
+							c.SendMessage(util.TextInternalError("Could not send message.", err))
+							return err
+						}
+
+						originName = mp.GetNickname()
+					} else {
+						originName = "Vesperis-Proxy"
+					}
+
+					cm.tm.BuildTask(t.GetProxy(), tasks.NewMessageTask(originName, t.GetId(), c.String("message")))
 
 					// handle normally
 					if mproxy.GetId() == cm.mpm.GetOwnerProxyId() {

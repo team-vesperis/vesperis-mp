@@ -8,6 +8,7 @@ type Task interface {
 	PerformTask(tm *TaskManager) *TaskResponse
 	GetTargetProxyId() uuid.UUID
 	GetResponseChannel() string
+	SetResponseChannel(ch string)
 }
 
 const taskChannel = "task_mp"

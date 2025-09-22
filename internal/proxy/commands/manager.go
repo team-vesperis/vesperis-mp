@@ -91,7 +91,7 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string) (*multi.Player, err
 
 		id = uuid.Nil
 		for _, mp := range l {
-			if t == mp.GetName() {
+			if t == mp.GetUsername() {
 				id = mp.GetId()
 				break
 			}
@@ -152,7 +152,7 @@ func (cm *CommandManager) SuggestAllMultiPlayers(onlyOnline bool) brigodier.Sugg
 				continue
 			}
 
-			name := mp.GetName()
+			name := mp.GetUsername()
 			if strings.HasPrefix(strings.ToLower(name), r) {
 				b.Suggest(name)
 			}

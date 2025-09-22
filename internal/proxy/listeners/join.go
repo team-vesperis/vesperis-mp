@@ -15,8 +15,8 @@ func (lm *ListenerManager) onProxyJoin(e *proxy.PostLoginEvent) {
 		return
 	}
 
-	if p.Username() != mp.GetName() {
-		err := mp.SetName(p.Username())
+	if p.Username() != mp.GetUsername() {
+		err := mp.SetUsername(p.Username())
 		if err != nil {
 			lm.l.Error("player post login set name error", "playerId", id, "error", err)
 		}

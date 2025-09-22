@@ -115,7 +115,8 @@ func (mpm *MultiPlayerManager) NewMultiPlayer(p proxy.Player) (*multi.Player, er
 	id := p.ID()
 
 	defaultPlayerData := map[string]any{
-		"name":            p.Username(),
+		"username":        p.Username(),
+		"nickname":        p.Username(),
 		"permission.role": multi.RoleDefault,
 		"permission.rank": multi.RankDefault,
 		"online":          false,
@@ -165,13 +166,14 @@ func (mpm *MultiPlayerManager) GetMultiPlayer(id uuid.UUID) (*multi.Player, erro
 	return mpm.CreateMultiPlayerFromDatabase(id)
 }
 
+// if player has never joined before, this function will return database.ErrDataNotFound
 func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*multi.Player, error) {
 	data, err := mpm.db.GetPlayerData(id)
 	if err != nil {
 		return nil, err
 	}
 
-	mp := multi.NewMultiPlayerWithData(id, data)
+	mp := multi.NewPlayer(id, data)
 
 	mpm.multiPlayerMap.Store(id, mp)
 	return mp, nil

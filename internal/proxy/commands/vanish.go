@@ -20,13 +20,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 
 				mp, err := cm.mpm.GetMultiPlayer(p.ID())
 				if err != nil {
-					c.SendMessage(&component.Text{
-						Content: "Could not get vanish.",
-						S: component.Style{
-							Color:      util.ColorRed,
-							HoverEvent: component.ShowText(&component.Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
-						},
-					})
+					c.SendMessage(util.TextInternalError("Could not get vanish.", err))
 					return err
 				}
 
@@ -82,13 +76,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 
 					mp, err := cm.mpm.GetMultiPlayer(p.ID())
 					if err != nil {
-						c.SendMessage(&component.Text{
-							Content: "Could not turn on vanish.",
-							S: component.Style{
-								Color:      util.ColorRed,
-								HoverEvent: component.ShowText(&component.Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
-							},
-						})
+						c.SendMessage(util.TextInternalError("Could not set vanish.", err))
 						return err
 					}
 
@@ -102,13 +90,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 
 					err = mp.SetVanished(true)
 					if err != nil {
-						c.SendMessage(&component.Text{
-							Content: "Could not turn on vanish.",
-							S: component.Style{
-								Color:      util.ColorRed,
-								HoverEvent: component.ShowText(&component.Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
-							},
-						})
+						c.SendMessage(util.TextInternalError("Could not set vanish.", err))
 						return err
 					}
 
@@ -129,13 +111,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 
 					mp, err := cm.mpm.GetMultiPlayer(p.ID())
 					if err != nil {
-						c.SendMessage(&component.Text{
-							Content: "Could not turn off vanish: error getting multiplayer.",
-							S: component.Style{
-								Color:      util.ColorRed,
-								HoverEvent: component.ShowText(&component.Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
-							},
-						})
+						c.SendMessage(util.TextInternalError("Could not set vanish.", err))
 						return err
 					}
 
@@ -149,13 +125,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 
 					err = mp.SetVanished(false)
 					if err != nil {
-						c.SendMessage(&component.Text{
-							Content: "Could not turn off vanish: error getting multiplayer.",
-							S: component.Style{
-								Color:      util.ColorRed,
-								HoverEvent: component.ShowText(&component.Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
-							},
-						})
+						c.SendMessage(util.TextInternalError("Could not set vanish.", err))
 						return err
 					}
 

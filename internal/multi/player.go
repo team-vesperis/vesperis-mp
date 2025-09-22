@@ -22,7 +22,9 @@ type Player struct {
 	id uuid.UUID
 
 	// The username of the underlying player
-	name string
+	username string
+
+	nickname string
 
 	// The permission info of the multiplayer.
 	pi *permissionInfo
@@ -42,24 +44,21 @@ type Player struct {
 	mu sync.RWMutex
 }
 
-func NewMultiPlayer(id uuid.UUID) *Player {
+func NewPlayer(id uuid.UUID, data map[string]any) *Player {
 	mp := &Player{
 		id: id,
 	}
 
 	mp.pi = newPermissionInfo(mp)
 	mp.bi = newBanInfo(mp)
-
-	return mp
-}
-
-func NewMultiPlayerWithData(id uuid.UUID, data map[string]any) *Player {
-	// create an empty multiplayer, then fill in using the data
-	mp := NewMultiPlayer(id)
-
-	name, ok := data["name"].(string)
+	username, ok := data["username"].(string)
 	if ok {
-		mp.name = name
+		mp.username = username
+	}
+
+	nickname, ok := data["nickname"].(string)
+	if ok {
+		mp.nickname = nickname
 	}
 
 	permission, ok := data["permission"].(map[string]any)
@@ -109,11 +108,18 @@ func (mp *Player) save(key string, val any) error {
 
 func (mp *Player) Update(key string, val any) {
 	switch key {
-	case "name":
+	case "username":
 		name, ok := val.(string)
 		if ok {
 			mp.mu.Lock()
-			mp.name = name
+			mp.username = name
+			mp.mu.Unlock()
+		}
+	case "nickname":
+		name, ok := val.(string)
+		if ok {
+			mp.mu.Lock()
+			mp.nickname = name
 			mp.mu.Unlock()
 		}
 	case "permission.role":
@@ -170,6 +176,8 @@ func (mp *Player) Update(key string, val any) {
 	}
 }
 
+var ErrProxyNilWhileOnline = errors.New("proxy is nil but player is online")
+
 // can return nil!
 func (mp *Player) GetProxy() *Proxy {
 	mp.mu.RLock()
@@ -186,6 +194,8 @@ func (mp *Player) SetProxy(mproxy *Proxy) error {
 
 	return mp.save("mp", mproxy)
 }
+
+var ErrBackendNilWhileOnline = errors.New("backend is nil but player is online")
 
 // can return nil!
 func (mp *Player) GetBackend() *Backend {
@@ -208,20 +218,36 @@ func (mp *Player) GetId() uuid.UUID {
 	return mp.id
 }
 
-func (mp *Player) GetName() string {
+func (mp *Player) GetUsername() string {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
-	return mp.name
+	return mp.username
 }
 
-func (mp *Player) SetName(name string) error {
+func (mp *Player) SetUsername(name string) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
-	mp.name = name
+	mp.username = name
 
-	return mp.save("name", name)
+	return mp.save("username", name)
+}
+
+func (mp *Player) GetNickname() string {
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+
+	return mp.nickname
+}
+
+func (mp *Player) SetNickname(name string) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
+	mp.nickname = name
+
+	return mp.save("nickname", name)
 }
 
 func (mp *Player) GetPermissionInfo() *permissionInfo {

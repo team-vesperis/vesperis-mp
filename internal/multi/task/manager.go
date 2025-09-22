@@ -66,6 +66,8 @@ func (tm *TaskManager) createTaskListener() func(msg *redis.Message) {
 			return
 		}
 
+		t.SetResponseChannel("task_response-" + uuid.New().Undashed())
+
 		if tm.ownerId == t.GetTargetProxyId() {
 			tr := t.PerformTask(tm)
 			m := strconv.FormatBool(tr.IsSuccessful()) + "_" + tr.GetReason()
@@ -78,7 +80,18 @@ func (tm *TaskManager) createTaskListener() func(msg *redis.Message) {
 	}
 }
 
-func (tm *TaskManager) SendTask(targetMultiProxy *multi.Proxy, t Task) *TaskResponse {
+// BuildTask handles conversation between multiple proxies.
+//
+// It will first check if it can be handled on this proxy. If so, no need for the database.
+// Otherwise it will send out a message using Redis PubSub. The other proxies will check if its a task that they need to handle.
+// If they do need to handle it, the proxy will perform the task and send feedback back to the original proxy.
+//
+// Returns TaskResponse. Use .IsSuccessful() to check if everything went accordingly. If not, use .GetReason() to find out what happened.
+func (tm *TaskManager) BuildTask(targetMultiProxy *multi.Proxy, t Task) *TaskResponse {
+	if t.GetTargetProxyId() == tm.ownerId {
+		return t.PerformTask(tm)
+	}
+
 	d, err := json.Marshal(t)
 	if err != nil {
 		return NewTaskResponse(false, "task confirmation could not marshal task")
