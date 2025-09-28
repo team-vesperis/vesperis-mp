@@ -7,19 +7,19 @@ import (
 )
 
 type Proxy struct {
-	mu sync.RWMutex
-
-	id uuid.UUID
-
+	variable_mu sync.RWMutex
+	id          uuid.UUID
 	maintenance bool
+	address     string
 
-	address string
+	b_mu sync.RWMutex
+	b    map[*Backend]bool
 
-	backends map[*Backend]bool
-	players  map[*Player]bool
+	p_mu sync.RWMutex
+	p    map[*Player]bool
 }
 
-func NewMultiProxy(address string, id uuid.UUID) *Proxy {
+func NewProxy(address string, id uuid.UUID) *Proxy {
 	mp := &Proxy{
 		id:      id,
 		address: address,
@@ -33,30 +33,30 @@ func (mp *Proxy) GetId() uuid.UUID {
 }
 
 func (mp *Proxy) GetAddress() string {
-	mp.mu.RLock()
-	defer mp.mu.RUnlock()
+	mp.variable_mu.RLock()
+	defer mp.variable_mu.RUnlock()
 	return mp.address
 }
 
 func (mp *Proxy) IsInMaintenance() bool {
-	mp.mu.RLock()
-	defer mp.mu.RUnlock()
+	mp.variable_mu.RLock()
+	defer mp.variable_mu.RUnlock()
 	return mp.maintenance
 }
 
 func (mp *Proxy) SetInMaintenance(maintenance bool) {
-	mp.mu.Lock()
-	defer mp.mu.Unlock()
+	mp.variable_mu.Lock()
+	defer mp.variable_mu.Unlock()
 	mp.maintenance = maintenance
 }
 
 func (mp *Proxy) GetAllPlayers() []*Player {
-	mp.mu.RLock()
-	defer mp.mu.RUnlock()
+	mp.p_mu.RLock()
+	defer mp.p_mu.RUnlock()
 
-	l := make([]*Player, 0, len(mp.players))
+	l := make([]*Player, 0, len(mp.p))
 	i := 0
-	for p := range mp.players {
+	for p := range mp.p {
 		l[i] = p
 		i++
 	}
@@ -65,21 +65,47 @@ func (mp *Proxy) GetAllPlayers() []*Player {
 }
 
 func (mp *Proxy) AddPlayer(p *Player) {
-	mp.mu.Lock()
-	mp.players[p] = true
-	mp.mu.Unlock()
+	mp.p_mu.Lock()
+	mp.p[p] = true
+	mp.p_mu.Unlock()
 }
 
 func (mp *Proxy) RemovePlayer(p *Player) {
-	mp.mu.Lock()
-	delete(mp.players, p)
-	mp.mu.Unlock()
+	mp.p_mu.Lock()
+	delete(mp.p, p)
+	mp.p_mu.Unlock()
 }
 
 func (mp *Proxy) IsPlayerOnProxy(p *Player) bool {
-	mp.mu.RLock()
-	defer mp.mu.RUnlock()
+	mp.p_mu.RLock()
+	defer mp.p_mu.RUnlock()
 
-	_, exists := mp.players[p]
+	_, exists := mp.p[p]
 	return exists
+}
+
+func (mp *Proxy) GetAllBackends() []*Backend {
+	mp.b_mu.RLock()
+	defer mp.b_mu.RUnlock()
+
+	l := make([]*Backend, 0, len(mp.b))
+	i := 0
+	for b := range mp.b {
+		l[i] = b
+		i++
+	}
+
+	return l
+}
+
+func (mp *Proxy) AddBackend(b *Backend) {
+	mp.b_mu.Lock()
+	mp.b[b] = true
+	mp.b_mu.Unlock()
+}
+
+func (mp *Proxy) RemoveBackend(b *Backend) {
+	mp.b_mu.Lock()
+	delete(mp.b, b)
+	mp.b_mu.Unlock()
 }

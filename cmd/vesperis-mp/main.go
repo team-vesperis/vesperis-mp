@@ -18,7 +18,7 @@ func main() {
 
 	now := time.Now()
 
-	mpm, err := proxymanager.InitMultiProxyManager(ctx)
+	mpm, err := proxymanager.Init(ctx)
 	if err != nil {
 		return
 	}

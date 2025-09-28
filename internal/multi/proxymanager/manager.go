@@ -2,6 +2,7 @@ package proxymanager
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -22,7 +23,8 @@ import (
 )
 
 type MultiProxyManager struct {
-	multiProxyMap sync.Map
+	multiProxyMap map[uuid.UUID]*multi.Proxy
+	mu            sync.RWMutex
 
 	// the id of the mp that has this manager
 	ownerId uuid.UUID
@@ -59,7 +61,7 @@ type MultiProxyManager struct {
 	tm *task.TaskManager
 }
 
-func InitMultiProxyManager(ctx context.Context) (*MultiProxyManager, error) {
+func Init(ctx context.Context) (*MultiProxyManager, error) {
 	l, logErr := logger.Init()
 	if logErr != nil {
 		return &MultiProxyManager{}, logErr
@@ -71,7 +73,6 @@ func InitMultiProxyManager(ctx context.Context) (*MultiProxyManager, error) {
 		return &MultiProxyManager{}, cfErr
 	}
 
-	l.Info("initializing database")
 	db, dbErr := database.Init(ctx, c, l)
 	if dbErr != nil {
 		l.Error("database initialization error")
@@ -79,16 +80,20 @@ func InitMultiProxyManager(ctx context.Context) (*MultiProxyManager, error) {
 	}
 
 	mpm := &MultiProxyManager{
-		multiProxyMap: sync.Map{},
+		multiProxyMap: make(map[uuid.UUID]*multi.Proxy),
 		l:             l,
 		c:             c,
 		db:            db,
 		ctx:           logr.NewContext(ctx, zapr.NewLogger(l.GetGateLogger())),
 	}
 
-	mpm.ownerId = mpm.createNewProxyId()
+	var err error
+	mpm.ownerId, err = mpm.createNewProxyId()
+	if err != nil {
+		return mpm, err
+	}
 
-	mpm.mpm = playermanager.InitMultiPlayerManager(l, db, mpm.ownerId)
+	mpm.mpm = playermanager.Init(l, db, mpm.ownerId)
 
 	cfg, err := gate.LoadConfig(mpm.c.GetViper())
 	if err != nil {
@@ -125,8 +130,10 @@ func InitMultiProxyManager(ctx context.Context) (*MultiProxyManager, error) {
 }
 
 func (mpm *MultiProxyManager) NewMultiProxy(address string, id uuid.UUID) *multi.Proxy {
-	mp := multi.NewMultiProxy(address, id)
-	mpm.multiProxyMap.Store(id, mp)
+	mp := multi.NewProxy(address, id)
+	mpm.mu.Lock()
+	mpm.multiProxyMap[id] = mp
+	mpm.mu.Unlock()
 	return mp
 }
 
@@ -154,18 +161,18 @@ func (mpm *MultiProxyManager) onShutdown(event *proxy.ShutdownEvent) {
 	mpm.Close()
 }
 
-func (mpm *MultiProxyManager) GetMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
-	val, ok := mpm.multiProxyMap.Load(id)
-	if ok {
-		mp, ok := val.(*multi.Proxy)
-		if ok {
-			return mp, nil
-		}
+var ErrProxyNotFound = errors.New("proxy not found")
 
-		mpm.multiProxyMap.Delete(id)
+func (mpm *MultiProxyManager) GetMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
+	mpm.mu.RLock()
+	mp := mpm.multiProxyMap[id]
+	mpm.mu.RUnlock()
+
+	if mp == nil {
+		return nil, ErrProxyNotFound
 	}
 
-	return nil, nil
+	return mp, nil
 }
 
 func (mpm *MultiProxyManager) GetLogger() *logger.Logger {
@@ -173,14 +180,24 @@ func (mpm *MultiProxyManager) GetLogger() *logger.Logger {
 }
 
 // creates id
-func (mpm *MultiProxyManager) createNewProxyId() uuid.UUID {
+func (mpm *MultiProxyManager) createNewProxyId() (uuid.UUID, error) {
+	var break_err error
+
 	for {
 		id := uuid.New()
-		mp, _ := mpm.GetMultiProxy(id)
-		if mp == nil {
-			return id
+		_, err := mpm.GetMultiProxy(id)
+		if err == ErrProxyNotFound {
+			return id, nil
+		}
+
+		if err != nil {
+			break_err = err
+			break
 		}
 	}
+
+	mpm.l.Error("create new proxy id error", "error", break_err)
+	return uuid.Nil, break_err
 }
 
 func (mpm *MultiProxyManager) Close() {

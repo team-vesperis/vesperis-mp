@@ -24,7 +24,7 @@ type MultiPlayerManager struct {
 
 const UpdateChannel = "update_mp"
 
-func InitMultiPlayerManager(l *logger.Logger, db *database.Database, id uuid.UUID) *MultiPlayerManager {
+func Init(l *logger.Logger, db *database.Database, id uuid.UUID) *MultiPlayerManager {
 	now := time.Now()
 
 	mpm := &MultiPlayerManager{

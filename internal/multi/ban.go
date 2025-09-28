@@ -3,13 +3,11 @@ package multi
 import (
 	"sync"
 	"time"
-
-	c "go.minekube.com/common/minecraft/component"
 )
 
 type banInfo struct {
 	banned bool
-	reason c.Text
+	reason string
 
 	permanently bool
 	expiration  time.Duration
@@ -22,7 +20,7 @@ type banInfo struct {
 func newBanInfo(mp *Player) *banInfo {
 	bi := &banInfo{
 		banned:      false,
-		reason:      c.Text{},
+		reason:      "",
 		permanently: false,
 		mp:          mp,
 	}
@@ -37,14 +35,14 @@ func (bi *banInfo) IsBanned() bool {
 	return bi.banned
 }
 
-func (bi *banInfo) GetReason() c.Text {
+func (bi *banInfo) GetReason() string {
 	bi.mu.RLock()
 	defer bi.mu.RUnlock()
 
 	return bi.reason
 }
 
-func (bi *banInfo) Ban(reason c.Text) {
+func (bi *banInfo) Ban(reason string) {
 	bi.mu.Lock()
 	defer bi.mu.Unlock()
 
@@ -53,7 +51,7 @@ func (bi *banInfo) Ban(reason c.Text) {
 	bi.permanently = true
 }
 
-func (bi *banInfo) TempBan(reason c.Text, expiration time.Duration) {
+func (bi *banInfo) TempBan(reason string, expiration time.Duration) {
 	bi.mu.Lock()
 	defer bi.mu.Unlock()
 

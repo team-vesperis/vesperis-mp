@@ -12,11 +12,11 @@ import (
 type Player struct {
 	// The MultiProxy the player is located on.
 	// can be nil!
-	mp *Proxy
+	p *Proxy
 
 	// The MultiBackend the player is located on.
 	// can be nil!
-	mb *Backend
+	b *Backend
 
 	// The id of the underlying player
 	id uuid.UUID
@@ -51,6 +51,7 @@ func NewPlayer(id uuid.UUID, data map[string]any) *Player {
 
 	mp.pi = newPermissionInfo(mp)
 	mp.bi = newBanInfo(mp)
+
 	username, ok := data["username"].(string)
 	if ok {
 		mp.username = username
@@ -74,6 +75,29 @@ func NewPlayer(id uuid.UUID, data map[string]any) *Player {
 		}
 	}
 
+	ban, ok := data["ban"].(map[string]any)
+	if ok {
+		banned, ok := ban["banned"].(bool)
+		if ok {
+			mp.bi.banned = banned
+		}
+
+		reason, ok := ban["reason"].(string)
+		if ok {
+			mp.bi.reason = reason
+		}
+
+		permanently, ok := ban["permanently"].(bool)
+		if ok {
+			mp.bi.permanently = permanently
+		}
+
+		expiration, ok := ban["expiration"].(time.Duration)
+		if ok {
+			mp.bi.expiration = expiration
+		}
+	}
+
 	online, ok := data["online"].(bool)
 	if ok {
 		mp.online = online
@@ -82,6 +106,16 @@ func NewPlayer(id uuid.UUID, data map[string]any) *Player {
 	vanished, ok := data["vanished"].(bool)
 	if ok {
 		mp.vanished = vanished
+	}
+
+	last_seen, ok := data["last_seen"].(time.Time)
+	if ok {
+		mp.lastSeen = last_seen
+	}
+
+	friends, ok := data["friends"].([]uuid.UUID)
+	if ok {
+		mp.friendIds = friends
 	}
 
 	return mp
@@ -183,14 +217,14 @@ func (mp *Player) GetProxy() *Proxy {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
-	return mp.mp
+	return mp.p
 }
 
 func (mp *Player) SetProxy(mproxy *Proxy) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
-	mp.mp = mproxy
+	mp.p = mproxy
 
 	return mp.save("mp", mproxy)
 }
@@ -202,14 +236,14 @@ func (mp *Player) GetBackend() *Backend {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
-	return mp.mb
+	return mp.b
 }
 
 func (mp *Player) SetBackend(mb *Backend) error {
 	mp.mu.Lock()
 	defer mp.mu.Unlock()
 
-	mp.mb = mb
+	mp.b = mb
 
 	return mp.save("mb", mb)
 }
