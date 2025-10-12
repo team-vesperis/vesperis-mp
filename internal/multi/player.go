@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/team-vesperis/vesperis-mp/internal/database"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
@@ -36,7 +38,7 @@ type Player struct {
 
 	vanished bool
 
-	lastSeen time.Time
+	lastSeen *time.Time
 
 	// List of friend UUIDs.
 	friendIds []uuid.UUID
@@ -44,87 +46,41 @@ type Player struct {
 	mu sync.RWMutex
 }
 
-func NewPlayer(id uuid.UUID, data map[string]any) *Player {
+func NewPlayer(id uuid.UUID, data *util.PlayerData) *Player {
 	mp := &Player{
 		id: id,
 	}
 
-	mp.pi = newPermissionInfo(mp)
-	mp.bi = newBanInfo(mp)
+	mp.pi = newPermissionInfo(mp, data)
+	mp.bi = newBanInfo(mp, data)
 
-	username, ok := data["username"].(string)
-	if ok {
-		mp.username = username
-	}
-
-	nickname, ok := data["nickname"].(string)
-	if ok {
-		mp.nickname = nickname
-	}
-
-	permission, ok := data["permission"].(map[string]any)
-	if ok {
-		role, ok := permission["role"].(string)
-		if ok {
-			mp.pi.role = role
-		}
-
-		rank, ok := permission["rank"].(string)
-		if ok {
-			mp.pi.rank = rank
-		}
-	}
-
-	ban, ok := data["ban"].(map[string]any)
-	if ok {
-		banned, ok := ban["banned"].(bool)
-		if ok {
-			mp.bi.banned = banned
-		}
-
-		reason, ok := ban["reason"].(string)
-		if ok {
-			mp.bi.reason = reason
-		}
-
-		permanently, ok := ban["permanently"].(bool)
-		if ok {
-			mp.bi.permanently = permanently
-		}
-
-		expiration, ok := ban["expiration"].(time.Duration)
-		if ok {
-			mp.bi.expiration = expiration
-		}
-	}
-
-	online, ok := data["online"].(bool)
-	if ok {
-		mp.online = online
-	}
-
-	vanished, ok := data["vanished"].(bool)
-	if ok {
-		mp.vanished = vanished
-	}
-
-	last_seen, ok := data["last_seen"].(time.Time)
-	if ok {
-		mp.lastSeen = last_seen
-	}
-
-	friends, ok := data["friends"].([]uuid.UUID)
-	if ok {
-		mp.friendIds = friends
-	}
+	mp.username = data.Username
+	mp.nickname = data.Nickname
+	mp.online = data.Online
+	mp.vanished = data.Vanished
+	mp.lastSeen = data.LastSeen
+	mp.friendIds = data.Friends
 
 	return mp
 }
 
-type PlayerManager interface {
-	Save(id uuid.UUID, key string, val any) error
+type Proxymanager interface {
+	GetMultiProxy(id uuid.UUID) (*Proxy, error)
+	GetMultiBackend(id uuid.UUID) (*Backend, error)
 }
 
+var ErrProxyManagerNotSet = errors.New("proxy manager not set")
+var proxyManagerInstance Proxymanager
+
+func SetProxyManager(pm Proxymanager) {
+	proxyManagerInstance = pm
+}
+
+type PlayerManager interface {
+	Save(id uuid.UUID, key util.PlayerKey, val any) error
+}
+
+var ErrPlayerManagerNotSet = errors.New("player manager not set")
 var playerManagerInstance PlayerManager
 
 func SetPlayerManager(pm PlayerManager) {
@@ -133,80 +89,103 @@ func SetPlayerManager(pm PlayerManager) {
 
 // Update specific value of the multi player into the database
 // Notifies other proxies to update that value
-func (mp *Player) save(key string, val any) error {
+func (mp *Player) save(key util.PlayerKey, val any) error {
 	if playerManagerInstance == nil {
-		return errors.New("player manager not set")
+		return ErrPlayerManagerNotSet
 	}
+
+	if !slices.Contains(util.AllowedPlayerKeys, key) {
+		return util.ErrIncorrectPlayerKey
+	}
+
 	return playerManagerInstance.Save(mp.id, key, val)
 }
 
-func (mp *Player) Update(key string, val any) {
+func (mp *Player) Update(key util.PlayerKey, db *database.Database) {
+	if proxyManagerInstance == nil {
+		return
+	}
+
+	if !slices.Contains(util.AllowedPlayerKeys, key) {
+		return
+	}
+
 	switch key {
-	case "username":
-		name, ok := val.(string)
-		if ok {
-			mp.mu.Lock()
-			mp.username = name
-			mp.mu.Unlock()
-		}
-	case "nickname":
-		name, ok := val.(string)
-		if ok {
-			mp.mu.Lock()
-			mp.nickname = name
-			mp.mu.Unlock()
-		}
-	case "permission.role":
-		role, ok := val.(string)
-		if ok {
-			mp.pi.mu.Lock()
-			mp.pi.role = role
-			mp.pi.mu.Unlock()
-		}
-	case "permission.rank":
-		rank, ok := val.(string)
-		if ok {
-			mp.pi.mu.Lock()
-			mp.pi.rank = rank
-			mp.pi.mu.Unlock()
-		}
-	case "online":
-		online, ok := val.(bool)
-		if ok {
-			mp.mu.Lock()
-			mp.online = online
-			mp.mu.Unlock()
-		}
-	case "vanished":
-		vanished, ok := val.(bool)
-		if ok {
-			mp.mu.Lock()
-			mp.vanished = vanished
-			mp.mu.Unlock()
-		}
-	case "friends":
-		list, ok := val.([]any)
-		if ok {
-			var mp_list []uuid.UUID
-			for _, l := range list {
-				id, ok := l.(uuid.UUID)
-				if ok {
-					mp_list = append(mp_list, id)
-				}
-			}
-
-			mp.mu.Lock()
-			mp.friendIds = mp_list
-			mp.mu.Unlock()
+	case util.PlayerKey_ProxyId:
+		var proxyId uuid.UUID
+		db.GetPlayerDataField(mp.id, util.PlayerKey_ProxyId, &proxyId)
+		p, err := proxyManagerInstance.GetMultiProxy(proxyId)
+		if err == nil {
+			mp.setProxy(p, false)
 		}
 
-	case "last_seen":
-		time, ok := val.(time.Time)
-		if ok {
-			mp.mu.Lock()
-			mp.lastSeen = time
-			mp.mu.Unlock()
+	case util.PlayerKey_BackendId:
+		var backendId uuid.UUID
+		db.GetPlayerDataField(mp.id, util.PlayerKey_BackendId, &backendId)
+		b, err := proxyManagerInstance.GetMultiBackend(backendId)
+		if err == nil {
+			mp.setBackend(b, false)
 		}
+
+	case util.PlayerKey_Username:
+		var username string
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Username, &username)
+		mp.setUsername(username, false)
+
+	case util.PlayerKey_Nickname:
+		var nickname string
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Nickname, &nickname)
+		mp.setNickname(nickname, false)
+
+	case util.PlayerKey_Permission_Role:
+		var role string
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Permission_Role, &role)
+		mp.pi.setRole(role, false)
+
+	case util.PlayerKey_Permission_Rank:
+		var rank string
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Permission_Rank, &rank)
+		mp.pi.setRank(rank, false)
+
+	case util.PlayerKey_Ban_Banned:
+		var banned bool
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Banned, &banned)
+		mp.bi.setBanned(banned, false)
+
+	case util.PlayerKey_Ban_Reason:
+		var reason string
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Reason, &reason)
+		mp.bi.setReason(reason, false)
+
+	case util.PlayerKey_Ban_Permanently:
+		var permanently bool
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Permanently, &permanently)
+		mp.bi.setPermanently(permanently, false)
+
+	case util.PlayerKey_Ban_Expiration:
+		var expiration time.Time
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Expiration, &expiration)
+		mp.bi.setExpiration(expiration, false)
+
+	case util.PlayerKey_Online:
+		var online bool
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Online, &online)
+		mp.setOnline(online, false)
+
+	case util.PlayerKey_Vanished:
+		var vanished bool
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Vanished, &vanished)
+		mp.setVanished(vanished, false)
+
+	case util.PlayerKey_LastSeen:
+		var lastSeen *time.Time
+		db.GetPlayerDataField(mp.id, util.PlayerKey_LastSeen, &lastSeen)
+		mp.setLastSeen(lastSeen, false)
+
+	case util.PlayerKey_Friends:
+		var friends []uuid.UUID
+		db.GetPlayerDataField(mp.id, util.PlayerKey_Friends, &friends)
+		mp.setFriendsIds(friends, false)
 	}
 }
 
@@ -221,12 +200,19 @@ func (mp *Player) GetProxy() *Proxy {
 }
 
 func (mp *Player) SetProxy(mproxy *Proxy) error {
+	return mp.setProxy(mproxy, true)
+}
+
+func (mp *Player) setProxy(mproxy *Proxy, notify bool) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
 	mp.p = mproxy
+	mp.mu.Unlock()
 
-	return mp.save("mp", mproxy)
+	if notify {
+		return mp.save(util.PlayerKey_ProxyId, mproxy.id)
+	}
+
+	return nil
 }
 
 var ErrBackendNilWhileOnline = errors.New("backend is nil but player is online")
@@ -240,12 +226,19 @@ func (mp *Player) GetBackend() *Backend {
 }
 
 func (mp *Player) SetBackend(mb *Backend) error {
+	return mp.setBackend(mb, true)
+}
+
+func (mp *Player) setBackend(mb *Backend, notify bool) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
 	mp.b = mb
+	mp.mu.Unlock()
 
-	return mp.save("mb", mb)
+	if notify {
+		return mp.save(util.PlayerKey_BackendId, mb.id)
+	}
+
+	return nil
 }
 
 func (mp *Player) GetId() uuid.UUID {
@@ -260,12 +253,19 @@ func (mp *Player) GetUsername() string {
 }
 
 func (mp *Player) SetUsername(name string) error {
+	return mp.setUsername(name, true)
+}
+
+func (mp *Player) setUsername(name string, notify bool) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
 	mp.username = name
+	mp.mu.Unlock()
 
-	return mp.save("username", name)
+	if notify {
+		return mp.save(util.PlayerKey_Username, name)
+	}
+
+	return nil
 }
 
 func (mp *Player) GetNickname() string {
@@ -276,12 +276,19 @@ func (mp *Player) GetNickname() string {
 }
 
 func (mp *Player) SetNickname(name string) error {
+	return mp.setNickname(name, true)
+}
+
+func (mp *Player) setNickname(name string, notify bool) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
+	mp.username = name
+	mp.mu.Unlock()
 
-	mp.nickname = name
+	if notify {
+		return mp.save(util.PlayerKey_Nickname, name)
+	}
 
-	return mp.save("nickname", name)
+	return nil
 }
 
 func (mp *Player) GetPermissionInfo() *permissionInfo {
@@ -300,12 +307,19 @@ func (mp *Player) IsOnline() bool {
 }
 
 func (mp *Player) SetOnline(online bool) error {
+	return mp.setOnline(online, true)
+}
+
+func (mp *Player) setOnline(online bool, notify bool) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
 	mp.online = online
+	mp.mu.Unlock()
 
-	return mp.save("online", online)
+	if notify {
+		return mp.save(util.PlayerKey_Online, online)
+	}
+
+	return nil
 }
 
 func (mp *Player) IsVanished() bool {
@@ -316,28 +330,42 @@ func (mp *Player) IsVanished() bool {
 }
 
 func (mp *Player) SetVanished(vanished bool) error {
-	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
-	mp.vanished = vanished
-
-	return mp.save("vanished", vanished)
+	return mp.setVanished(vanished, true)
 }
 
-func (mp *Player) GetLastSeen() time.Time {
+func (mp *Player) setVanished(vanished bool, notify bool) error {
+	mp.mu.Lock()
+	mp.vanished = vanished
+	mp.mu.Unlock()
+
+	if notify {
+		return mp.save(util.PlayerKey_Vanished, vanished)
+	}
+
+	return nil
+}
+
+func (mp *Player) GetLastSeen() *time.Time {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
 	return mp.lastSeen
 }
 
-func (mp *Player) SetLastSeen(time time.Time) error {
+func (mp *Player) SetLastSeen(lastSeen *time.Time) error {
+	return mp.setLastSeen(lastSeen, true)
+}
+
+func (mp *Player) setLastSeen(lastSeen *time.Time, notify bool) error {
 	mp.mu.Lock()
-	defer mp.mu.Unlock()
+	mp.lastSeen = lastSeen
+	mp.mu.Unlock()
 
-	mp.lastSeen = time
+	if notify {
+		return mp.save(util.PlayerKey_LastSeen, lastSeen)
+	}
 
-	return mp.save("last_seen", time)
+	return nil
 }
 
 func (mp *Player) GetFriendsIds() []uuid.UUID {
@@ -348,26 +376,46 @@ func (mp *Player) GetFriendsIds() []uuid.UUID {
 }
 
 func (mp *Player) SetFriendsIds(ids []uuid.UUID) error {
+	return mp.setFriendsIds(ids, true)
+}
+
+func (mp *Player) setFriendsIds(ids []uuid.UUID, notify bool) error {
 	mp.mu.Lock()
-	mp.friendIds = slices.Clone(ids)
+	mp.friendIds = ids
 	mp.mu.Unlock()
 
-	return mp.save("friends", ids)
+	if notify {
+		return mp.save(util.PlayerKey_Friends, ids)
+	}
+
+	return nil
 }
 
 func (mp *Player) AddFriendId(id uuid.UUID) error {
+	return mp.addFriendId(id, true)
+}
+
+func (mp *Player) addFriendId(id uuid.UUID, notify bool) error {
 	mp.mu.Lock()
 	if !slices.Contains(mp.friendIds, id) {
 		mp.friendIds = append(mp.friendIds, id)
 	}
 	mp.mu.Unlock()
 
-	return mp.save("friends", mp.GetFriendsIds())
+	if notify {
+		return mp.save(util.PlayerKey_Friends, mp.GetFriendsIds())
+	}
+
+	return nil
 }
 
 var ErrFriendNotFound = errors.New("friend not found")
 
 func (mp *Player) RemoveFriendId(id uuid.UUID) error {
+	return mp.removeFriendId(id, true)
+}
+
+func (mp *Player) removeFriendId(id uuid.UUID, notify bool) error {
 	mp.mu.Lock()
 	i := slices.Index(mp.friendIds, id)
 	if i == -1 {
@@ -377,5 +425,9 @@ func (mp *Player) RemoveFriendId(id uuid.UUID) error {
 	mp.friendIds = slices.Delete(mp.friendIds, i, i+1)
 	mp.mu.Unlock()
 
-	return mp.save("friends", mp.GetFriendsIds())
+	if notify {
+		return mp.save(util.PlayerKey_Friends, mp.GetFriendsIds())
+	}
+
+	return nil
 }

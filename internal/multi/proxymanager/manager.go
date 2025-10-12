@@ -26,10 +26,7 @@ type MultiProxyManager struct {
 	multiProxyMap map[uuid.UUID]*multi.Proxy
 	mu            sync.RWMutex
 
-	// the id of the mp that has this manager
-	ownerId uuid.UUID
-
-	ownerMultiProxy *multi.Proxy
+	ownerMP *multi.Proxy
 
 	ownerGate *proxy.Proxy
 
@@ -87,13 +84,12 @@ func Init(ctx context.Context) (*MultiProxyManager, error) {
 		ctx:           logr.NewContext(ctx, zapr.NewLogger(l.GetGateLogger())),
 	}
 
-	var err error
-	mpm.ownerId, err = mpm.createNewProxyId()
+	id, err := mpm.createNewProxyId()
 	if err != nil {
 		return mpm, err
 	}
 
-	mpm.mpm = playermanager.Init(l, db, mpm.ownerId)
+	mpm.mpm = playermanager.Init(l, db, id)
 
 	cfg, err := gate.LoadConfig(mpm.c.GetViper())
 	if err != nil {
@@ -118,13 +114,15 @@ func Init(ctx context.Context) (*MultiProxyManager, error) {
 		return mpm, nil
 	}
 
-	mpm.lm, err = listeners.Init(mpm.ownerGate.Event(), mpm.l, mpm.db, mpm.mpm, mpm.mpm.GetOwnerProxyId(), mpm.ownerMultiProxy)
+	mpm.lm, err = listeners.Init(mpm.ownerGate.Event(), mpm.l, mpm.db, mpm.mpm, mpm.ownerMP)
 	if err != nil {
 		return mpm, err
 	}
 
 	address := mpm.ownerGate.Config().Bind
-	mpm.ownerMultiProxy = mpm.NewMultiProxy(address, mpm.ownerId)
+	mpm.ownerMP = mpm.NewMultiProxy(address, id)
+
+	multi.SetProxyManager(mpm)
 
 	return mpm, nil
 }
@@ -142,13 +140,13 @@ func (mpm *MultiProxyManager) GetOwnerGate() *proxy.Proxy {
 }
 
 func (mpm *MultiProxyManager) GetOwnerMultiProxy() *multi.Proxy {
-	return mpm.ownerMultiProxy
+	return mpm.ownerMP
 }
 
 func (mpm *MultiProxyManager) Start() {
 	go func() {
 		time.Sleep(5 * time.Second)
-		mpm.tm = task.InitTaskManager(mpm.db, mpm.l, mpm.ownerId, mpm.ownerGate, mpm.mpm)
+		mpm.tm = task.InitTaskManager(mpm.db, mpm.l, mpm.ownerMP, mpm.ownerGate, mpm.mpm)
 	}()
 
 	err := mpm.ownerGate.Start(mpm.ctx)
@@ -173,6 +171,10 @@ func (mpm *MultiProxyManager) GetMultiProxy(id uuid.UUID) (*multi.Proxy, error) 
 	}
 
 	return mp, nil
+}
+
+func (mpm *MultiProxyManager) GetMultiBackend(id uuid.UUID) (*multi.Backend, error) {
+	return nil, nil
 }
 
 func (mpm *MultiProxyManager) GetLogger() *logger.Logger {

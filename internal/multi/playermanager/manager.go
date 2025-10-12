@@ -9,12 +9,14 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type MultiPlayerManager struct {
-	multiPlayerMap sync.Map
+	multiPlayerMap map[uuid.UUID]*multi.Player
+	mu             sync.RWMutex
 
 	ownerProxyId uuid.UUID
 
@@ -28,7 +30,7 @@ func Init(l *logger.Logger, db *database.Database, id uuid.UUID) *MultiPlayerMan
 	now := time.Now()
 
 	mpm := &MultiPlayerManager{
-		multiPlayerMap: sync.Map{},
+		multiPlayerMap: map[uuid.UUID]*multi.Player{},
 		l:              l,
 		db:             db,
 		ownerProxyId:   id,
@@ -61,21 +63,19 @@ func (mpm *MultiPlayerManager) GetOwnerProxyId() uuid.UUID {
 	return mpm.ownerProxyId
 }
 
-func (mpm *MultiPlayerManager) Save(id uuid.UUID, key string, val any) error {
+func (mpm *MultiPlayerManager) Save(id uuid.UUID, key util.PlayerKey, val any) error {
 	err := mpm.db.SetPlayerDataField(id, key, val)
 	if err != nil {
 		return err
 	}
 
-	m := mpm.ownerProxyId.String() + "_" + id.String() + "_" + key
+	m := mpm.ownerProxyId.String() + "_" + id.String() + "_" + key.String()
 	return mpm.db.Publish(UpdateChannel, m)
 }
 
 func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
 		m := msg.Payload
-
-		mpm.l.Info("received update message ")
 		s := strings.Split(m, "_")
 
 		originProxy := s[0]
@@ -100,13 +100,12 @@ func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 			return
 		}
 
-		val, err := mpm.db.GetPlayerDataField(id, key)
+		datakey, err := util.GetPlayerKey(key)
 		if err != nil {
-			mpm.l.Error("multiplayer update channel get player data field error", "playerId", id, "error", err)
-			return
+			mpm.l.Error("multiplayer update channel get data key error", "playerId", id, "key", key, "error", err)
 		}
 
-		mp.Update(key, val)
+		mp.Update(datakey, mpm.db)
 	}
 }
 
@@ -114,16 +113,28 @@ func (mpm *MultiPlayerManager) NewMultiPlayer(p proxy.Player) (*multi.Player, er
 	now := time.Now()
 	id := p.ID()
 
-	defaultPlayerData := map[string]any{
-		"username":        p.Username(),
-		"nickname":        p.Username(),
-		"permission.role": multi.RoleDefault,
-		"permission.rank": multi.RankDefault,
-		"online":          false,
-		"vanished":        false,
+	data := &util.PlayerData{
+		ProxyId:   uuid.Nil,
+		BackendId: uuid.Nil,
+		Username:  p.Username(),
+		Nickname:  p.Username(),
+		Permission: &util.PermissionData{
+			Role: multi.RoleDefault,
+			Rank: multi.RankDefault,
+		},
+		Ban: &util.BanData{
+			Banned:      false,
+			Reason:      "",
+			Permanently: false,
+			Expiration:  time.Time{},
+		},
+		Online:   false,
+		Vanished: false,
+		LastSeen: &time.Time{},
+		Friends:  make([]uuid.UUID, 0),
 	}
 
-	err := mpm.db.SetPlayerData(id, defaultPlayerData)
+	err := mpm.db.SetPlayerData(id, data)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +145,7 @@ func (mpm *MultiPlayerManager) NewMultiPlayer(p proxy.Player) (*multi.Player, er
 	}
 
 	// update every proxies' map
-	m := id.String() + "_new"
+	m := mpm.ownerProxyId.String() + "_" + id.String() + "_new"
 	err = mpm.db.Publish(UpdateChannel, m)
 	if err != nil {
 		return nil, err
@@ -142,6 +153,30 @@ func (mpm *MultiPlayerManager) NewMultiPlayer(p proxy.Player) (*multi.Player, er
 
 	mpm.GetLogger().Info("created new multiplayer", "playerId", id, "duration", time.Since(now))
 	return mp, nil
+}
+
+func (mpm *MultiPlayerManager) SavePlayer(player *multi.Player) error {
+	data := &util.PlayerData{
+		Username: player.GetUsername(),
+		Nickname: player.GetNickname(),
+		Permission: &util.PermissionData{
+			Role: player.GetPermissionInfo().GetRole(),
+			Rank: player.GetPermissionInfo().GetRank(),
+		},
+		Ban: &util.BanData{
+			Banned:      player.GetBanInfo().IsBanned(),
+			Reason:      player.GetBanInfo().GetReason(),
+			Permanently: player.GetBanInfo().IsPermanently(),
+			Expiration:  player.GetBanInfo().GetExpiration(),
+		},
+		Online:   player.IsOnline(),
+		Vanished: player.IsVanished(),
+		LastSeen: player.GetLastSeen(),
+		Friends:  player.GetFriendsIds(),
+	}
+
+	err := mpm.db.SetPlayerData(player.GetId(), data)
+	return err
 }
 
 /*
@@ -153,14 +188,12 @@ This method will be used the most since all existing players are in the map loca
 2. Create a new multiplayer based on the player data from the database.
 */
 func (mpm *MultiPlayerManager) GetMultiPlayer(id uuid.UUID) (*multi.Player, error) {
-	val, ok := mpm.multiPlayerMap.Load(id)
+	mpm.mu.RLock()
+	mp, ok := mpm.multiPlayerMap[id]
+	mpm.mu.RUnlock()
+
 	if ok {
-		mp, ok := val.(*multi.Player)
-		if ok {
-			return mp, nil
-		} else {
-			mpm.multiPlayerMap.Delete(id)
-		}
+		return mp, nil
 	}
 
 	return mpm.CreateMultiPlayerFromDatabase(id)
@@ -175,24 +208,21 @@ func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*mul
 
 	mp := multi.NewPlayer(id, data)
 
-	mpm.multiPlayerMap.Store(id, mp)
+	mpm.mu.Lock()
+	mpm.multiPlayerMap[id] = mp
+	mpm.mu.Unlock()
+
 	return mp, nil
 }
 
 func (mpm *MultiPlayerManager) GetAllMultiPlayers() []*multi.Player {
 	var l []*multi.Player
 
-	mpm.multiPlayerMap.Range(func(key, value any) bool {
-		mp, ok := value.(*multi.Player)
-		if !ok {
-			mpm.l.Info("detected incorrect value saved in the multiplayer map", "key", key, "value", value)
-			mpm.multiPlayerMap.Delete(key)
-		} else {
-			l = append(l, mp)
-		}
-
-		return true
-	})
+	mpm.mu.RLock()
+	for _, mp := range mpm.multiPlayerMap {
+		l = append(l, mp)
+	}
+	mpm.mu.RUnlock()
 
 	return l
 }

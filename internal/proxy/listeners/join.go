@@ -15,6 +15,20 @@ func (lm *ListenerManager) onProxyJoin(e *proxy.PostLoginEvent) {
 		return
 	}
 
+	err = mp.SetOnline(true)
+	if err != nil {
+		lm.l.Error("player login set online error", "playerId", id, "error", err)
+		p.Disconnect(loginDenyComponent)
+		return
+	}
+
+	err = mp.SetProxy(lm.ownerMultiProxy)
+	if err != nil {
+		lm.l.Error("player post login set proxy error", "playerId", id, "error", err)
+		p.Disconnect(loginDenyComponent)
+		return
+	}
+
 	if p.Username() != mp.GetUsername() {
 		err := mp.SetUsername(p.Username())
 		if err != nil {

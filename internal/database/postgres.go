@@ -47,6 +47,19 @@ func createTables(ctx context.Context, p *pgxpool.Pool, l *logger.Logger) error 
 		return err
 	}
 
+	proxyDataTable := `
+	CREATE TABLE IF NOT EXISTS proxy_data (
+		proxyId UUID PRIMARY KEY,
+		proxyData JSONB NOT NULL
+	);
+	`
+
+	_, err = p.Exec(ctx, proxyDataTable)
+	if err != nil {
+		l.Error("postgres creating table error", "table", proxyDataTable, "error", err)
+		return err
+	}
+
 	dataTable := `
 	CREATE TABLE IF NOT EXISTS data (
 		dataKey TEXT PRIMARY KEY,

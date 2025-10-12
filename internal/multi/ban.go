@@ -3,6 +3,8 @@ package multi
 import (
 	"sync"
 	"time"
+
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 )
 
 type banInfo struct {
@@ -10,18 +12,19 @@ type banInfo struct {
 	reason string
 
 	permanently bool
-	expiration  time.Duration
+	expiration  time.Time
 
 	mu sync.RWMutex
 
 	mp *Player
 }
 
-func newBanInfo(mp *Player) *banInfo {
+func newBanInfo(mp *Player, data *util.PlayerData) *banInfo {
 	bi := &banInfo{
-		banned:      false,
-		reason:      "",
-		permanently: false,
+		banned:      data.Ban.Banned,
+		reason:      data.Ban.Reason,
+		permanently: data.Ban.Permanently,
+		expiration:  data.Ban.Expiration,
 		mp:          mp,
 	}
 
@@ -35,11 +38,73 @@ func (bi *banInfo) IsBanned() bool {
 	return bi.banned
 }
 
+func (bi *banInfo) setBanned(banned bool, notify bool) error {
+	bi.mu.Lock()
+	bi.banned = banned
+	bi.mu.Unlock()
+
+	if notify {
+		return bi.mp.save(util.PlayerKey_Ban_Banned, banned)
+	}
+
+	return nil
+}
+
 func (bi *banInfo) GetReason() string {
 	bi.mu.RLock()
 	defer bi.mu.RUnlock()
 
 	return bi.reason
+}
+
+func (bi *banInfo) setReason(reason string, notify bool) error {
+	bi.mu.Lock()
+	bi.reason = reason
+	bi.mu.Unlock()
+
+	if notify {
+		return bi.mp.save(util.PlayerKey_Ban_Reason, reason)
+	}
+
+	return nil
+}
+
+func (bi *banInfo) IsPermanently() bool {
+	bi.mu.RLock()
+	defer bi.mu.RUnlock()
+
+	return bi.permanently
+}
+
+func (bi *banInfo) setPermanently(permanently bool, notify bool) error {
+	bi.mu.Lock()
+	bi.permanently = permanently
+	bi.mu.Unlock()
+
+	if notify {
+		return bi.mp.save(util.PlayerKey_Ban_Permanently, permanently)
+	}
+
+	return nil
+}
+
+func (bi *banInfo) GetExpiration() time.Time {
+	bi.mu.RLock()
+	defer bi.mu.RUnlock()
+
+	return bi.expiration
+}
+
+func (bi *banInfo) setExpiration(expiration time.Time, notify bool) error {
+	bi.mu.Lock()
+	bi.expiration = expiration
+	bi.mu.Unlock()
+
+	if notify {
+		return bi.mp.save(util.PlayerKey_Ban_Expiration, expiration)
+	}
+
+	return nil
 }
 
 func (bi *banInfo) Ban(reason string) {
@@ -51,7 +116,7 @@ func (bi *banInfo) Ban(reason string) {
 	bi.permanently = true
 }
 
-func (bi *banInfo) TempBan(reason string, expiration time.Duration) {
+func (bi *banInfo) TempBan(reason string, expiration time.Time) {
 	bi.mu.Lock()
 	defer bi.mu.Unlock()
 

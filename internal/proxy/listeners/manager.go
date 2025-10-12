@@ -8,7 +8,6 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
-	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type ListenerManager struct {
@@ -16,18 +15,16 @@ type ListenerManager struct {
 	l               *logger.Logger
 	db              *database.Database
 	mpm             *playermanager.MultiPlayerManager
-	ownerId         uuid.UUID
 	ownerMultiProxy *multi.Proxy
 }
 
-func Init(m event.Manager, l *logger.Logger, db *database.Database, mpm *playermanager.MultiPlayerManager, ownerId uuid.UUID, ownerMultiProxy *multi.Proxy) (*ListenerManager, error) {
+func Init(m event.Manager, l *logger.Logger, db *database.Database, mpm *playermanager.MultiPlayerManager, ownerMultiProxy *multi.Proxy) (*ListenerManager, error) {
 	now := time.Now()
 	lm := &ListenerManager{
 		m:               m,
 		l:               l,
 		db:              db,
 		mpm:             mpm,
-		ownerId:         ownerId,
 		ownerMultiProxy: ownerMultiProxy,
 	}
 

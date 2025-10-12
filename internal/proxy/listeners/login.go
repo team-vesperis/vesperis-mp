@@ -10,7 +10,7 @@ import (
 )
 
 var loginDenyComponent = &Text{
-	Content: "There was an error with the login. Please try again later.",
+	Content: "There was an error while login in. Please try again later.",
 	S: Style{
 		Color: color.Red,
 	},
@@ -20,11 +20,10 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 	p := e.Player()
 	id := p.ID()
 
-	mp, err := lm.mpm.GetMultiPlayer(id)
+	_, err := lm.mpm.GetMultiPlayer(id)
 	// player hasn't joined before -> creating default mp
 	if err == database.ErrDataNotFound {
-		var err error
-		mp, err = lm.mpm.NewMultiPlayer(p)
+		_, err := lm.mpm.NewMultiPlayer(p)
 		if err != nil {
 			lm.l.Error("player login create new multiplayer error", "playerId", id, "error", err)
 			e.Deny(loginDenyComponent)
@@ -32,20 +31,6 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 		}
 	} else if err != nil {
 		lm.l.Error("player login get multiplayer error", "playerId", id, "error", err)
-		e.Deny(loginDenyComponent)
-		return
-	}
-
-	err = mp.SetOnline(true)
-	if err != nil {
-		lm.l.Error("player login set online error", "playerId", id, "error", err)
-		e.Deny(loginDenyComponent)
-		return
-	}
-
-	err = mp.SetProxy(lm.ownerMultiProxy)
-	if err != nil {
-		lm.l.Error("player post login set proxy error", "playerId", id, "error", err)
 		e.Deny(loginDenyComponent)
 		return
 	}
@@ -65,7 +50,8 @@ func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 		return
 	}
 
-	err = mp.SetLastSeen(time.Now())
+	now := time.Now()
+	err = mp.SetLastSeen(&now)
 	if err != nil {
 		lm.l.Error("player disconnect set last seen error", "playerId", id, "error", err)
 		return
