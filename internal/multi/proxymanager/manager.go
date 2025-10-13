@@ -2,12 +2,13 @@ package proxymanager
 
 import (
 	"context"
-	"errors"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
+	"github.com/redis/go-redis/v9"
 	"github.com/robinbraemer/event"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
@@ -15,6 +16,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/commands"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/listeners"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
@@ -58,23 +60,8 @@ type MultiProxyManager struct {
 	tm *task.TaskManager
 }
 
-func Init(ctx context.Context) (*MultiProxyManager, error) {
-	l, logErr := logger.Init()
-	if logErr != nil {
-		return &MultiProxyManager{}, logErr
-	}
-
-	c, cfErr := config.Init(l)
-	if cfErr != nil {
-		l.Error("config initialization error")
-		return &MultiProxyManager{}, cfErr
-	}
-
-	db, dbErr := database.Init(ctx, c, l)
-	if dbErr != nil {
-		l.Error("database initialization error")
-		return &MultiProxyManager{}, dbErr
-	}
+func Init(ctx context.Context, l *logger.Logger, c *config.Config, db *database.Database) (*MultiProxyManager, error) {
+	now := time.Now()
 
 	mpm := &MultiProxyManager{
 		multiProxyMap: make(map[uuid.UUID]*multi.Proxy),
@@ -88,8 +75,14 @@ func Init(ctx context.Context) (*MultiProxyManager, error) {
 	if err != nil {
 		return mpm, err
 	}
+	mpm.l.Info("Found a id to use.", "id", id)
 
-	mpm.mpm = playermanager.Init(l, db, id)
+	mpm.ownerMP, err = mpm.NewMultiProxy(id)
+	if err != nil {
+		return &MultiProxyManager{}, err
+	}
+
+	mpm.mpm = playermanager.Init(l, db, mpm.ownerMP)
 
 	cfg, err := gate.LoadConfig(mpm.c.GetViper())
 	if err != nil {
@@ -119,28 +112,99 @@ func Init(ctx context.Context) (*MultiProxyManager, error) {
 		return mpm, err
 	}
 
-	address := mpm.ownerGate.Config().Bind
-	mpm.ownerMP = mpm.NewMultiProxy(address, id)
-
 	multi.SetProxyManager(mpm)
 
+	// start update listener
+	mpm.db.CreateListener(multi.UpdateMultiProxyChannel, mpm.createUpdateListener())
+
+	// fill map
+	_, err = mpm.GetAllMultiProxiesFromDatabase()
+	if err != nil {
+		mpm.l.Error("filling up multiproxy map error", "error", err)
+	}
+
+	mpm.GetLogger().Info("initialized multiproxy manager", "duration", time.Since(now))
 	return mpm, nil
 }
 
-func (mpm *MultiProxyManager) NewMultiProxy(address string, id uuid.UUID) *multi.Proxy {
-	mp := multi.NewProxy(address, id)
-	mpm.mu.Lock()
-	mpm.multiProxyMap[id] = mp
-	mpm.mu.Unlock()
-	return mp
+func (mpm *MultiProxyManager) createUpdateListener() func(msg *redis.Message) {
+	return func(msg *redis.Message) {
+		m := msg.Payload
+		s := strings.Split(m, "_")
+
+		originProxy := s[0]
+		// from own proxy, no update needed
+		if mpm.ownerMP.GetId().String() == originProxy {
+			return
+		}
+
+		id, err := uuid.Parse(s[1])
+		if err != nil {
+			mpm.l.Error("multiproxy update channel parse uuid error", "parsed uuid", s[1], "error", err)
+			return
+		}
+
+		key := s[2]
+
+		mp, err := mpm.GetMultiProxy(id)
+		if err != nil {
+			mpm.l.Error("multiproxy update channel get multiproxy error", "proxyId", id, "error", err)
+			return
+		}
+
+		if key == "new" {
+			return
+		}
+
+		dataKey, err := util.GetProxyKey(key)
+		if err != nil {
+			mpm.l.Error("multiproxy update channel get data key error", "proxyId", id, "key", key, "error", err)
+			return
+		}
+
+		mp.Update(dataKey)
+	}
+}
+
+func (mpm *MultiProxyManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
+	now := time.Now()
+
+	data := &util.ProxyData{
+		Address:     "localhost:25565",
+		Maintenance: false,
+		Backends:    make([]uuid.UUID, 0),
+		Players:     make([]uuid.UUID, 0),
+	}
+
+	err := mpm.db.SetProxyData(id, data)
+	if err != nil {
+		return nil, err
+	}
+
+	mp, err := mpm.CreateMultiProxyFromDatabase(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// update every proxies' map
+	var m string
+	if mpm.ownerMP != nil {
+		m = mpm.ownerMP.GetId().String() + "_" + id.String() + "_new"
+	} else {
+		m = id.String() + "_" + id.String() + "_new"
+	}
+
+	err = mpm.db.Publish(multi.UpdateMultiProxyChannel, m)
+	if err != nil {
+		return nil, err
+	}
+
+	mpm.GetLogger().Info("created new multiproxy", "proxyId", id, "duration", time.Since(now))
+	return mp, nil
 }
 
 func (mpm *MultiProxyManager) GetOwnerGate() *proxy.Proxy {
 	return mpm.ownerGate
-}
-
-func (mpm *MultiProxyManager) GetOwnerMultiProxy() *multi.Proxy {
-	return mpm.ownerMP
 }
 
 func (mpm *MultiProxyManager) Start() {
@@ -159,18 +223,70 @@ func (mpm *MultiProxyManager) onShutdown(event *proxy.ShutdownEvent) {
 	mpm.Close()
 }
 
-var ErrProxyNotFound = errors.New("proxy not found")
-
 func (mpm *MultiProxyManager) GetMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 	mpm.mu.RLock()
-	mp := mpm.multiProxyMap[id]
+	mp, ok := mpm.multiProxyMap[id]
 	mpm.mu.RUnlock()
 
-	if mp == nil {
-		return nil, ErrProxyNotFound
+	if ok {
+		return mp, nil
 	}
 
+	return mpm.CreateMultiProxyFromDatabase(id)
+}
+
+func (mpm *MultiProxyManager) CreateMultiProxyFromDatabase(id uuid.UUID) (*multi.Proxy, error) {
+	data, err := mpm.db.GetProxyData(id)
+	if err != nil {
+		return nil, err
+	}
+
+	var managerId uuid.UUID
+	if mpm.ownerMP == nil {
+		managerId = id
+	} else {
+		managerId = mpm.ownerMP.GetId()
+	}
+
+	mp := multi.NewProxy(id, managerId, mpm.db, data)
+
+	mpm.mu.Lock()
+	mpm.multiProxyMap[id] = mp
+	mpm.mu.Unlock()
+
 	return mp, nil
+}
+
+func (mpm *MultiProxyManager) GetAllMultiProxies() []*multi.Proxy {
+	var l []*multi.Proxy
+
+	mpm.mu.RLock()
+	for _, mp := range mpm.multiProxyMap {
+		l = append(l, mp)
+	}
+	mpm.mu.RUnlock()
+
+	return l
+}
+
+func (mpm *MultiProxyManager) GetAllMultiProxiesFromDatabase() ([]*multi.Proxy, error) {
+	var l []*multi.Proxy
+
+	i, err := mpm.db.GetAllProxyIds()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, id := range i {
+		mp, err := mpm.GetMultiProxy(id)
+		if err != nil {
+			return nil, err
+		}
+
+		l = append(l, mp)
+	}
+
+	return l, nil
 }
 
 func (mpm *MultiProxyManager) GetMultiBackend(id uuid.UUID) (*multi.Backend, error) {
@@ -188,7 +304,7 @@ func (mpm *MultiProxyManager) createNewProxyId() (uuid.UUID, error) {
 	for {
 		id := uuid.New()
 		_, err := mpm.GetMultiProxy(id)
-		if err == ErrProxyNotFound {
+		if err == database.ErrDataNotFound {
 			return id, nil
 		}
 

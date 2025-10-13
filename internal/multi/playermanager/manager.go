@@ -18,28 +18,24 @@ type MultiPlayerManager struct {
 	multiPlayerMap map[uuid.UUID]*multi.Player
 	mu             sync.RWMutex
 
-	ownerProxyId uuid.UUID
+	ownerMP *multi.Proxy
 
 	l  *logger.Logger
 	db *database.Database
 }
 
-const UpdateChannel = "update_mp"
-
-func Init(l *logger.Logger, db *database.Database, id uuid.UUID) *MultiPlayerManager {
+func Init(l *logger.Logger, db *database.Database, p *multi.Proxy) *MultiPlayerManager {
 	now := time.Now()
 
 	mpm := &MultiPlayerManager{
 		multiPlayerMap: map[uuid.UUID]*multi.Player{},
 		l:              l,
 		db:             db,
-		ownerProxyId:   id,
+		ownerMP:        p,
 	}
 
-	multi.SetPlayerManager(mpm)
-
 	// start update listener
-	mpm.db.CreateListener(UpdateChannel, mpm.createUpdateListener())
+	mpm.db.CreateListener(multi.UpdateMultiPlayerChannel, mpm.createUpdateListener())
 
 	// fill map
 	_, err := mpm.GetAllMultiPlayersFromDatabase()
@@ -59,27 +55,14 @@ func (mpm *MultiPlayerManager) GetLogger() *logger.Logger {
 	return mpm.l
 }
 
-func (mpm *MultiPlayerManager) GetOwnerProxyId() uuid.UUID {
-	return mpm.ownerProxyId
-}
-
-func (mpm *MultiPlayerManager) Save(id uuid.UUID, key util.PlayerKey, val any) error {
-	err := mpm.db.SetPlayerDataField(id, key, val)
-	if err != nil {
-		return err
-	}
-
-	m := mpm.ownerProxyId.String() + "_" + id.String() + "_" + key.String()
-	return mpm.db.Publish(UpdateChannel, m)
-}
-
 func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
 		m := msg.Payload
 		s := strings.Split(m, "_")
 
 		originProxy := s[0]
-		if mpm.ownerProxyId.String() == originProxy {
+		// from own proxy, no update needed
+		if mpm.ownerMP.GetId().String() == originProxy {
 			return
 		}
 
@@ -94,18 +77,20 @@ func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 		mp, err := mpm.GetMultiPlayer(id)
 		if err != nil {
 			mpm.l.Error("multiplayer update channel get multiplayer error", "playerId", id, "error", err)
+			return
 		}
 
 		if key == "new" {
 			return
 		}
 
-		datakey, err := util.GetPlayerKey(key)
+		dataKey, err := util.GetPlayerKey(key)
 		if err != nil {
 			mpm.l.Error("multiplayer update channel get data key error", "playerId", id, "key", key, "error", err)
+			return
 		}
 
-		mp.Update(datakey, mpm.db)
+		mp.Update(dataKey)
 	}
 }
 
@@ -145,38 +130,14 @@ func (mpm *MultiPlayerManager) NewMultiPlayer(p proxy.Player) (*multi.Player, er
 	}
 
 	// update every proxies' map
-	m := mpm.ownerProxyId.String() + "_" + id.String() + "_new"
-	err = mpm.db.Publish(UpdateChannel, m)
+	m := mpm.ownerMP.GetId().String() + "_" + id.String() + "_new"
+	err = mpm.db.Publish(multi.UpdateMultiPlayerChannel, m)
 	if err != nil {
 		return nil, err
 	}
 
 	mpm.GetLogger().Info("created new multiplayer", "playerId", id, "duration", time.Since(now))
 	return mp, nil
-}
-
-func (mpm *MultiPlayerManager) SavePlayer(player *multi.Player) error {
-	data := &util.PlayerData{
-		Username: player.GetUsername(),
-		Nickname: player.GetNickname(),
-		Permission: &util.PermissionData{
-			Role: player.GetPermissionInfo().GetRole(),
-			Rank: player.GetPermissionInfo().GetRank(),
-		},
-		Ban: &util.BanData{
-			Banned:      player.GetBanInfo().IsBanned(),
-			Reason:      player.GetBanInfo().GetReason(),
-			Permanently: player.GetBanInfo().IsPermanently(),
-			Expiration:  player.GetBanInfo().GetExpiration(),
-		},
-		Online:   player.IsOnline(),
-		Vanished: player.IsVanished(),
-		LastSeen: player.GetLastSeen(),
-		Friends:  player.GetFriendsIds(),
-	}
-
-	err := mpm.db.SetPlayerData(player.GetId(), data)
-	return err
 }
 
 /*
@@ -206,7 +167,7 @@ func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*mul
 		return nil, err
 	}
 
-	mp := multi.NewPlayer(id, data)
+	mp := multi.NewPlayer(id, mpm.ownerMP.GetId(), mpm.db, data)
 
 	mpm.mu.Lock()
 	mpm.multiPlayerMap[id] = mp
@@ -237,7 +198,6 @@ func (mpm *MultiPlayerManager) GetAllMultiPlayersFromDatabase() ([]*multi.Player
 
 	for _, id := range i {
 		mp, err := mpm.GetMultiPlayer(id)
-		// this is not possible... probably
 		if err != nil {
 			return nil, err
 		}

@@ -43,12 +43,16 @@ type Player struct {
 	// List of friend UUIDs.
 	friendIds []uuid.UUID
 
-	mu sync.RWMutex
+	managerId uuid.UUID
+	db        *database.Database
+	mu        sync.RWMutex
 }
 
-func NewPlayer(id uuid.UUID, data *util.PlayerData) *Player {
+func NewPlayer(id, mId uuid.UUID, db *database.Database, data *util.PlayerData) *Player {
 	mp := &Player{
-		id: id,
+		id:        id,
+		managerId: mId,
+		db:        db,
 	}
 
 	mp.pi = newPermissionInfo(mp, data)
@@ -76,32 +80,25 @@ func SetProxyManager(pm Proxymanager) {
 	proxyManagerInstance = pm
 }
 
-type PlayerManager interface {
-	Save(id uuid.UUID, key util.PlayerKey, val any) error
-}
-
-var ErrPlayerManagerNotSet = errors.New("player manager not set")
-var playerManagerInstance PlayerManager
-
-func SetPlayerManager(pm PlayerManager) {
-	playerManagerInstance = pm
-}
+const UpdateMultiPlayerChannel = "update_multiplayer"
 
 // Update specific value of the multi player into the database
 // Notifies other proxies to update that value
 func (mp *Player) save(key util.PlayerKey, val any) error {
-	if playerManagerInstance == nil {
-		return ErrPlayerManagerNotSet
-	}
-
 	if !slices.Contains(util.AllowedPlayerKeys, key) {
 		return util.ErrIncorrectPlayerKey
 	}
 
-	return playerManagerInstance.Save(mp.id, key, val)
+	err := mp.db.SetPlayerDataField(mp.id, key, val)
+	if err != nil {
+		return err
+	}
+
+	m := mp.managerId.String() + "_" + mp.id.String() + "_" + key.String()
+	return mp.db.Publish(UpdateMultiPlayerChannel, m)
 }
 
-func (mp *Player) Update(key util.PlayerKey, db *database.Database) {
+func (mp *Player) Update(key util.PlayerKey) {
 	if proxyManagerInstance == nil {
 		return
 	}
@@ -113,7 +110,7 @@ func (mp *Player) Update(key util.PlayerKey, db *database.Database) {
 	switch key {
 	case util.PlayerKey_ProxyId:
 		var proxyId uuid.UUID
-		db.GetPlayerDataField(mp.id, util.PlayerKey_ProxyId, &proxyId)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_ProxyId, &proxyId)
 		p, err := proxyManagerInstance.GetMultiProxy(proxyId)
 		if err == nil {
 			mp.setProxy(p, false)
@@ -121,7 +118,7 @@ func (mp *Player) Update(key util.PlayerKey, db *database.Database) {
 
 	case util.PlayerKey_BackendId:
 		var backendId uuid.UUID
-		db.GetPlayerDataField(mp.id, util.PlayerKey_BackendId, &backendId)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_BackendId, &backendId)
 		b, err := proxyManagerInstance.GetMultiBackend(backendId)
 		if err == nil {
 			mp.setBackend(b, false)
@@ -129,62 +126,62 @@ func (mp *Player) Update(key util.PlayerKey, db *database.Database) {
 
 	case util.PlayerKey_Username:
 		var username string
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Username, &username)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Username, &username)
 		mp.setUsername(username, false)
 
 	case util.PlayerKey_Nickname:
 		var nickname string
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Nickname, &nickname)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Nickname, &nickname)
 		mp.setNickname(nickname, false)
 
 	case util.PlayerKey_Permission_Role:
 		var role string
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Permission_Role, &role)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Permission_Role, &role)
 		mp.pi.setRole(role, false)
 
 	case util.PlayerKey_Permission_Rank:
 		var rank string
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Permission_Rank, &rank)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Permission_Rank, &rank)
 		mp.pi.setRank(rank, false)
 
 	case util.PlayerKey_Ban_Banned:
 		var banned bool
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Banned, &banned)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Banned, &banned)
 		mp.bi.setBanned(banned, false)
 
 	case util.PlayerKey_Ban_Reason:
 		var reason string
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Reason, &reason)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Reason, &reason)
 		mp.bi.setReason(reason, false)
 
 	case util.PlayerKey_Ban_Permanently:
 		var permanently bool
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Permanently, &permanently)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Permanently, &permanently)
 		mp.bi.setPermanently(permanently, false)
 
 	case util.PlayerKey_Ban_Expiration:
 		var expiration time.Time
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Expiration, &expiration)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Expiration, &expiration)
 		mp.bi.setExpiration(expiration, false)
 
 	case util.PlayerKey_Online:
 		var online bool
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Online, &online)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Online, &online)
 		mp.setOnline(online, false)
 
 	case util.PlayerKey_Vanished:
 		var vanished bool
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Vanished, &vanished)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Vanished, &vanished)
 		mp.setVanished(vanished, false)
 
 	case util.PlayerKey_LastSeen:
 		var lastSeen *time.Time
-		db.GetPlayerDataField(mp.id, util.PlayerKey_LastSeen, &lastSeen)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_LastSeen, &lastSeen)
 		mp.setLastSeen(lastSeen, false)
 
 	case util.PlayerKey_Friends:
 		var friends []uuid.UUID
-		db.GetPlayerDataField(mp.id, util.PlayerKey_Friends, &friends)
+		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Friends, &friends)
 		mp.setFriendsIds(friends, false)
 	}
 }

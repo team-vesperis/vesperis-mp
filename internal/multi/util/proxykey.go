@@ -14,14 +14,12 @@ func (pk ProxyKey) String() string {
 var ErrIncorrectProxyKey = errors.New("incorrect proxy key")
 
 const (
-	ProxyKey_Address     ProxyKey = "address"
 	ProxyKey_Maintenance ProxyKey = "maintenance"
 	ProxyKey_BackendList ProxyKey = "backends"
 	ProxyKey_PlayerList  ProxyKey = "players"
 )
 
 var AllowedProxyKeys = []ProxyKey{
-	ProxyKey_Address,
 	ProxyKey_Maintenance,
 	ProxyKey_BackendList,
 	ProxyKey_PlayerList,

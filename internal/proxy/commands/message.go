@@ -49,11 +49,6 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 
 					cm.tm.BuildTask(t.GetProxy(), tasks.NewMessageTask(originName, t.GetId(), c.String("message")))
 
-					// handle normally
-					if mproxy.GetId() == cm.mpm.GetOwnerProxyId() {
-
-					}
-
 					return nil
 				}))))
 }

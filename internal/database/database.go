@@ -261,7 +261,7 @@ func (db *Database) SetProxyDataField(proxyId uuid.UUID, field util.ProxyKey, va
 		return err
 	}
 
-	key := redisPlayerKeyTranslator(proxyId)
+	key := redisProxyKeyTranslator(proxyId)
 	err = db.r.HSet(db.ctx, key, field.String(), jsonVal).Err()
 	if err != nil {
 		db.l.Warn("redis proxy data set error", "proxyId", proxyId, "field", field, "error", err)
@@ -327,8 +327,76 @@ func (db *Database) GetPlayerDataField(playerId uuid.UUID, field util.PlayerKey,
 	return nil
 }
 
+func (db *Database) GetProxyDataField(proxyId uuid.UUID, field util.ProxyKey, dest any) error {
+	key := redisProxyKeyTranslator(proxyId)
+
+	val, err := db.r.HGet(db.ctx, key, field.String()).Result()
+	if err == nil && val != "" {
+		err := json.Unmarshal([]byte(val), dest)
+		if err == nil {
+			return nil
+		}
+	}
+
+	var jsonData []byte
+	query := `SELECT proxyData #> $1 FROM proxy_data WHERE proxyId = $2`
+
+	path := safeJsonPathForPostgres(field.String())
+	err = db.p.QueryRow(db.ctx, query, path, proxyId).Scan(&jsonData)
+	if err != nil {
+		db.l.Error("")
+		return err
+	}
+
+	err = json.Unmarshal(jsonData, dest)
+	if err != nil {
+		db.l.Error("")
+		return err
+	}
+
+	err = db.r.HSet(db.ctx, key, field, jsonData).Err()
+	if err != nil {
+		db.l.Warn("")
+	} else {
+		err = db.r.Expire(db.ctx, key, redisTTL).Err()
+		if err != nil {
+			db.l.Warn("")
+		}
+	}
+
+	return nil
+}
+
 func (db *Database) GetAllPlayerIds() ([]uuid.UUID, error) {
 	query := `SELECT playerId FROM player_data`
+	rows, err := db.p.Query(db.ctx, query)
+	if err != nil {
+		db.l.Error("postgres get all player ids error", "error", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		err := rows.Scan(&id)
+		if err != nil {
+			db.l.Error("postgres scan player id error", "error", err)
+			return nil, err
+		}
+
+		ids = append(ids, id)
+	}
+	if rows.Err() != nil {
+		db.l.Error("postgres rows error", "error", rows.Err())
+		return nil, rows.Err()
+	}
+
+	return ids, nil
+}
+
+func (db *Database) GetAllProxyIds() ([]uuid.UUID, error) {
+	query := `SELECT proxyId FROM proxy_data`
 	rows, err := db.p.Query(db.ctx, query)
 	if err != nil {
 		db.l.Error("postgres get all player ids error", "error", err)
