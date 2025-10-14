@@ -14,15 +14,15 @@ type KickTask struct {
 	responseChannel string
 }
 
-func NewKickTask(targetPlayerId uuid.UUID, reason string) *KickTask {
+func NewKickTask(targetPlayerId, targetProxyId uuid.UUID, reason string) *KickTask {
 	return &KickTask{
 		targetPlayerId: targetPlayerId,
+		targetProxyId:  targetProxyId,
 		reason:         reason,
 	}
 }
 
 func (kt *KickTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
-	// checks if the targetPlayerName is on this proxy. only happens if player just went offline
 	t := tm.GetOwnerGate().Player(kt.targetPlayerId)
 	if t == nil {
 		return task.NewTaskResponse(false, "target not found")

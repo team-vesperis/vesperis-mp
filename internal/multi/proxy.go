@@ -52,7 +52,16 @@ func (mp *Proxy) save(key util.ProxyKey, val any) error {
 }
 
 func (mp *Proxy) Update(key util.ProxyKey) {
+	if !slices.Contains(util.AllowedProxyKeys, key) {
+		return
+	}
 
+	switch key {
+	case util.ProxyKey_Maintenance:
+		var maintenance bool
+		mp.db.GetProxyDataField(mp.id, util.ProxyKey_Maintenance, &maintenance)
+		mp.setInMaintenance(maintenance, false)
+	}
 }
 
 func (mp *Proxy) GetId() uuid.UUID {

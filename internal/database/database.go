@@ -314,11 +314,11 @@ func (db *Database) GetPlayerDataField(playerId uuid.UUID, field util.PlayerKey,
 		return err
 	}
 
-	err = db.r.HSet(db.ctx, key, field, jsonData).Err()
+	err = db.r.HSet(db.ctx, key, field.String(), jsonData).Err()
 	if err != nil {
 		db.l.Warn("")
 	} else {
-		err = db.r.Expire(db.ctx, key, redisTTL).Err()
+		err = db.r.HExpire(db.ctx, key, redisTTL, field.String()).Err()
 		if err != nil {
 			db.l.Warn("")
 		}
@@ -354,11 +354,11 @@ func (db *Database) GetProxyDataField(proxyId uuid.UUID, field util.ProxyKey, de
 		return err
 	}
 
-	err = db.r.HSet(db.ctx, key, field, jsonData).Err()
+	err = db.r.HSet(db.ctx, key, field.String(), jsonData).Err()
 	if err != nil {
 		db.l.Warn("")
 	} else {
-		err = db.r.Expire(db.ctx, key, redisTTL).Err()
+		err = db.r.HExpire(db.ctx, key, redisTTL, field.String()).Err()
 		if err != nil {
 			db.l.Warn("")
 		}

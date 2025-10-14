@@ -102,6 +102,8 @@ func Init(ctx context.Context, l *logger.Logger, c *config.Config, db *database.
 	mpm.ownerGate = gate.Java()
 	event.Subscribe(mpm.ownerGate.Event(), 0, mpm.onShutdown)
 
+	mpm.tm = task.InitTaskManager(mpm.db, mpm.l, mpm.ownerMP, mpm.ownerGate, mpm.mpm)
+
 	mpm.cm, err = commands.Init(mpm.ownerGate, mpm.l, mpm.db, mpm.mpm, mpm.tm)
 	if err != nil {
 		return mpm, nil
@@ -208,11 +210,6 @@ func (mpm *MultiProxyManager) GetOwnerGate() *proxy.Proxy {
 }
 
 func (mpm *MultiProxyManager) Start() {
-	go func() {
-		time.Sleep(5 * time.Second)
-		mpm.tm = task.InitTaskManager(mpm.db, mpm.l, mpm.ownerMP, mpm.ownerGate, mpm.mpm)
-	}()
-
 	err := mpm.ownerGate.Start(mpm.ctx)
 	if err != nil {
 		mpm.l.Error("error starting proxy", "error", err)

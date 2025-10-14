@@ -87,7 +87,7 @@ func (tm *TaskManager) createTaskListener() func(msg *redis.Message) {
 // If they do need to handle it, the proxy will perform the task and send feedback back to the original proxy.
 //
 // Returns TaskResponse. Use .IsSuccessful() to check if everything went accordingly. If not, use .GetReason() to find out what happened.
-func (tm *TaskManager) BuildTask(targetMultiProxy *multi.Proxy, t Task) *TaskResponse {
+func (tm *TaskManager) BuildTask(t Task) *TaskResponse {
 	if t.GetTargetProxyId() == tm.GetOwnerId() {
 		return t.PerformTask(tm)
 	}

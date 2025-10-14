@@ -24,6 +24,10 @@ type MultiPlayerManager struct {
 	db *database.Database
 }
 
+func (mpm *MultiPlayerManager) GetOwnerMultiProxy() *multi.Proxy {
+	return mpm.ownerMP
+}
+
 func Init(l *logger.Logger, db *database.Database, p *multi.Proxy) *MultiPlayerManager {
 	now := time.Now()
 

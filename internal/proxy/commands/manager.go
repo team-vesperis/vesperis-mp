@@ -66,6 +66,7 @@ func (cm *CommandManager) registerCommands() {
 	cm.m.Register(cm.vanishCommand("v"))
 	cm.m.Register(cm.messageCommand("message"))
 	cm.m.Register(cm.messageCommand("msg"))
+	cm.m.Register(cm.kickCommand("kick"))
 }
 
 var (
@@ -158,7 +159,7 @@ func (cm *CommandManager) SuggestAllMultiPlayers(onlyOnline bool) brigodier.Sugg
 			}
 
 			id := mp.GetId().String()
-			if len(r) > 1 && strings.HasPrefix(strings.ToLower(id), r) {
+			if len(r) > 3 && strings.HasPrefix(strings.ToLower(id), r) {
 				b.Suggest(id)
 			}
 		}

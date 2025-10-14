@@ -16,16 +16,16 @@ type MessageTask struct {
 	responseChannel string
 }
 
-func NewMessageTask(originName string, targetPlayerId uuid.UUID, message string) *MessageTask {
+func NewMessageTask(originName string, targetPlayerId, targetProxyId uuid.UUID, message string) *MessageTask {
 	return &MessageTask{
 		originName:     originName,
 		targetPlayerId: targetPlayerId,
 		message:        message,
+		targetProxyId:  targetProxyId,
 	}
 }
 
 func (mt *MessageTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
-	// checks if the targetPlayerName is on this proxy. only happens if player just went offline
 	t := tm.GetOwnerGate().Player(mt.targetPlayerId)
 	if t == nil {
 		return task.NewTaskResponse(false, "target not found")
