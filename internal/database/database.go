@@ -13,7 +13,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
-	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
@@ -159,7 +160,7 @@ func safeJsonPathForPostgres(field string) string {
 	return "{" + strings.Join(parts, ",") + "}"
 }
 
-func (db *Database) SetPlayerData(playerId uuid.UUID, data *util.PlayerData) error {
+func (db *Database) SetPlayerData(playerId uuid.UUID, data *data.PlayerData) error {
 	query := `
 		INSERT INTO player_data (playerId, playerData)
 		VALUES ($1, $2::jsonb)
@@ -175,7 +176,7 @@ func (db *Database) SetPlayerData(playerId uuid.UUID, data *util.PlayerData) err
 	return nil
 }
 
-func (db *Database) SetProxyData(proxyId uuid.UUID, data *util.ProxyData) error {
+func (db *Database) SetProxyData(proxyId uuid.UUID, data *data.ProxyData) error {
 	query := `
 		INSERT INTO proxy_data (proxyId, proxyData)
 		VALUES ($1, $2::jsonb)
@@ -191,8 +192,8 @@ func (db *Database) SetProxyData(proxyId uuid.UUID, data *util.ProxyData) error 
 	return nil
 }
 
-func (db *Database) GetPlayerData(playerId uuid.UUID) (*util.PlayerData, error) {
-	var data util.PlayerData
+func (db *Database) GetPlayerData(playerId uuid.UUID) (*data.PlayerData, error) {
+	var data data.PlayerData
 	query := `SELECT playerData FROM player_data WHERE playerId = $1`
 	err := db.p.QueryRow(db.ctx, query, playerId).Scan(&data)
 	if err != nil {
@@ -206,8 +207,8 @@ func (db *Database) GetPlayerData(playerId uuid.UUID) (*util.PlayerData, error) 
 	return &data, nil
 }
 
-func (db *Database) GetProxyData(proxyId uuid.UUID) (*util.ProxyData, error) {
-	var data util.ProxyData
+func (db *Database) GetProxyData(proxyId uuid.UUID) (*data.ProxyData, error) {
+	var data data.ProxyData
 	query := `SELECT proxyData FROM proxy_data WHERE proxyId = $1`
 	err := db.p.QueryRow(db.ctx, query, proxyId).Scan(&data)
 	if err != nil {
@@ -221,7 +222,7 @@ func (db *Database) GetProxyData(proxyId uuid.UUID) (*util.ProxyData, error) {
 	return &data, nil
 }
 
-func (db *Database) SetPlayerDataField(playerId uuid.UUID, field util.PlayerKey, val any) error {
+func (db *Database) SetPlayerDataField(playerId uuid.UUID, field key.PlayerKey, val any) error {
 	jsonVal, err := json.Marshal(val)
 	if err != nil {
 		db.l.Error("json player data marshal error", "playerId", playerId, "field", field, "error", err)
@@ -254,7 +255,7 @@ func (db *Database) SetPlayerDataField(playerId uuid.UUID, field util.PlayerKey,
 	return nil
 }
 
-func (db *Database) SetProxyDataField(proxyId uuid.UUID, field util.ProxyKey, val any) error {
+func (db *Database) SetProxyDataField(proxyId uuid.UUID, field key.ProxyKey, val any) error {
 	jsonVal, err := json.Marshal(val)
 	if err != nil {
 		db.l.Error("json proxy data marshal error", "proxyId", proxyId, "field", field, "error", err)
@@ -287,7 +288,7 @@ func (db *Database) SetProxyDataField(proxyId uuid.UUID, field util.ProxyKey, va
 	return nil
 }
 
-func (db *Database) GetPlayerDataField(playerId uuid.UUID, field util.PlayerKey, dest any) error {
+func (db *Database) GetPlayerDataField(playerId uuid.UUID, field key.PlayerKey, dest any) error {
 	key := redisPlayerKeyTranslator(playerId)
 
 	val, err := db.r.HGet(db.ctx, key, field.String()).Result()
@@ -327,7 +328,7 @@ func (db *Database) GetPlayerDataField(playerId uuid.UUID, field util.PlayerKey,
 	return nil
 }
 
-func (db *Database) GetProxyDataField(proxyId uuid.UUID, field util.ProxyKey, dest any) error {
+func (db *Database) GetProxyDataField(proxyId uuid.UUID, field key.ProxyKey, dest any) error {
 	key := redisProxyKeyTranslator(proxyId)
 
 	val, err := db.r.HGet(db.ctx, key, field.String()).Result()

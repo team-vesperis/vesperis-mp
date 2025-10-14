@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
-	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
@@ -48,7 +49,7 @@ type Player struct {
 	mu        sync.RWMutex
 }
 
-func NewPlayer(id, mId uuid.UUID, db *database.Database, data *util.PlayerData) *Player {
+func NewPlayer(id, mId uuid.UUID, db *database.Database, data *data.PlayerData) *Player {
 	mp := &Player{
 		id:        id,
 		managerId: mId,
@@ -84,104 +85,104 @@ const UpdateMultiPlayerChannel = "update_multiplayer"
 
 // Update specific value of the multi player into the database
 // Notifies other proxies to update that value
-func (mp *Player) save(key util.PlayerKey, val any) error {
-	if !slices.Contains(util.AllowedPlayerKeys, key) {
-		return util.ErrIncorrectPlayerKey
+func (mp *Player) save(k key.PlayerKey, val any) error {
+	if !slices.Contains(key.AllowedPlayerKeys, k) {
+		return key.ErrIncorrectPlayerKey
 	}
 
-	err := mp.db.SetPlayerDataField(mp.id, key, val)
+	err := mp.db.SetPlayerDataField(mp.id, k, val)
 	if err != nil {
 		return err
 	}
 
-	m := mp.managerId.String() + "_" + mp.id.String() + "_" + key.String()
+	m := mp.managerId.String() + "_" + mp.id.String() + "_" + k.String()
 	return mp.db.Publish(UpdateMultiPlayerChannel, m)
 }
 
-func (mp *Player) Update(key util.PlayerKey) {
+func (mp *Player) Update(k key.PlayerKey) {
 	if proxyManagerInstance == nil {
 		return
 	}
 
-	if !slices.Contains(util.AllowedPlayerKeys, key) {
+	if !slices.Contains(key.AllowedPlayerKeys, k) {
 		return
 	}
 
-	switch key {
-	case util.PlayerKey_ProxyId:
+	switch k {
+	case key.PlayerKey_ProxyId:
 		var proxyId uuid.UUID
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_ProxyId, &proxyId)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_ProxyId, &proxyId)
 		p, err := proxyManagerInstance.GetMultiProxy(proxyId)
 		if err == nil {
 			mp.setProxy(p, false)
 		}
 
-	case util.PlayerKey_BackendId:
+	case key.PlayerKey_BackendId:
 		var backendId uuid.UUID
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_BackendId, &backendId)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_BackendId, &backendId)
 		b, err := proxyManagerInstance.GetMultiBackend(backendId)
 		if err == nil {
 			mp.setBackend(b, false)
 		}
 
-	case util.PlayerKey_Username:
+	case key.PlayerKey_Username:
 		var username string
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Username, &username)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Username, &username)
 		mp.setUsername(username, false)
 
-	case util.PlayerKey_Nickname:
+	case key.PlayerKey_Nickname:
 		var nickname string
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Nickname, &nickname)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Nickname, &nickname)
 		mp.setNickname(nickname, false)
 
-	case util.PlayerKey_Permission_Role:
+	case key.PlayerKey_Permission_Role:
 		var role string
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Permission_Role, &role)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Role, &role)
 		mp.pi.setRole(role, false)
 
-	case util.PlayerKey_Permission_Rank:
+	case key.PlayerKey_Permission_Rank:
 		var rank string
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Permission_Rank, &rank)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Rank, &rank)
 		mp.pi.setRank(rank, false)
 
-	case util.PlayerKey_Ban_Banned:
+	case key.PlayerKey_Ban_Banned:
 		var banned bool
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Banned, &banned)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Banned, &banned)
 		mp.bi.setBanned(banned, false)
 
-	case util.PlayerKey_Ban_Reason:
+	case key.PlayerKey_Ban_Reason:
 		var reason string
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Reason, &reason)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Reason, &reason)
 		mp.bi.setReason(reason, false)
 
-	case util.PlayerKey_Ban_Permanently:
+	case key.PlayerKey_Ban_Permanently:
 		var permanently bool
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Permanently, &permanently)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Permanently, &permanently)
 		mp.bi.setPermanently(permanently, false)
 
-	case util.PlayerKey_Ban_Expiration:
+	case key.PlayerKey_Ban_Expiration:
 		var expiration time.Time
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Ban_Expiration, &expiration)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Expiration, &expiration)
 		mp.bi.setExpiration(expiration, false)
 
-	case util.PlayerKey_Online:
+	case key.PlayerKey_Online:
 		var online bool
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Online, &online)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Online, &online)
 		mp.setOnline(online, false)
 
-	case util.PlayerKey_Vanished:
+	case key.PlayerKey_Vanished:
 		var vanished bool
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Vanished, &vanished)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Vanished, &vanished)
 		mp.setVanished(vanished, false)
 
-	case util.PlayerKey_LastSeen:
+	case key.PlayerKey_LastSeen:
 		var lastSeen *time.Time
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_LastSeen, &lastSeen)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_LastSeen, &lastSeen)
 		mp.setLastSeen(lastSeen, false)
 
-	case util.PlayerKey_Friends:
+	case key.PlayerKey_Friends:
 		var friends []uuid.UUID
-		mp.db.GetPlayerDataField(mp.id, util.PlayerKey_Friends, &friends)
+		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friends, &friends)
 		mp.setFriendsIds(friends, false)
 	}
 }
@@ -206,7 +207,7 @@ func (mp *Player) setProxy(mproxy *Proxy, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
-		return mp.save(util.PlayerKey_ProxyId, mproxy.id)
+		return mp.save(key.PlayerKey_ProxyId, mproxy.id)
 	}
 
 	return nil
@@ -232,7 +233,7 @@ func (mp *Player) setBackend(mb *Backend, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
-		return mp.save(util.PlayerKey_BackendId, mb.id)
+		return mp.save(key.PlayerKey_BackendId, mb.id)
 	}
 
 	return nil
@@ -259,7 +260,7 @@ func (mp *Player) setUsername(name string, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
-		return mp.save(util.PlayerKey_Username, name)
+		return mp.save(key.PlayerKey_Username, name)
 	}
 
 	return nil
@@ -282,7 +283,7 @@ func (mp *Player) setNickname(name string, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
-		return mp.save(util.PlayerKey_Nickname, name)
+		return mp.save(key.PlayerKey_Nickname, name)
 	}
 
 	return nil
@@ -313,7 +314,7 @@ func (mp *Player) setOnline(online bool, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
-		return mp.save(util.PlayerKey_Online, online)
+		return mp.save(key.PlayerKey_Online, online)
 	}
 
 	return nil
@@ -336,7 +337,7 @@ func (mp *Player) setVanished(vanished bool, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
-		return mp.save(util.PlayerKey_Vanished, vanished)
+		return mp.save(key.PlayerKey_Vanished, vanished)
 	}
 
 	return nil
@@ -359,7 +360,7 @@ func (mp *Player) setLastSeen(lastSeen *time.Time, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
-		return mp.save(util.PlayerKey_LastSeen, lastSeen)
+		return mp.save(key.PlayerKey_LastSeen, lastSeen)
 	}
 
 	return nil
@@ -382,37 +383,25 @@ func (mp *Player) setFriendsIds(ids []uuid.UUID, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
-		return mp.save(util.PlayerKey_Friends, ids)
+		return mp.save(key.PlayerKey_Friends, ids)
 	}
 
 	return nil
 }
 
 func (mp *Player) AddFriendId(id uuid.UUID) error {
-	return mp.addFriendId(id, true)
-}
-
-func (mp *Player) addFriendId(id uuid.UUID, notify bool) error {
 	mp.mu.Lock()
 	if !slices.Contains(mp.friendIds, id) {
 		mp.friendIds = append(mp.friendIds, id)
 	}
 	mp.mu.Unlock()
 
-	if notify {
-		return mp.save(util.PlayerKey_Friends, mp.GetFriendsIds())
-	}
-
-	return nil
+	return mp.save(key.PlayerKey_Friends, mp.GetFriendsIds())
 }
 
 var ErrFriendNotFound = errors.New("friend not found")
 
 func (mp *Player) RemoveFriendId(id uuid.UUID) error {
-	return mp.removeFriendId(id, true)
-}
-
-func (mp *Player) removeFriendId(id uuid.UUID, notify bool) error {
 	mp.mu.Lock()
 	i := slices.Index(mp.friendIds, id)
 	if i == -1 {
@@ -422,9 +411,6 @@ func (mp *Player) removeFriendId(id uuid.UUID, notify bool) error {
 	mp.friendIds = slices.Delete(mp.friendIds, i, i+1)
 	mp.mu.Unlock()
 
-	if notify {
-		return mp.save(util.PlayerKey_Friends, mp.GetFriendsIds())
-	}
+	return mp.save(key.PlayerKey_Friends, mp.GetFriendsIds())
 
-	return nil
 }

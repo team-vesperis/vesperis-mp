@@ -9,7 +9,8 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
-	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
@@ -76,7 +77,7 @@ func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 			return
 		}
 
-		key := s[2]
+		k := s[2]
 
 		mp, err := mpm.GetMultiPlayer(id)
 		if err != nil {
@@ -84,13 +85,13 @@ func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 			return
 		}
 
-		if key == "new" {
+		if k == "new" {
 			return
 		}
 
-		dataKey, err := util.GetPlayerKey(key)
+		dataKey, err := key.GetPlayerKey(k)
 		if err != nil {
-			mpm.l.Error("multiplayer update channel get data key error", "playerId", id, "key", key, "error", err)
+			mpm.l.Error("multiplayer update channel get data key error", "playerId", id, "key", k, "error", err)
 			return
 		}
 
@@ -102,16 +103,16 @@ func (mpm *MultiPlayerManager) NewMultiPlayer(p proxy.Player) (*multi.Player, er
 	now := time.Now()
 	id := p.ID()
 
-	data := &util.PlayerData{
+	data := &data.PlayerData{
 		ProxyId:   uuid.Nil,
 		BackendId: uuid.Nil,
 		Username:  p.Username(),
 		Nickname:  p.Username(),
-		Permission: &util.PermissionData{
+		Permission: &data.PermissionData{
 			Role: multi.RoleDefault,
 			Rank: multi.RankDefault,
 		},
-		Ban: &util.BanData{
+		Ban: &data.BanData{
 			Banned:      false,
 			Reason:      "",
 			Permanently: false,

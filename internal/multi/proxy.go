@@ -1,11 +1,13 @@
 package multi
 
 import (
+	"errors"
 	"slices"
 	"sync"
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
-	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
@@ -14,15 +16,15 @@ type Proxy struct {
 	maintenance bool
 	address     string
 
-	b map[*Backend]bool
-	p map[*Player]bool
+	backends []uuid.UUID
+	players  []uuid.UUID
 
 	mu        sync.RWMutex
 	managerId uuid.UUID
 	db        *database.Database
 }
 
-func NewProxy(id, managerId uuid.UUID, db *database.Database, data *util.ProxyData) *Proxy {
+func NewProxy(id, managerId uuid.UUID, db *database.Database, data *data.ProxyData) *Proxy {
 	mp := &Proxy{
 		id:        id,
 		managerId: id,
@@ -37,30 +39,38 @@ func NewProxy(id, managerId uuid.UUID, db *database.Database, data *util.ProxyDa
 
 const UpdateMultiProxyChannel = "update_multiproxy"
 
-func (mp *Proxy) save(key util.ProxyKey, val any) error {
-	if !slices.Contains(util.AllowedProxyKeys, key) {
-		return util.ErrIncorrectProxyKey
+func (mp *Proxy) save(k key.ProxyKey, val any) error {
+	if !slices.Contains(key.AllowedProxyKeys, k) {
+		return key.ErrIncorrectProxyKey
 	}
 
-	err := mp.db.SetProxyDataField(mp.id, key, val)
+	err := mp.db.SetProxyDataField(mp.id, k, val)
 	if err != nil {
 		return err
 	}
 
-	m := mp.managerId.String() + "_" + mp.id.String() + "_" + key.String()
+	m := mp.managerId.String() + "_" + mp.id.String() + "_" + k.String()
 	return mp.db.Publish(UpdateMultiProxyChannel, m)
 }
 
-func (mp *Proxy) Update(key util.ProxyKey) {
-	if !slices.Contains(util.AllowedProxyKeys, key) {
+func (mp *Proxy) Update(k key.ProxyKey) {
+	if !slices.Contains(key.AllowedProxyKeys, k) {
 		return
 	}
 
-	switch key {
-	case util.ProxyKey_Maintenance:
+	switch k {
+	case key.ProxyKey_Maintenance:
 		var maintenance bool
-		mp.db.GetProxyDataField(mp.id, util.ProxyKey_Maintenance, &maintenance)
+		mp.db.GetProxyDataField(mp.id, key.ProxyKey_Maintenance, &maintenance)
 		mp.setInMaintenance(maintenance, false)
+	case key.ProxyKey_BackendList:
+		var backends []uuid.UUID
+		mp.db.GetProxyDataField(mp.id, key.ProxyKey_BackendList, &backends)
+		mp.setBackendsIds(backends, false)
+	case key.ProxyKey_PlayerList:
+		var players []uuid.UUID
+		mp.db.GetProxyDataField(mp.id, key.ProxyKey_PlayerList, &players)
+		mp.setPlayerIds(players, false)
 	}
 }
 
@@ -90,68 +100,111 @@ func (mp *Proxy) setInMaintenance(maintenance, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
-		return mp.save(util.ProxyKey_Maintenance, maintenance)
+		return mp.save(key.ProxyKey_Maintenance, maintenance)
 	}
 
 	return nil
 }
 
-func (mp *Proxy) GetAllPlayers() []*Player {
+func (mp *Proxy) GetPlayerIds() []uuid.UUID {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
-	l := make([]*Player, 0, len(mp.p))
-	i := 0
-	for p := range mp.p {
-		l[i] = p
-		i++
+	return mp.players
+}
+
+func (mp *Proxy) SetPlayerIds(ids []uuid.UUID) error {
+	return mp.setPlayerIds(ids, true)
+}
+
+func (mp *Proxy) setPlayerIds(ids []uuid.UUID, notify bool) error {
+	mp.mu.Lock()
+	mp.players = ids
+	mp.mu.Unlock()
+
+	if notify {
+		return mp.save(key.ProxyKey_PlayerList, ids)
 	}
 
-	return l
+	return nil
 }
 
-func (mp *Proxy) AddPlayer(p *Player) {
+func (mp *Proxy) AddPlayerId(id uuid.UUID) error {
 	mp.mu.Lock()
-	mp.p[p] = true
+	if !slices.Contains(mp.backends, id) {
+		mp.backends = append(mp.backends, id)
+	}
 	mp.mu.Unlock()
+
+	return mp.save(key.ProxyKey_PlayerList, mp.GetPlayerIds())
 }
 
-func (mp *Proxy) RemovePlayer(p *Player) {
+var ErrPlayerNotFound = errors.New("player not found")
+
+func (mp *Proxy) RemovePlayerId(id uuid.UUID) error {
 	mp.mu.Lock()
-	delete(mp.p, p)
+	i := slices.Index(mp.players, id)
+	if i == -1 {
+		mp.mu.Unlock()
+		return ErrPlayerNotFound
+	}
+	mp.players = slices.Delete(mp.players, i, i+1)
 	mp.mu.Unlock()
+
+	return mp.save(key.ProxyKey_PlayerList, mp.GetPlayerIds())
 }
 
-func (mp *Proxy) IsPlayerOnProxy(p *Player) bool {
+func (mp *Proxy) IsPlayerIdOnProxy(id uuid.UUID) bool {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
-	_, exists := mp.p[p]
-	return exists
+	return slices.Contains(mp.players, id)
 }
 
-func (mp *Proxy) GetAllBackends() []*Backend {
+func (mp *Proxy) GetBackendsIds() []uuid.UUID {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 
-	l := make([]*Backend, 0, len(mp.b))
-	i := 0
-	for b := range mp.b {
-		l[i] = b
-		i++
+	return mp.backends
+}
+
+func (mp *Proxy) SetBackendsIds(ids []uuid.UUID) error {
+	return mp.setBackendsIds(ids, true)
+}
+
+func (mp *Proxy) setBackendsIds(ids []uuid.UUID, notify bool) error {
+	mp.mu.Lock()
+	mp.backends = ids
+	mp.mu.Unlock()
+
+	if notify {
+		return mp.save(key.ProxyKey_BackendList, ids)
 	}
 
-	return l
+	return nil
 }
 
-func (mp *Proxy) AddBackend(b *Backend) {
+func (mp *Proxy) AddBackend(id uuid.UUID) error {
 	mp.mu.Lock()
-	mp.b[b] = true
+	if !slices.Contains(mp.backends, id) {
+		mp.backends = append(mp.backends, id)
+	}
 	mp.mu.Unlock()
+
+	return mp.save(key.ProxyKey_BackendList, mp.GetBackendsIds())
 }
 
-func (mp *Proxy) RemoveBackend(b *Backend) {
+var ErrBackendNotFound = errors.New("backend not found")
+
+func (mp *Proxy) RemoveBackendId(id uuid.UUID) error {
 	mp.mu.Lock()
-	delete(mp.b, b)
+	i := slices.Index(mp.backends, id)
+	if i == -1 {
+		mp.mu.Unlock()
+		return ErrBackendNotFound
+	}
+	mp.backends = slices.Delete(mp.backends, i, i+1)
 	mp.mu.Unlock()
+
+	return mp.save(key.ProxyKey_BackendList, mp.GetBackendsIds())
 }

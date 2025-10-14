@@ -16,7 +16,8 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
-	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/commands"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/listeners"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
@@ -146,7 +147,7 @@ func (mpm *MultiProxyManager) createUpdateListener() func(msg *redis.Message) {
 			return
 		}
 
-		key := s[2]
+		k := s[2]
 
 		mp, err := mpm.GetMultiProxy(id)
 		if err != nil {
@@ -154,13 +155,13 @@ func (mpm *MultiProxyManager) createUpdateListener() func(msg *redis.Message) {
 			return
 		}
 
-		if key == "new" {
+		if k == "new" {
 			return
 		}
 
-		dataKey, err := util.GetProxyKey(key)
+		dataKey, err := key.GetProxyKey(k)
 		if err != nil {
-			mpm.l.Error("multiproxy update channel get data key error", "proxyId", id, "key", key, "error", err)
+			mpm.l.Error("multiproxy update channel get data key error", "proxyId", id, "key", k, "error", err)
 			return
 		}
 
@@ -171,7 +172,7 @@ func (mpm *MultiProxyManager) createUpdateListener() func(msg *redis.Message) {
 func (mpm *MultiProxyManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 	now := time.Now()
 
-	data := &util.ProxyData{
+	data := &data.ProxyData{
 		Address:     "localhost:25565",
 		Maintenance: false,
 		Backends:    make([]uuid.UUID, 0),

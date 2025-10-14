@@ -4,7 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 )
 
 type banInfo struct {
@@ -19,7 +20,7 @@ type banInfo struct {
 	mp *Player
 }
 
-func newBanInfo(mp *Player, data *util.PlayerData) *banInfo {
+func newBanInfo(mp *Player, data *data.PlayerData) *banInfo {
 	bi := &banInfo{
 		banned:      data.Ban.Banned,
 		reason:      data.Ban.Reason,
@@ -44,7 +45,7 @@ func (bi *banInfo) setBanned(banned bool, notify bool) error {
 	bi.mu.Unlock()
 
 	if notify {
-		return bi.mp.save(util.PlayerKey_Ban_Banned, banned)
+		return bi.mp.save(key.PlayerKey_Ban_Banned, banned)
 	}
 
 	return nil
@@ -63,7 +64,7 @@ func (bi *banInfo) setReason(reason string, notify bool) error {
 	bi.mu.Unlock()
 
 	if notify {
-		return bi.mp.save(util.PlayerKey_Ban_Reason, reason)
+		return bi.mp.save(key.PlayerKey_Ban_Reason, reason)
 	}
 
 	return nil
@@ -82,7 +83,7 @@ func (bi *banInfo) setPermanently(permanently bool, notify bool) error {
 	bi.mu.Unlock()
 
 	if notify {
-		return bi.mp.save(util.PlayerKey_Ban_Permanently, permanently)
+		return bi.mp.save(key.PlayerKey_Ban_Permanently, permanently)
 	}
 
 	return nil
@@ -101,7 +102,7 @@ func (bi *banInfo) setExpiration(expiration time.Time, notify bool) error {
 	bi.mu.Unlock()
 
 	if notify {
-		return bi.mp.save(util.PlayerKey_Ban_Expiration, expiration)
+		return bi.mp.save(key.PlayerKey_Ban_Expiration, expiration)
 	}
 
 	return nil

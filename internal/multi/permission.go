@@ -5,7 +5,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 )
 
 type permissionInfo struct {
@@ -17,7 +18,7 @@ type permissionInfo struct {
 	mp *Player
 }
 
-func newPermissionInfo(mp *Player, data *util.PlayerData) *permissionInfo {
+func newPermissionInfo(mp *Player, data *data.PlayerData) *permissionInfo {
 	pi := &permissionInfo{
 		role: data.Permission.Role,
 		rank: data.Permission.Rank,
@@ -48,7 +49,7 @@ func (pi *permissionInfo) setRole(role string, notify bool) error {
 	pi.mu.Unlock()
 
 	if notify {
-		return pi.mp.save(util.PlayerKey_Permission_Role, role)
+		return pi.mp.save(key.PlayerKey_Permission_Role, role)
 	}
 
 	return nil
@@ -91,7 +92,7 @@ func (pi *permissionInfo) setRank(rank string, notify bool) error {
 	pi.mu.Unlock()
 
 	if notify {
-		return pi.mp.save(util.PlayerKey_Permission_Rank, rank)
+		return pi.mp.save(key.PlayerKey_Permission_Rank, rank)
 	}
 
 	return nil
