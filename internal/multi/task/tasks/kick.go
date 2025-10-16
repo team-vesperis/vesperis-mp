@@ -8,22 +8,22 @@ import (
 )
 
 type KickTask struct {
-	targetPlayerId  uuid.UUID
-	reason          string
-	targetProxyId   uuid.UUID
-	responseChannel string
+	TargetPlayerId  uuid.UUID `json:"targetPlayerId"`
+	Reason          string    `json:"reason"`
+	TargetProxyId   uuid.UUID `json:"targetProxyId"`
+	ResponseChannel string    `json:"responseChannel"`
 }
 
 func NewKickTask(targetPlayerId, targetProxyId uuid.UUID, reason string) *KickTask {
 	return &KickTask{
-		targetPlayerId: targetPlayerId,
-		targetProxyId:  targetProxyId,
-		reason:         reason,
+		TargetPlayerId: targetPlayerId,
+		TargetProxyId:  targetProxyId,
+		Reason:         reason,
 	}
 }
 
 func (kt *KickTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
-	t := tm.GetOwnerGate().Player(kt.targetPlayerId)
+	t := tm.GetOwnerGate().Player(kt.TargetPlayerId)
 	if t == nil {
 		return task.NewTaskResponse(false, "target not found")
 	}
@@ -33,7 +33,7 @@ func (kt *KickTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 		S:       util.StyleColorRed,
 		Extra: []component.Component{
 			&component.Text{
-				Content: "\n\n" + kt.reason,
+				Content: "\n\n" + kt.Reason,
 				S:       util.StyleColorCyan,
 			},
 		},
@@ -43,13 +43,17 @@ func (kt *KickTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 }
 
 func (kt *KickTask) GetTargetProxyId() uuid.UUID {
-	return kt.targetProxyId
+	return kt.TargetProxyId
 }
 
 func (kt *KickTask) GetResponseChannel() string {
-	return kt.responseChannel
+	return kt.ResponseChannel
 }
 
 func (kt *KickTask) SetResponseChannel(ch string) {
-	kt.responseChannel = ch
+	kt.ResponseChannel = ch
+}
+
+func (mt *KickTask) GetTaskType() string {
+	return kickTask
 }

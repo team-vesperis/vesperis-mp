@@ -16,6 +16,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/task/tasks"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/commands"
@@ -83,6 +84,8 @@ func Init(ctx context.Context, l *logger.Logger, c *config.Config, db *database.
 		return &MultiProxyManager{}, err
 	}
 
+	tasks.Init()
+
 	mpm.mpm = playermanager.Init(l, db, mpm.ownerMP)
 
 	cfg, err := gate.LoadConfig(mpm.c.GetViper())
@@ -132,6 +135,7 @@ func Init(ctx context.Context, l *logger.Logger, c *config.Config, db *database.
 
 func (mpm *MultiProxyManager) createUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
+		mpm.l.Info(msg.Payload)
 		m := msg.Payload
 		s := strings.Split(m, "_")
 
@@ -155,7 +159,16 @@ func (mpm *MultiProxyManager) createUpdateListener() func(msg *redis.Message) {
 			return
 		}
 
+		// already created
 		if k == "new" {
+			return
+		}
+
+		if k == "delete" {
+			err := mpm.DeleteMultiProxy(id)
+			if err != nil {
+				mpm.l.Error("multiproxy update channel delete multiproxy error", "proxyId", id, "error", err)
+			}
 			return
 		}
 
@@ -204,6 +217,39 @@ func (mpm *MultiProxyManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) 
 
 	mpm.GetLogger().Info("created new multiproxy", "proxyId", id, "duration", time.Since(now))
 	return mp, nil
+}
+
+func (mpm *MultiProxyManager) DeleteMultiProxy(id uuid.UUID) error {
+	now := time.Now()
+	for key := range mpm.multiProxyMap {
+		if key == id {
+			mpm.multiProxyMap[key] = nil
+		}
+	}
+
+	_, err := mpm.db.GetProxyData(id)
+	if err != nil {
+		if err == database.ErrDataNotFound {
+			return nil
+		}
+
+		mpm.l.Error("could not get proxy data")
+		return err
+	}
+
+	err = mpm.db.DeleteProxyData(id)
+	if err != nil {
+		return err
+	}
+
+	m := mpm.ownerMP.GetId().String() + "_" + id.String() + "_delete"
+	err = mpm.db.Publish(multi.UpdateMultiProxyChannel, m)
+	if err != nil {
+		return err
+	}
+
+	mpm.GetLogger().Info("deleted multiproxy", "proxyId", id, "duration", time.Since(now))
+	return nil
 }
 
 func (mpm *MultiProxyManager) GetOwnerGate() *proxy.Proxy {
@@ -318,6 +364,18 @@ func (mpm *MultiProxyManager) createNewProxyId() (uuid.UUID, error) {
 
 func (mpm *MultiProxyManager) Close() {
 	mpm.l.Info("stopping mp")
-	mpm.db.Close()
-	mpm.l.Close()
+	err := mpm.DeleteMultiProxy(mpm.ownerMP.GetId())
+	if err != nil {
+
+	}
+
+	err = mpm.db.Close()
+	if err != nil {
+
+	}
+
+	err = mpm.l.Close()
+	if err != nil {
+
+	}
 }

@@ -14,8 +14,8 @@ func (pk PlayerKey) String() string {
 var ErrIncorrectPlayerKey = errors.New("incorrect player key")
 
 const (
-	PlayerKey_ProxyId   PlayerKey = "proxy_id"
-	PlayerKey_BackendId PlayerKey = "backend_id"
+	PlayerKey_ProxyId   PlayerKey = "proxyId"
+	PlayerKey_BackendId PlayerKey = "backendId"
 	PlayerKey_Username  PlayerKey = "username"
 	PlayerKey_Nickname  PlayerKey = "nickname"
 
@@ -29,7 +29,7 @@ const (
 
 	PlayerKey_Online   PlayerKey = "online"
 	PlayerKey_Vanished PlayerKey = "vanished"
-	PlayerKey_LastSeen PlayerKey = "last_seen"
+	PlayerKey_LastSeen PlayerKey = "lastSeen"
 	PlayerKey_Friends  PlayerKey = "friends"
 )
 

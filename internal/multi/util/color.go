@@ -43,3 +43,14 @@ var ColorCyan, _ = color.Hex("#0da8ad")
 var StyleColorCyan = Style{
 	Color: ColorCyan,
 }
+
+var ColorGray, _ = color.Hex("#7a7878")
+
+var StyleColorGray = Style{
+	Color: ColorGray,
+}
+
+var StyleMysterious = Style{
+	Color:  ColorGray,
+	Italic: True,
+}

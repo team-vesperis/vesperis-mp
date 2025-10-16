@@ -74,6 +74,8 @@ func (mp *Proxy) Update(k key.ProxyKey) {
 	}
 }
 
+var ErrProxyIdNilWhileOnline = errors.New("proxyId is nil but player is online")
+
 func (mp *Proxy) GetId() uuid.UUID {
 	return mp.id
 }

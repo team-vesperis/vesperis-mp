@@ -10,6 +10,7 @@ import (
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
+	"go.minekube.com/gate/pkg/util/uuid"
 
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
@@ -26,6 +27,8 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 							c.SendMessage(ComponentTargetNotFound)
 							return nil
 						}
+
+						c.SendMessage(util.TextInternalError("Could not send message.", err))
 						return err
 					}
 
@@ -36,7 +39,13 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 
 					mproxy := t.GetProxy()
 					if mproxy == nil {
+						c.SendMessage(util.TextInternalError("Could not send message.", multi.ErrProxyNilWhileOnline))
 						return multi.ErrProxyNilWhileOnline
+					}
+
+					if mproxy.GetId() == uuid.Nil {
+						c.SendMessage(util.TextInternalError("Could not send message.", multi.ErrProxyIdNilWhileOnline))
+						return multi.ErrProxyIdNilWhileOnline
 					}
 
 					var originName string
@@ -50,10 +59,10 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 
 						originName = mp.GetNickname()
 					} else {
-						originName = "Vesperis-Proxy-" //+ cm.mpm.GetOwnerMultiProxy().GetId().String()
+						originName = "Vesperis-Proxy-" + cm.mpm.GetOwnerMultiProxy().GetId().String()
 					}
 
-					tr := cm.tm.BuildTask(tasks.NewMessageTask(originName, t.GetId(), cm.tm.GetOwnerId(), c.String("message")))
+					tr := cm.tm.BuildTask(tasks.NewMessageTask(originName, t.GetId(), t.GetProxy().GetId(), c.String("message")))
 					if !tr.IsSuccessful() {
 						err := errors.New(tr.GetReason())
 						c.SendMessage(util.TextInternalError("Could not send message.", err))

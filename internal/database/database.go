@@ -75,67 +75,68 @@ type listenManager struct {
 
 const redisTTL = 15 * time.Minute
 
-func (db *Database) GetData(key string) (any, error) {
-	var val any
+func (db *Database) GetData(key string, dest any) error {
+	val, err := db.r.HGet(db.ctx, "data", key).Result()
+	if err == nil && val != "" {
+		err := json.Unmarshal([]byte(val), dest)
+		if err == nil {
+			return nil
+		}
+	}
 
-	val, err := db.r.Get(db.ctx, "data:"+key).Result()
-	if err != redis.Nil {
+	var jsonData []byte
+	query := `SELECT dataValue FROM data WHERE dataKey = $1`
+
+	err = db.p.QueryRow(db.ctx, query, key).Scan(&jsonData)
+	if err != nil {
+		db.l.Error("")
+		return err
+	}
+
+	err = json.Unmarshal(jsonData, dest)
+	if err != nil {
+		db.l.Error("")
+		return err
+	}
+
+	err = db.r.HSet(db.ctx, "data", key, jsonData).Err()
+	if err != nil {
+		db.l.Warn("")
+	} else {
+		err = db.r.HExpire(db.ctx, "data", redisTTL, key).Err()
 		if err != nil {
-			db.l.Warn("redis data get error", "key", key, "error", err)
-		} else {
-			return val, nil
+			db.l.Warn("")
 		}
 	}
 
-	query := "SELECT dataValue FROM data WHERE dataKey = $1"
-	r, err := db.p.Query(db.ctx, query, key)
-	if err != nil {
-		db.l.Error("postgres data query error", "key", key, "error", err)
-		return "", err
-	}
-	defer r.Close()
-	for r.Next() {
-		scanErr := r.Scan(&val)
-		if scanErr != nil {
-			db.l.Error("postgres data scan error", "key", key, "error", scanErr)
-			return "", scanErr
-		}
-
-		if r.Err() != nil {
-			db.l.Error("postgres data rows error", "key", key, "error", r.Err())
-			return "", r.Err()
-		}
-	}
-
-	if val == nil || val == "" {
-		return "", ErrDataNotFound
-	}
-
-	err = db.r.Set(db.ctx, "data:"+key, val, redisTTL).Err()
-	if err != nil {
-		db.l.Warn("redis data set error", "key", key, "error", err)
-	}
-
-	return val, nil
+	return nil
 }
 
 func (db *Database) SetData(key string, val any) error {
-	// redis
-	err := db.r.Set(db.ctx, "data:"+key, val, redisTTL).Err()
+	jsonVal, err := json.Marshal(val)
 	if err != nil {
-		db.l.Warn("redis data set error", "key", key, "value", val, "error", err)
+		db.l.Error("json data marshal error", "key", key, "error", err)
+		return err
 	}
 
-	// postgres
-	query := `
-		INSERT INTO data (dataKey, dataValue) 
-		VALUES ($1, $2) 
-		ON CONFLICT (dataKey) DO 
-		UPDATE SET dataValue = $2
-	`
-	_, err = db.p.Exec(db.ctx, query, key, val)
+	err = db.r.HSet(db.ctx, "data", key, jsonVal).Err()
 	if err != nil {
-		db.l.Error("postgres data upsert error", "key", key, "value", val, "error", err)
+		db.l.Warn("redis data set error", "key", key, "error", err)
+	} else {
+		err = db.r.HExpire(db.ctx, "data", redisTTL, key).Err()
+		if err != nil {
+			db.l.Warn("redis data set expiration error", "key", key, "error", err)
+		}
+	}
+
+	query := `
+		UPDATE data
+		SET dataValue = $1
+		WHERE dataKey = $2
+	`
+	_, err = db.p.Exec(db.ctx, query, jsonVal, key)
+	if err != nil {
+		db.l.Error("postgres data update error", "key", key, "error", err)
 		return err
 	}
 
@@ -234,7 +235,7 @@ func (db *Database) SetPlayerDataField(playerId uuid.UUID, field key.PlayerKey, 
 	if err != nil {
 		db.l.Warn("redis player data set error", "playerId", playerId, "field", field, "error", err)
 	} else {
-		err = db.r.HExpire(db.ctx, key, redisTTL, field.String()).Err()
+		//err = db.r.HExpire(db.ctx, key, redisTTL, field.String()).Err()
 		if err != nil {
 			db.l.Warn("redis player data set expiration error", "playerId", playerId, "field", field, "error", err)
 		}
@@ -368,6 +369,24 @@ func (db *Database) GetProxyDataField(proxyId uuid.UUID, field key.ProxyKey, des
 	return nil
 }
 
+// since proxy_data should not be kept when proxies are removed, we need a function to remove the proxy after closing
+func (db *Database) DeleteProxyData(proxyId uuid.UUID) error {
+	query := `DELETE FROM proxy_data WHERE proxyId = $1`
+	row, err := db.p.Exec(db.ctx, query, proxyId)
+	if err != nil {
+		db.l.Error("postgres delete proxy data error", "error", err)
+		return err
+	}
+
+	if row.RowsAffected() < 1 {
+		db.l.Warn("proxy data not found to delete", "proxyId", proxyId)
+	} else if row.RowsAffected() > 1 {
+		db.l.Warn("multiple rows deleted after deleting proxy data", "proxyId", proxyId)
+	}
+
+	return nil
+}
+
 func (db *Database) GetAllPlayerIds() ([]uuid.UUID, error) {
 	query := `SELECT playerId FROM player_data`
 	rows, err := db.p.Query(db.ctx, query)
@@ -434,6 +453,7 @@ func (db *Database) Publish(channel string, message any) error {
 }
 
 func (db *Database) Subscribe(channel string) *redis.PubSub {
+	db.l.Info("subscribing", "channel", channel)
 	return db.r.Subscribe(db.ctx, channel)
 }
 
@@ -486,6 +506,7 @@ func (db *Database) CreateListener(channel string, handler func(msg *redis.Messa
 		for {
 			msg, ok := <-pubsub.Channel()
 			if !ok {
+				db.l.Warn("pubsub channel closed", "channel", channel)
 				return
 			}
 
@@ -533,15 +554,17 @@ func (db *Database) DeleteAllListeners() error {
 }
 
 // Close the database. Closes the connection with Redis and PostgreSQL
-func (db *Database) Close() {
+func (db *Database) Close() error {
 	err := db.DeleteAllListeners()
 	if err != nil {
 		db.l.Error("database deleting all listeners error", "error", err)
+		return err
 	}
 
 	err = db.r.Close()
 	if err != nil {
 		db.l.Error("redis close error", "error", err)
+		return err
 	}
 
 	var canc context.CancelFunc
@@ -557,9 +580,9 @@ func (db *Database) Close() {
 	select {
 	case <-done:
 		// closed successfully
-		return
+		return nil
 	case <-db.ctx.Done():
 		db.l.Error("postgres close timeout", "error", db.ctx.Err())
-		return
+		return db.ctx.Err()
 	}
 }

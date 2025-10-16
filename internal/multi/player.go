@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
+	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"go.minekube.com/gate/pkg/util/uuid"
@@ -45,14 +46,16 @@ type Player struct {
 	friendIds []uuid.UUID
 
 	managerId uuid.UUID
+	l         *logger.Logger
 	db        *database.Database
 	mu        sync.RWMutex
 }
 
-func NewPlayer(id, mId uuid.UUID, db *database.Database, data *data.PlayerData) *Player {
+func NewPlayer(id, mId uuid.UUID, l *logger.Logger, db *database.Database, data *data.PlayerData) *Player {
 	mp := &Player{
 		id:        id,
 		managerId: mId,
+		l:         l,
 		db:        db,
 	}
 
@@ -108,6 +111,8 @@ func (mp *Player) Update(k key.PlayerKey) {
 		return
 	}
 
+	mp.l.Info("received needed update", "playerId", mp.id, "key", k.String())
+
 	switch k {
 	case key.PlayerKey_ProxyId:
 		var proxyId uuid.UUID
@@ -116,7 +121,6 @@ func (mp *Player) Update(k key.PlayerKey) {
 		if err == nil {
 			mp.setProxy(p, false)
 		}
-
 	case key.PlayerKey_BackendId:
 		var backendId uuid.UUID
 		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_BackendId, &backendId)
@@ -207,6 +211,10 @@ func (mp *Player) setProxy(mproxy *Proxy, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
+		if mproxy == nil {
+			return mp.save(key.PlayerKey_ProxyId, uuid.Nil)
+		}
+
 		return mp.save(key.PlayerKey_ProxyId, mproxy.id)
 	}
 

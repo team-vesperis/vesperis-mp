@@ -9,15 +9,10 @@ import (
 var fav favicon.Favicon
 
 func (lm *ListenerManager) initFavicon() error {
-	val, err := lm.db.GetData("favicon")
+	var f string
+	err := lm.db.GetData("favicon", &f)
 	if err != nil {
 		lm.l.Error("get favicon string from database error", "error", err)
-		return err
-	}
-
-	f, ok := val.(string)
-	if !ok {
-		lm.l.Error("favicon string from database is not a string error", "error", err)
 		return err
 	}
 

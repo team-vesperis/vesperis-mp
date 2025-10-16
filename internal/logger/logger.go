@@ -84,9 +84,18 @@ func (l *Logger) GetGateLogger() *zap.Logger {
 	return l.g
 }
 
-func (l *Logger) Close() {
-	l.l.Sync()
-	l.s.Sync()
+func (l *Logger) Close() error {
+	err := l.l.Sync()
+	if err != nil {
+		return err
+	}
+
+	err = l.s.Sync()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (l *Logger) Info(msg string, keysAndValues ...any) {

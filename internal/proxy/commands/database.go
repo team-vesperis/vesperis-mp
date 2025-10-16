@@ -14,18 +14,16 @@ func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuild
 		Then(brigodier.Literal("get").
 			Then(brigodier.Argument("key", brigodier.SingleWord).
 				Executes(command.Command(func(c *command.Context) error {
-					v, err := cm.db.GetData(c.String("key"))
-					if err == database.ErrDataNotFound {
-						c.SendMessage(&Text{
-							Content: "No value found in the database.",
-							S:       util.StyleColorOrange,
-						})
-						return nil
-					}
-
-					val, _ := v.(string)
-
+					var val string
+					err := cm.db.GetData(c.String("key"), &val)
 					if err != nil {
+						if err == database.ErrDataNotFound {
+							c.SendMessage(&Text{
+								Content: "No value found in the database.",
+								S:       util.StyleColorOrange,
+							})
+							return nil
+						}
 						c.SendMessage(&Text{
 							Content: "Could not get value from database.",
 							S: Style{

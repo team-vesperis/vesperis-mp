@@ -37,6 +37,17 @@ func InitTaskManager(db *database.Database, l *logger.Logger, mp *multi.Proxy, p
 	return tm
 }
 
+type TaskType struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
+var taskRegistry = map[string]func() Task{}
+
+func RegisterTaskType(name string, constructor func() Task) {
+	taskRegistry[name] = constructor
+}
+
 func (tm *TaskManager) GetDatabase() *database.Database {
 	return tm.db
 }
@@ -59,14 +70,26 @@ func (tm *TaskManager) GetMultiPlayerManager() *playermanager.MultiPlayerManager
 
 func (tm *TaskManager) createTaskListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
-		var t Task
-		err := json.Unmarshal([]byte(msg.Payload), &t)
+		var tt TaskType
+		err := json.Unmarshal([]byte(msg.Payload), &tt)
 		if err != nil {
-			tm.l.Warn("")
+			tm.l.Warn("task listener unmarshal task type error", "error", err)
 			return
 		}
 
-		t.SetResponseChannel("task_response-" + uuid.New().Undashed())
+		constructor, ok := taskRegistry[tt.Type]
+		if !ok {
+			tm.l.Warn("task listener unknown task type", "type", tt.Type)
+			return
+		}
+
+		// unmarshal based on task type
+		t := constructor()
+		err = json.Unmarshal(tt.Data, t)
+		if err != nil {
+			tm.l.Warn("task listener unmarshal task error", "error", err)
+			return
+		}
 
 		if tm.GetOwnerId() == t.GetTargetProxyId() {
 			tr := t.PerformTask(tm)
@@ -92,9 +115,21 @@ func (tm *TaskManager) BuildTask(t Task) *TaskResponse {
 		return t.PerformTask(tm)
 	}
 
-	d, err := json.Marshal(t)
+	t.SetResponseChannel("task_response-" + uuid.New().Undashed())
+
+	data, err := json.Marshal(t)
 	if err != nil {
-		return NewTaskResponse(false, "task confirmation could not marshal task")
+		return NewTaskResponse(false, "task confirmation could not marshal data task")
+	}
+
+	tt := TaskType{
+		Type: t.GetTaskType(),
+		Data: data,
+	}
+
+	d, err := json.Marshal(tt)
+	if err != nil {
+		return NewTaskResponse(false, "task confirmation could not marshal task type")
 	}
 
 	msg, err := tm.db.SendAndReturn(taskChannel, t.GetResponseChannel(), d, 2*time.Second)

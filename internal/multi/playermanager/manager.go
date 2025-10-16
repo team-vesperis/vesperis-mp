@@ -64,6 +64,10 @@ func (mpm *MultiPlayerManager) createUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
 		m := msg.Payload
 		s := strings.Split(m, "_")
+		if len(s) != 3 {
+			mpm.l.Warn("multiplayer update channel received message with incorrect length", "message", m)
+			return
+		}
 
 		originProxy := s[0]
 		// from own proxy, no update needed
@@ -172,7 +176,7 @@ func (mpm *MultiPlayerManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*mul
 		return nil, err
 	}
 
-	mp := multi.NewPlayer(id, mpm.ownerMP.GetId(), mpm.db, data)
+	mp := multi.NewPlayer(id, mpm.ownerMP.GetId(), mpm.l, mpm.db, data)
 
 	mpm.mu.Lock()
 	mpm.multiPlayerMap[id] = mp
