@@ -8,7 +8,7 @@ func (lm *ListenerManager) onProxyJoin(e *proxy.PostLoginEvent) {
 	p := e.Player()
 	id := p.ID()
 
-	mp, err := lm.mpm.GetMultiPlayer(id)
+	mp, err := lm.mm.GetMultiPlayer(id)
 	if err != nil {
 		lm.l.Error("player post login get multiplayer error", "playerId", id, "error", err)
 		p.Disconnect(loginDenyComponent)

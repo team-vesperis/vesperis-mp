@@ -10,7 +10,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
-	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/manager"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
@@ -20,16 +20,16 @@ type TaskManager struct {
 	l         *logger.Logger
 	ownerMP   *multi.Proxy
 	ownerGate *proxy.Proxy
-	mpm       *playermanager.MultiPlayerManager
+	mm        *manager.MultiManager
 }
 
-func InitTaskManager(db *database.Database, l *logger.Logger, mp *multi.Proxy, proxy *proxy.Proxy, mpm *playermanager.MultiPlayerManager) *TaskManager {
+func InitTaskManager(db *database.Database, l *logger.Logger, mp *multi.Proxy, proxy *proxy.Proxy, mm *manager.MultiManager) *TaskManager {
 	tm := &TaskManager{
 		db:        db,
 		l:         l,
 		ownerMP:   mp,
 		ownerGate: proxy,
-		mpm:       mpm,
+		mm:        mm,
 	}
 
 	tm.db.CreateListener(taskChannel, tm.createTaskListener())
@@ -64,8 +64,8 @@ func (tm *TaskManager) GetOwnerGate() *proxy.Proxy {
 	return tm.ownerGate
 }
 
-func (tm *TaskManager) GetMultiPlayerManager() *playermanager.MultiPlayerManager {
-	return tm.mpm
+func (tm *TaskManager) GetMultiPlayerManager() *manager.MultiManager {
+	return tm.mm
 }
 
 func (tm *TaskManager) createTaskListener() func(msg *redis.Message) {

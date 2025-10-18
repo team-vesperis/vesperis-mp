@@ -50,8 +50,8 @@ func (kt *KickTask) GetResponseChannel() string {
 	return kt.ResponseChannel
 }
 
-func (kt *KickTask) SetResponseChannel(ch string) {
-	kt.ResponseChannel = ch
+func (kt *KickTask) SetResponseChannel(channel string) {
+	kt.ResponseChannel = channel
 }
 
 func (mt *KickTask) GetTaskType() string {

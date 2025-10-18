@@ -7,7 +7,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
-	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/manager"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
@@ -19,20 +19,20 @@ import (
 )
 
 type CommandManager struct {
-	m   *command.Manager
-	l   *logger.Logger
-	db  *database.Database
-	mpm *playermanager.MultiPlayerManager
-	tm  *task.TaskManager
+	m  *command.Manager
+	l  *logger.Logger
+	db *database.Database
+	mm *manager.MultiManager
+	tm *task.TaskManager
 }
 
-func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mpm *playermanager.MultiPlayerManager, tm *task.TaskManager) (*CommandManager, error) {
+func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mm *manager.MultiManager, tm *task.TaskManager) (*CommandManager, error) {
 	cm := &CommandManager{
-		m:   p.Command(),
-		l:   l,
-		db:  db,
-		mpm: mpm,
-		tm:  tm,
+		m:  p.Command(),
+		l:  l,
+		db: db,
+		mm: mm,
+		tm: tm,
 	}
 
 	cm.registerCommands()
@@ -88,7 +88,7 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string) (*multi.Player, err
 	id, err := uuid.Parse(t)
 	if err != nil {
 		// try to get the id from a player name
-		l := cm.mpm.GetAllMultiPlayers()
+		l := cm.mm.GetAllMultiPlayers()
 
 		id = uuid.Nil
 		for _, mp := range l {
@@ -103,7 +103,7 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string) (*multi.Player, err
 		}
 	}
 
-	mp, err := cm.mpm.GetMultiPlayer(id)
+	mp, err := cm.mm.GetMultiPlayer(id)
 	if err != nil {
 		if err == database.ErrDataNotFound {
 			return nil, ErrTargetNotFound
@@ -117,30 +117,38 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string) (*multi.Player, err
 
 // suggests all multiplayers, online and offline.
 // vanished players are hidden from non-privileged players
-func (cm *CommandManager) SuggestAllMultiPlayers(onlyOnline bool) brigodier.SuggestionProvider {
+// Optional:
+// 1. offline players can be hidden
+// 2. own username and uuid can be hidden
+func (cm *CommandManager) SuggestAllMultiPlayers(hideOfflinePlayers, hideOwn bool) brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
 		r := b.RemainingLowerCase
 
 		if len(r) < 1 {
-			b.Suggest("type a playerName or UUID")
+			b.Suggest("type a username or UUID...")
 			return b.Build()
 		}
 
 		// use list to get all names and ids
 		var l []*multi.Player
-		if onlyOnline {
-			l = cm.mpm.GetAllOnlinePlayers()
+		if hideOfflinePlayers {
+			l = cm.mm.GetAllOnlinePlayers()
 		} else {
-			l = cm.mpm.GetAllMultiPlayers()
+			l = cm.mm.GetAllMultiPlayers()
 		}
 
 		hide_vanished := false
+		own_username := ""
 		p, ok := c.Source.(proxy.Player)
 		if ok {
-			mp, err := cm.mpm.GetMultiPlayer(p.ID())
+			mp, err := cm.mm.GetMultiPlayer(p.ID())
 			if err != nil {
 				cm.l.Error("suggest all multiplayers get multiplayer error", "error", err)
 				return b.Build()
+			}
+
+			if hideOwn {
+				own_username = mp.GetUsername()
 			}
 
 			if !mp.GetPermissionInfo().IsPrivileged() {
@@ -154,6 +162,10 @@ func (cm *CommandManager) SuggestAllMultiPlayers(onlyOnline bool) brigodier.Sugg
 			}
 
 			name := mp.GetUsername()
+			if name == own_username {
+				continue
+			}
+
 			if strings.HasPrefix(strings.ToLower(name), r) {
 				b.Suggest(name)
 			}
@@ -165,5 +177,70 @@ func (cm *CommandManager) SuggestAllMultiPlayers(onlyOnline bool) brigodier.Sugg
 		}
 
 		return b.Build()
+	})
+}
+
+func (cm *CommandManager) getGatePlayerFromSource(source command.Source) proxy.Player {
+	p, ok := source.(proxy.Player)
+	if !ok {
+		return nil
+	}
+
+	return p
+}
+
+func (cm *CommandManager) requireAdmin() brigodier.RequireFn {
+	return command.Requires(func(context *command.RequiresContext) bool {
+		p := cm.getGatePlayerFromSource(context.Source)
+
+		if p != nil {
+			mp, err := cm.mm.GetMultiPlayer(p.ID())
+			if err != nil {
+				return false
+			}
+
+			if mp.GetPermissionInfo().GetRole() == multi.RoleAdmin {
+				return true
+			}
+		}
+
+		return false
+	})
+}
+
+func (cm *CommandManager) requireAdminOrModerator() brigodier.RequireFn {
+	return command.Requires(func(context *command.RequiresContext) bool {
+		p := cm.getGatePlayerFromSource(context.Source)
+
+		if p != nil {
+			mp, err := cm.mm.GetMultiPlayer(p.ID())
+			if err != nil {
+				return false
+			}
+
+			role := mp.GetPermissionInfo().GetRole()
+			if role == multi.RoleAdmin || role == multi.RoleModerator {
+				return true
+			}
+		}
+
+		return false
+	})
+}
+
+func (cm *CommandManager) requirePrivileged() brigodier.RequireFn {
+	return command.Requires(func(context *command.RequiresContext) bool {
+		p := cm.getGatePlayerFromSource(context.Source)
+
+		if p != nil {
+			mp, err := cm.mm.GetMultiPlayer(p.ID())
+			if err != nil {
+				return false
+			}
+
+			return mp.GetPermissionInfo().IsPrivileged()
+		}
+
+		return false
 	})
 }

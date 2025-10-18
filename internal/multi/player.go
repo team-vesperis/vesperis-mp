@@ -86,8 +86,8 @@ func SetProxyManager(pm Proxymanager) {
 
 const UpdateMultiPlayerChannel = "update_multiplayer"
 
-// Update specific value of the multi player into the database
-// Notifies other proxies to update that value
+// Update specific value of the multi player into the database.
+// Notifies other proxies to update that value for themselves.
 func (mp *Player) save(k key.PlayerKey, val any) error {
 	if !slices.Contains(key.AllowedPlayerKeys, k) {
 		return key.ErrIncorrectPlayerKey

@@ -5,13 +5,13 @@ import (
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"go.minekube.com/common/minecraft/color"
-	. "go.minekube.com/common/minecraft/component"
+	c "go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
-var loginDenyComponent = &Text{
+var loginDenyComponent = &c.Text{
 	Content: "There was an error while login in. Please try again later.",
-	S: Style{
+	S: c.Style{
 		Color: color.Red,
 	},
 }
@@ -20,10 +20,10 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 	p := e.Player()
 	id := p.ID()
 
-	_, err := lm.mpm.GetMultiPlayer(id)
+	_, err := lm.mm.GetMultiPlayer(id)
 	// player hasn't joined before -> creating default mp
 	if err == database.ErrDataNotFound {
-		_, err := lm.mpm.NewMultiPlayer(p)
+		_, err := lm.mm.NewMultiPlayer(p)
 		if err != nil {
 			lm.l.Error("player login create new multiplayer error", "playerId", id, "error", err)
 			e.Deny(loginDenyComponent)
@@ -38,7 +38,7 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 
 func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 	id := e.Player().ID()
-	mp, err := lm.mpm.GetMultiPlayer(id)
+	mp, err := lm.mm.GetMultiPlayer(id)
 	if err != nil {
 		lm.l.Error("player disconnect get multiplayer error", "playerId", id, "error", err)
 		return

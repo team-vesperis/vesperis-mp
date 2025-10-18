@@ -6,19 +6,25 @@ import (
 	. "go.minekube.com/common/minecraft/component"
 )
 
-var ColorLightGreen, _ = color.Hex("#2ec52e")
+var ColorLightGreen, _ = color.Hex("#38ff38")
 
 var StyleColorLightGreen = Style{
 	Color: ColorLightGreen,
 }
 
-var ColorOrange, _ = color.Hex("#ff8c00")
+var ColorGreen, _ = color.Hex("#1fac1f")
+
+var StyleColorGreen = Style{
+	Color: ColorGreen,
+}
+
+var ColorOrange, _ = color.Hex("#ff9100")
 
 var StyleColorOrange = Style{
 	Color: ColorOrange,
 }
 
-var ColorRed, _ = color.Hex("#f72421")
+var ColorRed, _ = color.Hex("#ff3733")
 
 var StyleColorRed = Style{
 	Color: ColorRed,
@@ -38,13 +44,13 @@ func StyleInternalError(err error) component.Style {
 	}
 }
 
-var ColorCyan, _ = color.Hex("#0da8ad")
+var ColorCyan, _ = color.Hex("#12dbe2")
 
 var StyleColorCyan = Style{
 	Color: ColorCyan,
 }
 
-var ColorGray, _ = color.Hex("#7a7878")
+var ColorGray, _ = color.Hex("#999999")
 
 var StyleColorGray = Style{
 	Color: ColorGray,

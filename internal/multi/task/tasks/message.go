@@ -37,7 +37,7 @@ func (mt *MessageTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 			Color: util.ColorCyan,
 			HoverEvent: c.ShowText(&c.Text{
 				Content: "Click to reply",
-				S:       util.StyleMysterious,
+				S:       util.StyleColorGray,
 			}),
 			ClickEvent: c.NewClickEvent(c.SuggestCommandAction, "/message "+mt.OriginName+" "),
 		},
@@ -62,8 +62,8 @@ func (mt *MessageTask) GetResponseChannel() string {
 	return mt.ResponseChannel
 }
 
-func (mt *MessageTask) SetResponseChannel(ch string) {
-	mt.ResponseChannel = ch
+func (mt *MessageTask) SetResponseChannel(channel string) {
+	mt.ResponseChannel = channel
 }
 
 func (mt *MessageTask) GetTaskType() string {

@@ -7,24 +7,24 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
-	"github.com/team-vesperis/vesperis-mp/internal/multi/playermanager"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/manager"
 )
 
 type ListenerManager struct {
 	m               event.Manager
 	l               *logger.Logger
 	db              *database.Database
-	mpm             *playermanager.MultiPlayerManager
+	mm              *manager.MultiManager
 	ownerMultiProxy *multi.Proxy
 }
 
-func Init(m event.Manager, l *logger.Logger, db *database.Database, mpm *playermanager.MultiPlayerManager, ownerMultiProxy *multi.Proxy) (*ListenerManager, error) {
+func Init(m event.Manager, l *logger.Logger, db *database.Database, mm *manager.MultiManager, ownerMultiProxy *multi.Proxy) (*ListenerManager, error) {
 	now := time.Now()
 	lm := &ListenerManager{
 		m:               m,
 		l:               l,
 		db:              db,
-		mpm:             mpm,
+		mm:              mm,
 		ownerMultiProxy: ownerMultiProxy,
 	}
 
