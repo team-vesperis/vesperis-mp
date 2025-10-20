@@ -1,8 +1,8 @@
 services:
-  proxy:
+  mp:
     build: .
     ports:
       - "25565"
     volumes:
       - ./cmd/vesperis-mp/config/mp.yml:/app/config/mp.yml
-    restart: no
+

@@ -16,20 +16,20 @@ import (
 )
 
 type TaskManager struct {
-	db        *database.Database
-	l         *logger.Logger
-	ownerMP   *multi.Proxy
-	ownerGate *proxy.Proxy
-	mm        *manager.MultiManager
+	db           *database.Database
+	l            *logger.Logger
+	ownerMP      *multi.Proxy
+	ownerGate    *proxy.Proxy
+	multiManager *manager.MultiManager
 }
 
 func InitTaskManager(db *database.Database, l *logger.Logger, mp *multi.Proxy, proxy *proxy.Proxy, mm *manager.MultiManager) *TaskManager {
 	tm := &TaskManager{
-		db:        db,
-		l:         l,
-		ownerMP:   mp,
-		ownerGate: proxy,
-		mm:        mm,
+		db:           db,
+		l:            l,
+		ownerMP:      mp,
+		ownerGate:    proxy,
+		multiManager: mm,
 	}
 
 	tm.db.CreateListener(taskChannel, tm.createTaskListener())
@@ -64,8 +64,8 @@ func (tm *TaskManager) GetOwnerGate() *proxy.Proxy {
 	return tm.ownerGate
 }
 
-func (tm *TaskManager) GetMultiPlayerManager() *manager.MultiManager {
-	return tm.mm
+func (tm *TaskManager) GetMultiManager() *manager.MultiManager {
+	return tm.multiManager
 }
 
 func (tm *TaskManager) createTaskListener() func(msg *redis.Message) {
@@ -93,7 +93,7 @@ func (tm *TaskManager) createTaskListener() func(msg *redis.Message) {
 
 		if tm.GetOwnerId() == t.GetTargetProxyId() {
 			tr := t.PerformTask(tm)
-			m := strconv.FormatBool(tr.IsSuccessful()) + "_" + tr.GetReason()
+			m := strconv.FormatBool(tr.IsSuccessful()) + "_" + tr.GetInfo()
 
 			err := tm.db.Publish(t.GetResponseChannel(), m)
 			if err != nil {

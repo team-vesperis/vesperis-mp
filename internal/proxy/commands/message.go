@@ -88,7 +88,7 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 
 					tr := cm.tm.BuildTask(tasks.NewMessageTask(originName, t.GetId(), t.GetProxy().GetId(), c.String("message")))
 					if !tr.IsSuccessful() {
-						err := errors.New(tr.GetReason())
+						err := errors.New(tr.GetInfo())
 						c.SendMessage(util.TextInternalError("Could not send message.", err))
 						return err
 					}

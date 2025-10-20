@@ -9,13 +9,18 @@ import (
 type Backend struct {
 	id uuid.UUID
 
-	mp *Proxy
+	address string
+	mp      *Proxy
 
 	maintenance bool
 
 	players map[*Player]bool
 
 	mu *sync.RWMutex
+}
+
+func (mb *Backend) GetAddress() string {
+	return mb.address
 }
 
 func (mb *Backend) GetId() uuid.UUID {

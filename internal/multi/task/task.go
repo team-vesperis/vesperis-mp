@@ -16,13 +16,13 @@ const taskChannel = "task_mp"
 
 type TaskResponse struct {
 	s bool
-	r string
+	i string
 }
 
-func NewTaskResponse(successful bool, reason string) *TaskResponse {
+func NewTaskResponse(successful bool, info string) *TaskResponse {
 	return &TaskResponse{
 		s: successful,
-		r: reason,
+		i: info,
 	}
 }
 
@@ -30,6 +30,6 @@ func (tr *TaskResponse) IsSuccessful() bool {
 	return tr.s
 }
 
-func (tr *TaskResponse) GetReason() string {
-	return tr.r
+func (tr *TaskResponse) GetInfo() string {
+	return tr.i
 }

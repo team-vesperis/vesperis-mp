@@ -209,10 +209,6 @@ func (mm *MultiManager) GetAllMultiProxiesFromDatabase() ([]*multi.Proxy, error)
 	return l, nil
 }
 
-func (mm *MultiManager) GetMultiBackend(id uuid.UUID) (*multi.Backend, error) {
-	return nil, nil
-}
-
 // creates id
 func (mm *MultiManager) CreateNewProxyId() (uuid.UUID, error) {
 	var break_err error

@@ -46,7 +46,7 @@ func (cm *CommandManager) kickCommand(name string) brigodier.LiteralNodeBuilder 
 
 					tr := cm.tm.BuildTask(tasks.NewKickTask(t.GetId(), t.GetProxy().GetId(), c.String("reason")))
 					if !tr.IsSuccessful() {
-						err := errors.New(tr.GetReason())
+						err := errors.New(tr.GetInfo())
 						c.SendMessage(util.TextInternalError("Could not kick.", err))
 						return err
 					}
