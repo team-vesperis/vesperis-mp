@@ -60,6 +60,19 @@ func createTables(ctx context.Context, p *pgxpool.Pool, l *logger.Logger) error 
 		return err
 	}
 
+	backendDataTable := `
+	CREATE TABLE IF NOT EXISTS backend_data (
+		backendId UUID PRIMARY KEY,
+		backendData JSONB NOT NULL
+	);
+	`
+
+	_, err = p.Exec(ctx, backendDataTable)
+	if err != nil {
+		l.Error("postgres creating table error", "table", backendDataTable, "error", err)
+		return err
+	}
+
 	dataTable := `
 	CREATE TABLE IF NOT EXISTS data (
 		dataKey TEXT PRIMARY KEY,

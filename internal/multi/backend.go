@@ -1,22 +1,74 @@
 package multi
 
 import (
+	"slices"
 	"sync"
 
+	"github.com/team-vesperis/vesperis-mp/internal/database"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type Backend struct {
 	id uuid.UUID
+	mp *Proxy
 
-	address string
-	mp      *Proxy
-
+	address     string
 	maintenance bool
+	players     []uuid.UUID
 
-	players map[*Player]bool
+	mu        *sync.RWMutex
+	managerId uuid.UUID
+	db        *database.Database
+}
 
-	mu *sync.RWMutex
+func NewBackend(id, managerId uuid.UUID, ownerMP *Proxy, db *database.Database, data *data.BackendData) *Backend {
+	mb := &Backend{
+		id:        id,
+		managerId: managerId,
+		mp:        ownerMP,
+		db:        db,
+	}
+
+	mb.address = data.Address
+	mb.maintenance = data.Maintenance
+	mb.players = data.Players
+
+	return mb
+}
+
+const UpdateMultiBackendChannel = "update_multibackend"
+
+func (mb *Backend) save(k key.BackendKey, val any) error {
+	if !slices.Contains(key.AllowedBackendKeys, k) {
+		return key.ErrIncorrectBackendKey
+	}
+
+	err := mb.db.SetBackendDataField(mb.id, k, val)
+	if err != nil {
+		return err
+	}
+
+	m := mb.managerId.String() + "_" + mb.id.String() + "_" + k.String()
+	return mb.db.Publish(UpdateMultiBackendChannel, m)
+}
+
+func (mb *Backend) Update(k key.BackendKey) {
+	if !slices.Contains(key.AllowedBackendKeys, k) {
+		return
+	}
+
+	switch k {
+	case key.BackendKey_Maintenance:
+		var maintenance bool
+		mb.db.GetBackendDataField(mb.id, key.BackendKey_Maintenance, &maintenance)
+		mb.setInMaintenance(maintenance, false)
+	case key.BackendKey_PlayerList:
+		var playerList []uuid.UUID
+		mb.db.GetBackendDataField(mb.id, key.BackendKey_PlayerList, &playerList)
+		mb.setPlayerIds(playerList, false)
+	}
 }
 
 func (mb *Backend) GetAddress() string {
@@ -38,42 +90,71 @@ func (mb *Backend) IsInMaintenance() bool {
 	return mb.maintenance
 }
 
-func (mb *Backend) SetInMaintenance(maintenance bool) {
-	mb.mu.Lock()
-	defer mb.mu.Unlock()
-	mb.maintenance = maintenance
+func (mb *Backend) SetInMaintenance(maintenance bool) error {
+	return mb.setInMaintenance(maintenance, true)
 }
 
-func (mb *Backend) GetAllPlayers() []*Player {
-	mb.mu.RLock()
-	defer mb.mu.RUnlock()
+func (mb *Backend) setInMaintenance(maintenance, notify bool) error {
+	mb.mu.Lock()
+	mb.maintenance = maintenance
+	mb.mu.Unlock()
 
-	l := make([]*Player, 0, len(mb.players))
-	i := 0
-	for p := range mb.players {
-		l[i] = p
-		i++
+	if notify {
+		return mb.save(key.BackendKey_Maintenance, maintenance)
 	}
 
-	return l
+	return nil
 }
 
-func (mb *Backend) AddPlayer(p *Player) {
-	mb.mu.Lock()
-	mb.players[p] = true
-	mb.mu.Unlock()
-}
-
-func (mb *Backend) RemovePlayer(p *Player) {
-	mb.mu.Lock()
-	delete(mb.players, p)
-	mb.mu.Unlock()
-}
-
-func (mb *Backend) IsPlayerOnBackend(p *Player) bool {
+func (mb *Backend) GetPlayerIds() []uuid.UUID {
 	mb.mu.RLock()
 	defer mb.mu.RUnlock()
 
-	_, exists := mb.players[p]
-	return exists
+	return mb.players
+}
+
+func (mb *Backend) SetPlayerIds(ids []uuid.UUID) error {
+	return mb.setPlayerIds(ids, true)
+}
+
+func (mb *Backend) setPlayerIds(ids []uuid.UUID, notify bool) error {
+	mb.mu.Lock()
+	mb.players = ids
+	mb.mu.Unlock()
+
+	if notify {
+		return mb.save(key.BackendKey_PlayerList, ids)
+	}
+
+	return nil
+}
+
+func (mb *Backend) AddPlayerId(id uuid.UUID) error {
+	mb.mu.Lock()
+	if !slices.Contains(mb.players, id) {
+		mb.players = append(mb.players, id)
+	}
+	mb.mu.Unlock()
+
+	return mb.save(key.BackendKey_PlayerList, mb.GetPlayerIds())
+}
+
+func (mb *Backend) RemovePlayerId(id uuid.UUID) error {
+	mb.mu.Lock()
+	i := slices.Index(mb.players, id)
+	if i == -1 {
+		mb.mu.Unlock()
+		return ErrPlayerNotFound
+	}
+	mb.players = slices.Delete(mb.players, i, i+1)
+	mb.mu.Unlock()
+
+	return mb.save(key.BackendKey_PlayerList, mb.GetPlayerIds())
+}
+
+func (mb *Backend) IsPlayerIdOnProxy(id uuid.UUID) bool {
+	mb.mu.RLock()
+	defer mb.mu.RUnlock()
+
+	return slices.Contains(mb.players, id)
 }

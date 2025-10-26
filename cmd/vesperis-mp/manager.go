@@ -76,6 +76,7 @@ func Init(ctx context.Context, c *config.Config, l *logger.Logger, db *database.
 	}
 
 	m.multi.StartProxy()
+	m.multi.StartBackend()
 	tasks.Init()
 	m.multi.StartPlayer()
 

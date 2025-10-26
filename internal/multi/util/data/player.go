@@ -10,16 +10,16 @@ import (
 )
 
 type PlayerData struct {
-	ProxyId    uuid.UUID       `json:"proxy_id"`
-	BackendId  uuid.UUID       `json:"backend_id"`
-	Username   string          `json:"username"`
-	Nickname   string          `json:"nickname"`
-	Permission *PermissionData `json:"permission"`
-	Ban        *BanData        `json:"ban"`
-	Online     bool            `json:"online"`
-	Vanished   bool            `json:"vanished"`
-	LastSeen   *time.Time      `json:"last_seen"`
-	Friends    []uuid.UUID     `json:"friends"`
+	ProxyId    uuid.UUID       `json:"proxy_id,omitempty"`
+	BackendId  uuid.UUID       `json:"backend_id,omitempty"`
+	Username   string          `json:"username,omitempty"`
+	Nickname   string          `json:"nickname,omitempty"`
+	Permission *PermissionData `json:"permission,omitempty"`
+	Ban        *BanData        `json:"ban,omitempty"`
+	Online     bool            `json:"online,omitempty"`
+	Vanished   bool            `json:"vanished,omitempty"`
+	LastSeen   *time.Time      `json:"last_seen,omitempty"`
+	Friends    []uuid.UUID     `json:"friends,omitempty"`
 }
 
 type PermissionData struct {
@@ -28,10 +28,10 @@ type PermissionData struct {
 }
 
 type BanData struct {
-	Banned      bool      `json:"banned"`
-	Reason      string    `json:"reason"`
-	Permanently bool      `json:"permanently"`
-	Expiration  time.Time `json:"expiration"`
+	Banned      bool      `json:"banned,omitempty"`
+	Reason      string    `json:"reason,omitempty"`
+	Permanently bool      `json:"permanently,omitempty"`
+	Expiration  time.Time `json:"expiration,omitempty"`
 }
 
 func (pd PlayerData) Value() (driver.Value, error) {

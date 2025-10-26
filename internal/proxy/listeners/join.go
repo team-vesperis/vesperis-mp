@@ -1,6 +1,7 @@
 package listeners
 
 import (
+	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
@@ -38,6 +39,17 @@ func (lm *ListenerManager) onProxyJoin(e *proxy.PostLoginEvent) {
 }
 
 func (lm *ListenerManager) onServerJoin(e *proxy.ServerPostConnectEvent) {
+	p := e.Player()
+
+	var mb *multi.Backend
+	for _, b := range lm.mm.GetAllMultiBackends() {
+		if p.CurrentServer().Server().ServerInfo().Addr().String() == b.GetAddress() {
+			mb = b
+		}
+	}
+
+	mb.AddPlayerId(p.ID())
+
 	// p := e.Player()
 	// id := p.ID()
 

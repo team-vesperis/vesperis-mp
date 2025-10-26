@@ -72,15 +72,15 @@ func NewPlayer(id, mId uuid.UUID, l *logger.Logger, db *database.Database, data 
 	return mp
 }
 
-type Proxymanager interface {
+type MultiManager interface {
 	GetMultiProxy(id uuid.UUID) (*Proxy, error)
 	GetMultiBackend(id uuid.UUID) (*Backend, error)
 }
 
-var ErrProxyManagerNotSet = errors.New("proxy manager not set")
-var proxyManagerInstance Proxymanager
+var ErrMultiManagerNotSet = errors.New("multi manager not set")
+var proxyManagerInstance MultiManager
 
-func SetProxyManager(pm Proxymanager) {
+func SetMultiManager(pm MultiManager) {
 	proxyManagerInstance = pm
 }
 

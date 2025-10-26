@@ -2,6 +2,7 @@ package manager
 
 import (
 	"math"
+	"os"
 	"strings"
 	"time"
 
@@ -14,8 +15,6 @@ import (
 )
 
 func (mm *MultiManager) StartProxy() {
-	multi.SetProxyManager(mm)
-
 	// start update listener
 	mm.db.CreateListener(multi.UpdateMultiProxyChannel, mm.createProxyUpdateListener())
 
@@ -78,8 +77,17 @@ func (mm *MultiManager) createProxyUpdateListener() func(msg *redis.Message) {
 func (mm *MultiManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 	now := time.Now()
 
+	podIP := os.Getenv("POD_IP")
+	port := os.Getenv("PROXY_PORT")
+
+	if port == "" {
+		port = "25565"
+	}
+
+	addr := podIP + ":" + port
+
 	data := &data.ProxyData{
-		Address:     "localhost:25565",
+		Address:     addr,
 		Maintenance: false,
 		Backends:    make([]uuid.UUID, 0),
 		Players:     make([]uuid.UUID, 0),

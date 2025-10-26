@@ -33,6 +33,8 @@ func NewProxy(id, managerId uuid.UUID, db *database.Database, data *data.ProxyDa
 
 	mp.address = data.Address
 	mp.maintenance = data.Maintenance
+	mp.backends = data.Backends
+	mp.players = data.Players
 
 	return mp
 }
@@ -133,8 +135,8 @@ func (mp *Proxy) setPlayerIds(ids []uuid.UUID, notify bool) error {
 
 func (mp *Proxy) AddPlayerId(id uuid.UUID) error {
 	mp.mu.Lock()
-	if !slices.Contains(mp.backends, id) {
-		mp.backends = append(mp.backends, id)
+	if !slices.Contains(mp.players, id) {
+		mp.players = append(mp.players, id)
 	}
 	mp.mu.Unlock()
 

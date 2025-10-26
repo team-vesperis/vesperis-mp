@@ -151,6 +151,10 @@ func redisProxyKeyTranslator(proxyId uuid.UUID) string {
 	return "proxy_data:" + proxyId.String()
 }
 
+func redisBackendKeyTranslator(backendId uuid.UUID) string {
+	return "backend_data:" + backendId.String()
+}
+
 func safeJsonPathForPostgres(field string) string {
 	parts := strings.Split(field, ".")
 	for i, part := range parts {
@@ -193,6 +197,22 @@ func (db *Database) SetProxyData(proxyId uuid.UUID, data *data.ProxyData) error 
 	return nil
 }
 
+func (db *Database) SetBackendData(backendId uuid.UUID, data *data.BackendData) error {
+	query := `
+		INSERT INTO backend_data (backendId, backendData)
+		VALUES ($1, $2::jsonb)
+		ON CONFLICT (backendId) DO UPDATE
+		SET backendData = $2::jsonb
+	`
+	_, err := db.p.Exec(db.ctx, query, backendId, data)
+	if err != nil {
+		db.l.Error("postgres backend data upsert error", "backendId", backendId, "error", err)
+		return err
+	}
+
+	return nil
+}
+
 func (db *Database) GetPlayerData(playerId uuid.UUID) (*data.PlayerData, error) {
 	var data data.PlayerData
 	query := `SELECT playerData FROM player_data WHERE playerId = $1`
@@ -216,7 +236,22 @@ func (db *Database) GetProxyData(proxyId uuid.UUID) (*data.ProxyData, error) {
 		if err == pgx.ErrNoRows {
 			return nil, ErrDataNotFound
 		}
-		db.l.Error("postgres proxy data read error", "playerId", proxyId, "error", err)
+		db.l.Error("postgres proxy data read error", "proxyId", proxyId, "error", err)
+		return nil, err
+	}
+
+	return &data, nil
+}
+
+func (db *Database) GetBackendData(backendId uuid.UUID) (*data.BackendData, error) {
+	var data data.BackendData
+	query := `SELECT backendData FROM backend_data WHERE backendId = $1`
+	err := db.p.QueryRow(db.ctx, query, backendId).Scan(&data)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, ErrDataNotFound
+		}
+		db.l.Error("postgres backend data read error", "backendId", backendId, "error", err)
 		return nil, err
 	}
 
@@ -283,6 +318,39 @@ func (db *Database) SetProxyDataField(proxyId uuid.UUID, field key.ProxyKey, val
 	_, err = db.p.Exec(db.ctx, query, path, jsonVal, proxyId)
 	if err != nil {
 		db.l.Error("postgres proxy data update error", "proxyId", proxyId, "field", field, "error", err)
+		return err
+	}
+
+	return nil
+}
+
+func (db *Database) SetBackendDataField(backendId uuid.UUID, field key.BackendKey, val any) error {
+	jsonVal, err := json.Marshal(val)
+	if err != nil {
+		db.l.Error("json proxy data marshal error", "backendId", backendId, "field", field, "error", err)
+		return err
+	}
+
+	key := redisBackendKeyTranslator(backendId)
+	err = db.r.HSet(db.ctx, key, field.String(), jsonVal).Err()
+	if err != nil {
+		db.l.Warn("redis backend data set error", "backendId", backendId, "field", field, "error", err)
+	} else {
+		err = db.r.HExpire(db.ctx, key, redisTTL, field.String()).Err()
+		if err != nil {
+			db.l.Warn("redis backend data set expiration error", "backendId", backendId, "field", field, "error", err)
+		}
+	}
+
+	path := safeJsonPathForPostgres(field.String())
+	query := `
+		UPDATE backend_data
+		SET backendData = jsonb_set(backendData, $1, $2::jsonb, true)
+		WHERE backendId = $3
+	`
+	_, err = db.p.Exec(db.ctx, query, path, jsonVal, backendId)
+	if err != nil {
+		db.l.Error("postgres backend data update error", "backendId", backendId, "field", field, "error", err)
 		return err
 	}
 
@@ -369,6 +437,46 @@ func (db *Database) GetProxyDataField(proxyId uuid.UUID, field key.ProxyKey, des
 	return nil
 }
 
+func (db *Database) GetBackendDataField(backendId uuid.UUID, field key.BackendKey, dest any) error {
+	key := redisBackendKeyTranslator(backendId)
+
+	val, err := db.r.HGet(db.ctx, key, field.String()).Result()
+	if err == nil && val != "" {
+		err := json.Unmarshal([]byte(val), dest)
+		if err == nil {
+			return nil
+		}
+	}
+
+	var jsonData []byte
+	query := `SELECT backendData #> $1 FROM backend_data WHERE backendId = $2`
+
+	path := safeJsonPathForPostgres(field.String())
+	err = db.p.QueryRow(db.ctx, query, path, backendId).Scan(&jsonData)
+	if err != nil {
+		db.l.Error("")
+		return err
+	}
+
+	err = json.Unmarshal(jsonData, dest)
+	if err != nil {
+		db.l.Error("")
+		return err
+	}
+
+	err = db.r.HSet(db.ctx, key, field.String(), jsonData).Err()
+	if err != nil {
+		db.l.Warn("")
+	} else {
+		err = db.r.HExpire(db.ctx, key, redisTTL, field.String()).Err()
+		if err != nil {
+			db.l.Warn("")
+		}
+	}
+
+	return nil
+}
+
 // since proxy_data should not be kept when proxies are removed, we need a function to remove the proxy after closing
 func (db *Database) DeleteProxyData(proxyId uuid.UUID) error {
 	query := `DELETE FROM proxy_data WHERE proxyId = $1`
@@ -382,6 +490,23 @@ func (db *Database) DeleteProxyData(proxyId uuid.UUID) error {
 		db.l.Warn("proxy data not found to delete", "proxyId", proxyId)
 	} else if row.RowsAffected() > 1 {
 		db.l.Warn("multiple rows deleted after deleting proxy data", "proxyId", proxyId)
+	}
+
+	return nil
+}
+
+func (db *Database) DeleteBackendData(backendId uuid.UUID) error {
+	query := `DELETE FROM backend_data WHERE backendId = $1`
+	row, err := db.p.Exec(db.ctx, query, backendId)
+	if err != nil {
+		db.l.Error("postgres delete backend data error", "error", err)
+		return err
+	}
+
+	if row.RowsAffected() < 1 {
+		db.l.Warn("backend data not found to delete", "backendId", backendId)
+	} else if row.RowsAffected() > 1 {
+		db.l.Warn("multiple rows deleted after deleting backend data", "backendId", backendId)
 	}
 
 	return nil
@@ -419,7 +544,7 @@ func (db *Database) GetAllProxyIds() ([]uuid.UUID, error) {
 	query := `SELECT proxyId FROM proxy_data`
 	rows, err := db.p.Query(db.ctx, query)
 	if err != nil {
-		db.l.Error("postgres get all player ids error", "error", err)
+		db.l.Error("postgres get all proxy ids error", "error", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -429,7 +554,39 @@ func (db *Database) GetAllProxyIds() ([]uuid.UUID, error) {
 		var id uuid.UUID
 		err := rows.Scan(&id)
 		if err != nil {
-			db.l.Error("postgres scan player id error", "error", err)
+			db.l.Error("postgres scan proxy id error", "error", err)
+			return nil, err
+		}
+
+		ids = append(ids, id)
+	}
+	if rows.Err() != nil {
+		db.l.Error("postgres rows error", "error", rows.Err())
+		return nil, rows.Err()
+	}
+
+	return ids, nil
+}
+
+func (db *Database) GetAllBackendsIds() ([]uuid.UUID, error) {
+	return db.getAllIds("backend")
+}
+
+func (db *Database) getAllIds(data_type string) ([]uuid.UUID, error) {
+	query := "SELECT " + data_type + "Id FROM " + data_type + "_data"
+	rows, err := db.p.Query(db.ctx, query)
+	if err != nil {
+		db.l.Error("postgres get all backend ids error", "error", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		err := rows.Scan(&id)
+		if err != nil {
+			db.l.Error("postgres scan backend id error", "error", err)
 			return nil, err
 		}
 

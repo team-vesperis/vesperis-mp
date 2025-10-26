@@ -10,9 +10,10 @@ import (
 )
 
 type MultiManager struct {
-	proxyMap  map[uuid.UUID]*multi.Proxy
-	playerMap map[uuid.UUID]*multi.Player
-	mu        sync.RWMutex
+	proxyMap   map[uuid.UUID]*multi.Proxy
+	playerMap  map[uuid.UUID]*multi.Player
+	backendMap map[uuid.UUID]*multi.Backend
+	mu         sync.RWMutex
 
 	ownerMP *multi.Proxy
 
@@ -21,14 +22,16 @@ type MultiManager struct {
 }
 
 func Init(db *database.Database, l *logger.Logger) *MultiManager {
-	mpm := &MultiManager{
+	mm := &MultiManager{
 		proxyMap:  make(map[uuid.UUID]*multi.Proxy),
 		playerMap: map[uuid.UUID]*multi.Player{},
 		db:        db,
 		l:         l,
 	}
 
-	return mpm
+	multi.SetMultiManager(mm)
+
+	return mm
 }
 
 func (mm *MultiManager) GetOwnerMultiProxy() *multi.Proxy {

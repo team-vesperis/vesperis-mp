@@ -8,27 +8,27 @@ import (
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
-type ProxyData struct {
+type BackendData struct {
 	Address     string      `json:"address,omitempty"`
+	Proxy       uuid.UUID   `json:"proxy,omitempty"`
 	Maintenance bool        `json:"maintenance,omitempty"`
-	Backends    []uuid.UUID `json:"backends,omitempty"`
 	Players     []uuid.UUID `json:"players,omitempty"`
 }
 
-func (pd ProxyData) Value() (driver.Value, error) {
-	return json.Marshal(pd)
+func (bd BackendData) Value() (driver.Value, error) {
+	return json.Marshal(bd)
 }
 
-func (pd *ProxyData) Scan(value interface{}) error {
+func (bd *BackendData) Scan(value interface{}) error {
 	switch v := value.(type) {
 	case []byte:
-		return json.Unmarshal(v, pd)
+		return json.Unmarshal(v, bd)
 	case string:
-		return json.Unmarshal([]byte(v), pd)
+		return json.Unmarshal([]byte(v), bd)
 	case nil:
-		*pd = ProxyData{}
+		*bd = BackendData{}
 		return nil
 	default:
-		return errors.New("unsupported type for ProxyData Scan")
+		return errors.New("unsupported type for BackendData Scan")
 	}
 }
