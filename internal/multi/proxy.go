@@ -4,6 +4,7 @@ import (
 	"errors"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
@@ -22,6 +23,8 @@ type Proxy struct {
 	mu        sync.RWMutex
 	managerId uuid.UUID
 	db        *database.Database
+
+	lastHeartBeat *time.Time
 }
 
 func NewProxy(id, managerId uuid.UUID, db *database.Database, data *data.ProxyData) *Proxy {
@@ -86,6 +89,28 @@ func (mp *Proxy) GetAddress() string {
 	mp.mu.RLock()
 	defer mp.mu.RUnlock()
 	return mp.address
+}
+
+func (mp *Proxy) GetLastHeartBeat() *time.Time {
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+	return mp.lastHeartBeat
+}
+
+func (mp *Proxy) SetLastHeartBeat(t *time.Time) error {
+	return mp.setLastHeartBeat(t, true)
+}
+
+func (mp *Proxy) setLastHeartBeat(t *time.Time, notify bool) error {
+	mp.mu.Lock()
+	mp.lastHeartBeat = t
+	mp.mu.Unlock()
+
+	if notify {
+		return mp.save(key.ProxyKey_LastHeartBeat, t)
+	}
+
+	return nil
 }
 
 func (mp *Proxy) IsInMaintenance() bool {

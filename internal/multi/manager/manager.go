@@ -17,6 +17,8 @@ type MultiManager struct {
 
 	ownerMP *multi.Proxy
 
+	hbm *hartBeatManager
+
 	db *database.Database
 	l  *logger.Logger
 }
@@ -32,6 +34,17 @@ func Init(db *database.Database, l *logger.Logger) *MultiManager {
 	multi.SetMultiManager(mm)
 
 	return mm
+}
+
+func (mm *MultiManager) Close() error {
+	err := mm.DeleteMultiProxy(mm.ownerMP.GetId())
+	if err != nil {
+		return err
+	}
+
+	mm.hbm.stop()
+
+	return nil
 }
 
 func (mm *MultiManager) GetOwnerMultiProxy() *multi.Proxy {

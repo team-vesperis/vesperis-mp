@@ -7,25 +7,31 @@ import (
 
 func (lm *ListenerManager) onProxyJoin(e *proxy.PostLoginEvent) {
 	p := e.Player()
-	id := p.ID()
 
-	mp, err := lm.mm.GetMultiPlayer(id)
+	mp, err := lm.mm.GetMultiPlayer(p.ID())
 	if err != nil {
-		lm.l.Error("player post login get multiplayer error", "playerId", id, "error", err)
+		lm.l.Error("player post login get multiplayer error", "playerId", p.ID(), "error", err)
 		p.Disconnect(loginDenyComponent)
 		return
 	}
 
 	err = mp.SetOnline(true)
 	if err != nil {
-		lm.l.Error("player login set online error", "playerId", id, "error", err)
+		lm.l.Error("player login set online error", "playerId", p.ID(), "error", err)
 		p.Disconnect(loginDenyComponent)
 		return
 	}
 
 	err = mp.SetProxy(lm.ownerMultiProxy)
 	if err != nil {
-		lm.l.Error("player post login set proxy error", "playerId", id, "error", err)
+		lm.l.Error("player post login set proxy error", "playerId", p.ID(), "error", err)
+		p.Disconnect(loginDenyComponent)
+		return
+	}
+
+	err = lm.ownerMultiProxy.AddPlayerId(p.ID())
+	if err != nil {
+		lm.l.Error("player post login add playerId to multiproxy error", "playerId", p.ID(), "error", err)
 		p.Disconnect(loginDenyComponent)
 		return
 	}
@@ -33,39 +39,61 @@ func (lm *ListenerManager) onProxyJoin(e *proxy.PostLoginEvent) {
 	if p.Username() != mp.GetUsername() {
 		err := mp.SetUsername(p.Username())
 		if err != nil {
-			lm.l.Error("player post login set name error", "playerId", id, "error", err)
+			lm.l.Error("player post login set name error", "playerId", p.ID(), "error", err)
 		}
 	}
 }
 
 func (lm *ListenerManager) onServerJoin(e *proxy.ServerPostConnectEvent) {
 	p := e.Player()
+	si := p.CurrentServer().Server().ServerInfo()
 
 	var mb *multi.Backend
 	for _, b := range lm.mm.GetAllMultiBackends() {
-		if p.CurrentServer().Server().ServerInfo().Addr().String() == b.GetAddress() {
+		if si.Addr().String() == b.GetAddress() {
 			mb = b
 		}
 	}
 
-	mb.AddPlayerId(p.ID())
+	if mb == nil {
+		l, err := lm.mm.GetAllMultiBackendsFromDatabase()
+		if err != nil {
+			lm.l.Error("player server post connect get all multibackends from database error", "playerId", p.ID(), "error", err)
+			p.Disconnect(loginDenyComponent)
+			return
+		}
 
-	// p := e.Player()
-	// id := p.ID()
+		for _, b := range l {
+			if si.Addr().String() == b.GetAddress() {
+				mb = b
+			}
+		}
 
-	// mp, err := lm.mpm.GetMultiPlayer(id)
-	// if err != nil {
-	// 	lm.l.Error("player server post connect get multiplayer error", "playerId", id, "error", err)
-	// 	p.Disconnect(loginDenyComponent)
-	// 	return
-	// }
+		if mb == nil {
+			lm.l.Error("player server post connect backend is not registered in the database", "backendName", si.Name(), "backendAddress", si.Addr().String())
+			p.Disconnect(loginDenyComponent)
+			return
+		}
+	}
 
-	// backendId := p.CurrentServer().Server().ServerInfo().Name()
+	mp, err := lm.mm.GetMultiPlayer(p.ID())
+	if err != nil {
+		lm.l.Error("player server post connect get multiplayer error", "playerId", p.ID(), "error", err)
+		p.Disconnect(loginDenyComponent)
+		return
+	}
 
-	// err = mp.SetMultiBackend(backendId)
-	// if err != nil {
-	// 	lm.l.Error("player server post connect set backend id error", "playerId", id, "backendId", backendId, "error", err)
-	// 	p.Disconnect(loginDenyComponent)
-	// 	return
-	// }
+	err = mb.AddPlayerId(p.ID())
+	if err != nil {
+		lm.l.Error("player server post connect add playerId to multibackend error", "playerId", p.ID(), "error", err)
+		p.Disconnect(loginDenyComponent)
+		return
+	}
+
+	err = mp.SetBackend(mb)
+	if err != nil {
+		lm.l.Error("player server post connect set multibackend error", "playerId", p.ID(), "backendId", mb.GetId(), "error", err)
+		p.Disconnect(loginDenyComponent)
+		return
+	}
 }

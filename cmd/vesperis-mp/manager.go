@@ -114,6 +114,8 @@ func Init(ctx context.Context, c *config.Config, l *logger.Logger, db *database.
 	event.Subscribe(m.ownerGate.Event(), 0, m.transfer.OnChooseInitialServer)
 	event.Subscribe(m.ownerGate.Event(), 0, m.transfer.OnPreShutdown)
 
+	m.multi.InitHeartBeatManager()
+
 	return m, nil
 }
 
@@ -130,9 +132,10 @@ func (m *Manager) onShutdown(event *proxy.ShutdownEvent) {
 
 func (m *Manager) close() {
 	m.l.Info("stopping mp")
-	err := m.multi.DeleteMultiProxy(m.ownerMP.GetId())
+
+	err := m.multi.Close()
 	if err != nil {
-		m.l.Error("deleting multiproxy error", "error", err)
+		m.l.Error("", "error", err)
 	}
 
 	err = m.db.Close()

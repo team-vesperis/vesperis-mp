@@ -4,15 +4,17 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 type ProxyData struct {
-	Address     string      `json:"address,omitempty"`
-	Maintenance bool        `json:"maintenance,omitempty"`
-	Backends    []uuid.UUID `json:"backends,omitempty"`
-	Players     []uuid.UUID `json:"players,omitempty"`
+	Address       string      `json:"address,omitempty"`
+	Maintenance   bool        `json:"maintenance,omitempty"`
+	Backends      []uuid.UUID `json:"backends,omitempty"`
+	Players       []uuid.UUID `json:"players,omitempty"`
+	LastHeartBeat *time.Time  `json:"last_hart_beat,omitempty"`
 }
 
 func (pd ProxyData) Value() (driver.Value, error) {

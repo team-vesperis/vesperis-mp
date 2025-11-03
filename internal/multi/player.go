@@ -241,6 +241,10 @@ func (mp *Player) setBackend(mb *Backend, notify bool) error {
 	mp.mu.Unlock()
 
 	if notify {
+		if mb == nil {
+			return mp.save(key.PlayerKey_BackendId, uuid.Nil)
+		}
+
 		return mp.save(key.PlayerKey_BackendId, mb.id)
 	}
 

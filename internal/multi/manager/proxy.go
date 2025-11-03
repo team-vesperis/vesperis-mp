@@ -1,8 +1,8 @@
 package manager
 
 import (
+	"fmt"
 	"math"
-	"os"
 	"strings"
 	"time"
 
@@ -77,14 +77,7 @@ func (mm *MultiManager) createProxyUpdateListener() func(msg *redis.Message) {
 func (mm *MultiManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 	now := time.Now()
 
-	podIP := os.Getenv("POD_IP")
-	port := os.Getenv("PROXY_PORT")
-
-	if port == "" {
-		port = "25565"
-	}
-
-	addr := podIP + ":" + port
+	addr := fmt.Sprintf("%s.proxy.default.svc.cluster.local:25565", id.String())
 
 	data := &data.ProxyData{
 		Address:     addr,
@@ -243,7 +236,6 @@ func (mm *MultiManager) GetProxyWithLowestPlayerCount(includingThisProxy bool) *
 	var proxy *multi.Proxy
 
 	for _, p := range mm.proxyMap {
-		mm.l.Info("working", "id", p.GetId())
 		if !includingThisProxy {
 			if p == mm.ownerMP {
 				continue
