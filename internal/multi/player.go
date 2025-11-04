@@ -72,6 +72,8 @@ func NewPlayer(id, mId uuid.UUID, l *logger.Logger, db *database.Database, data 
 	return mp
 }
 
+var ErrPlayerNotFound = errors.New("player not found")
+
 type MultiManager interface {
 	GetMultiProxy(id uuid.UUID) (*Proxy, error)
 	GetMultiBackend(id uuid.UUID) (*Backend, error)

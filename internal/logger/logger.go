@@ -16,9 +16,10 @@ const logDir = "./logs"
 const maxLogFiles = 20
 
 type Logger struct {
-	s *zap.SugaredLogger
-	l *zap.Logger
-	g *zap.Logger
+	s  *zap.SugaredLogger
+	l  *zap.Logger
+	g  *zap.Logger
+	al zap.AtomicLevel
 }
 
 func Init() (*Logger, error) {
@@ -51,8 +52,11 @@ func Init() (*Logger, error) {
 	jsonECf.EncodeLevel = zapcore.CapitalLevelEncoder
 	jsonE := zapcore.NewJSONEncoder(jsonECf)
 
-	consoleC := zapcore.NewCore(consoleE, zapcore.AddSync(zapcore.Lock(os.Stdout)), zapcore.InfoLevel)
-	fileC := zapcore.NewCore(jsonE, zapcore.AddSync(zapcore.Lock(file)), zapcore.InfoLevel)
+	// logger level gets changed after config is initialized
+	al := zap.NewAtomicLevel()
+	al.SetLevel(zapcore.InfoLevel)
+	consoleC := zapcore.NewCore(consoleE, zapcore.AddSync(zapcore.Lock(os.Stdout)), al)
+	fileC := zapcore.NewCore(jsonE, zapcore.AddSync(zapcore.Lock(file)), al)
 
 	c := zapcore.NewTee(consoleC, fileC)
 
@@ -61,9 +65,10 @@ func Init() (*Logger, error) {
 	s := lg.Sugar()
 
 	l := &Logger{
-		s: s,
-		l: lg,
-		g: g,
+		s:  s,
+		l:  lg,
+		g:  g,
+		al: al,
 	}
 
 	l.Info("initialized logger", "duration", time.Since(now))
@@ -84,22 +89,21 @@ func (l *Logger) GetGateLogger() *zap.Logger {
 	return l.g
 }
 
-func (l *Logger) Close() error {
-	err := l.l.Sync()
-	if err != nil {
-		return err
-	}
+func (l *Logger) SetLevel(lv zapcore.Level) {
+	l.al.SetLevel(lv)
+}
 
-	err = l.s.Sync()
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (l *Logger) Close() {
+	l.l.Sync()
+	l.s.Sync()
 }
 
 func (l *Logger) Info(msg string, keysAndValues ...any) {
 	l.s.Infow(msg, keysAndValues...)
+}
+
+func (l *Logger) Debug(msg string, keysAndValues ...any) {
+	l.s.Debugw(msg, keysAndValues...)
 }
 
 func (l *Logger) Error(msg string, keysAndValues ...any) {

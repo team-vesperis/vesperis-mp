@@ -14,7 +14,7 @@ type hartBeatManager struct {
 
 func (mm *MultiManager) InitHeartBeatManager() *hartBeatManager {
 	hbm := &hartBeatManager{
-		t: time.NewTicker(30 * time.Second),
+		t: time.NewTicker(3 * time.Minute),
 		p: mm.ownerMP,
 		d: make(chan bool),
 	}

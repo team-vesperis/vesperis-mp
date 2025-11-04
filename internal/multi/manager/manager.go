@@ -3,6 +3,7 @@ package manager
 import (
 	"sync"
 
+	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
@@ -19,14 +20,16 @@ type MultiManager struct {
 
 	hbm *hartBeatManager
 
+	cf *config.Config
 	db *database.Database
 	l  *logger.Logger
 }
 
-func Init(db *database.Database, l *logger.Logger) *MultiManager {
+func Init(cf *config.Config, db *database.Database, l *logger.Logger) *MultiManager {
 	mm := &MultiManager{
 		proxyMap:  make(map[uuid.UUID]*multi.Proxy),
 		playerMap: map[uuid.UUID]*multi.Player{},
+		cf:        cf,
 		db:        db,
 		l:         l,
 	}
@@ -37,6 +40,17 @@ func Init(db *database.Database, l *logger.Logger) *MultiManager {
 }
 
 func (mm *MultiManager) Close() error {
+	l := mm.ownerMP.GetBackendsIds()
+	mm.l.Debug("deleting list", "list", l)
+	for _, id := range l {
+		err := mm.DeleteMultiBackend(id)
+		if err != nil {
+			return err
+		}
+
+		mm.l.Debug("deleted backend")
+	}
+
 	err := mm.DeleteMultiProxy(mm.ownerMP.GetId())
 	if err != nil {
 		return err
@@ -44,6 +58,7 @@ func (mm *MultiManager) Close() error {
 
 	mm.hbm.stop()
 
+	mm.l.Debug("multimanager closed successfully")
 	return nil
 }
 

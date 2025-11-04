@@ -1,10 +1,13 @@
 package multi
 
 import (
+	"errors"
 	"slices"
 	"sync"
 
+	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
+	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"go.minekube.com/gate/pkg/util/uuid"
@@ -20,15 +23,20 @@ type Backend struct {
 
 	mu        *sync.RWMutex
 	managerId uuid.UUID
-	db        *database.Database
+
+	l  *logger.Logger
+	db *database.Database
+	cf *config.Config
 }
 
-func NewBackend(id, managerId uuid.UUID, ownerMP *Proxy, db *database.Database, data *data.BackendData) *Backend {
+func NewBackend(id, managerId uuid.UUID, ownerMP *Proxy, l *logger.Logger, db *database.Database, cf *config.Config, data *data.BackendData) *Backend {
 	mb := &Backend{
 		id:        id,
 		managerId: managerId,
 		mp:        ownerMP,
+		l:         l,
 		db:        db,
+		cf:        cf,
 	}
 
 	mb.address = data.Address
@@ -37,6 +45,8 @@ func NewBackend(id, managerId uuid.UUID, ownerMP *Proxy, db *database.Database, 
 
 	return mb
 }
+
+var ErrBackendNotFound = errors.New("backend not found")
 
 const UpdateMultiBackendChannel = "update_multibackend"
 

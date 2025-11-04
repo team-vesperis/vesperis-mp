@@ -610,7 +610,7 @@ func (db *Database) Publish(channel string, message any) error {
 }
 
 func (db *Database) Subscribe(channel string) *redis.PubSub {
-	db.l.Info("subscribing", "channel", channel)
+	db.l.Debug("database redis pubsub subscribing to channel", "channel", channel)
 	return db.r.Subscribe(db.ctx, channel)
 }
 
@@ -663,7 +663,7 @@ func (db *Database) CreateListener(channel string, handler func(msg *redis.Messa
 		for {
 			msg, ok := <-pubsub.Channel()
 			if !ok {
-				db.l.Warn("pubsub channel closed", "channel", channel)
+				db.l.Debug("database redis pubsub channel closed", "channel", channel)
 				return
 			}
 
@@ -737,6 +737,7 @@ func (db *Database) Close() error {
 	select {
 	case <-done:
 		// closed successfully
+		db.l.Info("database closed successfully")
 		return nil
 	case <-db.ctx.Done():
 		db.l.Error("postgres close timeout", "error", db.ctx.Err())

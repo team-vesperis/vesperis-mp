@@ -45,4 +45,7 @@ func (lm *ListenerManager) registerListeners() {
 	event.Subscribe(lm.m, 0, lm.onLogin)
 	event.Subscribe(lm.m, 0, lm.onDisconnect)
 	event.Subscribe(lm.m, 0, lm.onPing)
+
+	event.Subscribe(lm.m, 0, lm.onRegister)
+	event.Subscribe(lm.m, 0, lm.onUnRegister)
 }

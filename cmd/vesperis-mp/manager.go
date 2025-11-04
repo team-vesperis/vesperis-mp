@@ -18,6 +18,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/listeners"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.minekube.com/gate/pkg/gate"
+	"go.uber.org/zap/zapcore"
 )
 
 type Manager struct {
@@ -45,7 +46,7 @@ type Manager struct {
 
 	// The config used in the mp.
 	// Determines the database connection variables, proxy id, etc.
-	c *config.Config
+	cf *config.Config
 
 	multi *manager.MultiManager
 
@@ -54,21 +55,24 @@ type Manager struct {
 	transfer *transfer.TransferManager
 }
 
-func Init(ctx context.Context, c *config.Config, l *logger.Logger, db *database.Database) (*Manager, error) {
+func Init(ctx context.Context, cf *config.Config, l *logger.Logger, db *database.Database) (*Manager, error) {
 	m := &Manager{
 		ctx: logr.NewContext(ctx, zapr.NewLogger(l.GetGateLogger())),
-		c:   c,
+		cf:  cf,
 		l:   l,
 		db:  db,
 	}
 
-	m.multi = manager.Init(db, l)
+	m.multi = manager.Init(cf, db, l)
 
 	id, err := m.multi.CreateNewProxyId()
 	if err != nil {
 		return m, err
 	}
-	m.l.Info("Found a id to use.", "id", id)
+
+	if cf.IsInDebug() {
+		m.l.Debug("Found a id to use for this proxy.", "id", id)
+	}
 
 	m.ownerMP, err = m.multi.NewMultiProxy(id)
 	if err != nil {
@@ -80,7 +84,7 @@ func Init(ctx context.Context, c *config.Config, l *logger.Logger, db *database.
 	tasks.Init()
 	m.multi.StartPlayer()
 
-	cfg, err := gate.LoadConfig(m.c.GetViper())
+	cfg, err := gate.LoadConfig(m.cf.GetViper())
 	if err != nil {
 		m.l.Error("load config for gate error", "error", err)
 		return m, err
@@ -140,11 +144,14 @@ func (m *Manager) close() {
 
 	err = m.db.Close()
 	if err != nil {
-
+		m.l.Error("", "error", err)
 	}
+}
 
-	err = m.l.Close()
-	if err != nil {
-
+func (m *Manager) SetDebug(debug bool) {
+	if debug {
+		m.l.SetLevel(zapcore.DebugLevel)
+	} else {
+		m.l.SetLevel(zapcore.InfoLevel)
 	}
 }

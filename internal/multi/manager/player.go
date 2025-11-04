@@ -36,6 +36,8 @@ func (mm *MultiManager) GetLogger() *logger.Logger {
 func (mm *MultiManager) createUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
 		m := msg.Payload
+		mm.l.Debug("received player update request", "message", m)
+
 		s := strings.Split(m, "_")
 		if len(s) != 3 {
 			mm.l.Warn("multiplayer update channel received message with incorrect length", "message", m)

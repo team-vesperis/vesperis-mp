@@ -27,8 +27,9 @@ func (mm *MultiManager) StartProxy() {
 
 func (mm *MultiManager) createProxyUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
-		mm.l.Info(msg.Payload)
 		m := msg.Payload
+		mm.l.Debug("received proxy update request", "message", m)
+
 		s := strings.Split(m, "_")
 
 		originProxy := s[0]
@@ -96,11 +97,11 @@ func (mm *MultiManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 		return nil, err
 	}
 
-	// update every proxies' map
 	if mm.ownerMP == nil {
 		mm.ownerMP = mp
 	}
 
+	// update every proxies' map
 	m := mm.ownerMP.GetId().String() + "_" + id.String() + "_new"
 	err = mm.db.Publish(multi.UpdateMultiProxyChannel, m)
 	if err != nil {
@@ -169,7 +170,7 @@ func (mm *MultiManager) CreateMultiProxyFromDatabase(id uuid.UUID) (*multi.Proxy
 		managerId = mm.ownerMP.GetId()
 	}
 
-	mp := multi.NewProxy(id, managerId, mm.db, data)
+	mp := multi.NewProxy(id, managerId, mm.l, mm.db, mm.cf, data)
 
 	mm.mu.Lock()
 	mm.proxyMap[id] = mp

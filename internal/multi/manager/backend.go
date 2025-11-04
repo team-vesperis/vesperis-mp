@@ -1,7 +1,6 @@
 package manager
 
 import (
-	"os"
 	"strings"
 	"time"
 
@@ -26,8 +25,9 @@ func (mm *MultiManager) StartBackend() {
 
 func (mm *MultiManager) createBackendUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
-		mm.l.Info(msg.Payload)
 		m := msg.Payload
+		mm.l.Debug("received backend update request", "message", m)
+
 		s := strings.Split(m, "_")
 
 		originProxy := s[0]
@@ -73,19 +73,11 @@ func (mm *MultiManager) createBackendUpdateListener() func(msg *redis.Message) {
 	}
 }
 
-func (mm *MultiManager) NewMultiBackend(id uuid.UUID) (*multi.Backend, error) {
+func (mm *MultiManager) NewMultiBackend(addr string, id uuid.UUID) (*multi.Backend, error) {
 	now := time.Now()
 
-	podIP := os.Getenv("POD_IP")
-	port := os.Getenv("BACKEND_PORT")
-
-	if port == "" {
-		port = "25565"
-	}
-
-	addr := podIP + ":" + port
-
 	data := &data.BackendData{
+		Proxy:       mm.ownerMP.GetId(),
 		Address:     addr,
 		Maintenance: false,
 		Players:     make([]uuid.UUID, 0),
@@ -100,6 +92,13 @@ func (mm *MultiManager) NewMultiBackend(id uuid.UUID) (*multi.Backend, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	err = mm.ownerMP.AddBackend(mb.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	mm.l.Info("new list", "list", mm.ownerMP.GetBackendsIds())
 
 	m := mm.ownerMP.GetId().String() + "_" + id.String() + "_new"
 	err = mm.db.Publish(multi.UpdateMultiProxyChannel, m)
@@ -134,6 +133,11 @@ func (mm *MultiManager) DeleteMultiBackend(id uuid.UUID) error {
 		return err
 	}
 
+	err = mm.ownerMP.RemoveBackendId(id)
+	if err != nil {
+		return err
+	}
+
 	m := mm.ownerMP.GetId().String() + "_" + id.String() + "_delete"
 	err = mm.db.Publish(multi.UpdateMultiBackendChannel, m)
 	if err != nil {
@@ -156,17 +160,32 @@ func (mm *MultiManager) GetMultiBackend(id uuid.UUID) (*multi.Backend, error) {
 	return mm.CreateMultiBackendFromDatabase(id)
 }
 
-func (mm *MultiManager) CreateMultiBackendFromDatabase(id uuid.UUID) (*multi.Backend, error) {
-	data, err := mm.db.GetBackendData(id)
+func (mm *MultiManager) GetMultiBackendUsingAddress(addr string) (*multi.Backend, error) {
+	l := mm.GetAllMultiBackends()
+	for _, mb := range l {
+		if mb.GetAddress() == addr {
+			return mb, nil
+		}
+	}
+
+	l, err := mm.GetAllMultiBackendsFromDatabase()
 	if err != nil {
 		return nil, err
 	}
 
-	var managerId uuid.UUID
-	if mm.ownerMP == nil {
-		managerId = id
-	} else {
-		managerId = mm.ownerMP.GetId()
+	for _, mb := range l {
+		if mb.GetAddress() == addr {
+			return mb, nil
+		}
+	}
+
+	return nil, multi.ErrBackendNotFound
+}
+
+func (mm *MultiManager) CreateMultiBackendFromDatabase(id uuid.UUID) (*multi.Backend, error) {
+	data, err := mm.db.GetBackendData(id)
+	if err != nil {
+		return nil, err
 	}
 
 	mp, err := mm.GetMultiProxy(data.Proxy)
@@ -174,7 +193,7 @@ func (mm *MultiManager) CreateMultiBackendFromDatabase(id uuid.UUID) (*multi.Bac
 		return nil, err
 	}
 
-	mb := multi.NewBackend(id, managerId, mp, mm.db, data)
+	mb := multi.NewBackend(id, mm.ownerMP.GetId(), mp, mm.l, mm.db, mm.cf, data)
 
 	mm.mu.Lock()
 	mm.backendMap[id] = mb

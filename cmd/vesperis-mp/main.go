@@ -7,11 +7,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/common/minecraft/component"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
@@ -29,6 +31,11 @@ func main() {
 		return
 	}
 
+	if cf.IsInDebug() {
+		l.SetLevel(zapcore.DebugLevel)
+		l.Debug("debug mode active")
+	}
+
 	db, dbErr := database.Init(ctx, cf, l)
 	if dbErr != nil {
 		l.Error("database initialization error")
@@ -39,6 +46,11 @@ func main() {
 	if err != nil {
 		return
 	}
+
+	cf.GetViper().OnConfigChange(func(in fsnotify.Event) {
+		mm.l.Debug("config changed")
+		mm.SetDebug(cf.IsInDebug())
+	})
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -51,6 +63,7 @@ func main() {
 		})
 
 		l.Info("stopped MultiProxy", "duration", time.Since(now))
+		l.Close()
 		defer os.Exit(0)
 	}()
 

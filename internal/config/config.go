@@ -52,11 +52,17 @@ func (c *Config) load() error {
 		return err
 	}
 
+	c.v.WatchConfig()
+
 	return nil
 }
 
 func (c *Config) GetViper() *viper.Viper {
 	return c.v
+}
+
+func (c *Config) IsInDebug() bool {
+	return c.v.GetBool("debug")
 }
 
 func (c *Config) SetBind(bind string) error {
@@ -89,9 +95,7 @@ func (c *Config) GetPostgresUrl() string {
 
 func (c *Config) createDefaultConfig() error {
 	defaultConfig := []byte(`
-# The id that will be used to identify the proxy.
-# If the id is already used or not set, it will override to a unique ID.
-proxy_id: ""
+debug: false
 
 # The behavior of the gate proxy. By standard not needed, but it can be used to change behavior that is not changed by this program.
 # config:

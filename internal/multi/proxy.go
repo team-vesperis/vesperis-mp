@@ -6,7 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
+	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"go.minekube.com/gate/pkg/util/uuid"
@@ -22,16 +24,21 @@ type Proxy struct {
 
 	mu        sync.RWMutex
 	managerId uuid.UUID
-	db        *database.Database
+
+	l  *logger.Logger
+	db *database.Database
+	cf *config.Config
 
 	lastHeartBeat *time.Time
 }
 
-func NewProxy(id, managerId uuid.UUID, db *database.Database, data *data.ProxyData) *Proxy {
+func NewProxy(id, managerId uuid.UUID, l *logger.Logger, db *database.Database, cf *config.Config, data *data.ProxyData) *Proxy {
 	mp := &Proxy{
 		id:        id,
 		managerId: id,
+		l:         l,
 		db:        db,
+		cf:        cf,
 	}
 
 	mp.address = data.Address
@@ -168,8 +175,6 @@ func (mp *Proxy) AddPlayerId(id uuid.UUID) error {
 	return mp.save(key.ProxyKey_PlayerList, mp.GetPlayerIds())
 }
 
-var ErrPlayerNotFound = errors.New("player not found")
-
 func (mp *Proxy) RemovePlayerId(id uuid.UUID) error {
 	mp.mu.Lock()
 	i := slices.Index(mp.players, id)
@@ -220,10 +225,9 @@ func (mp *Proxy) AddBackend(id uuid.UUID) error {
 	}
 	mp.mu.Unlock()
 
+	mp.l.Info("hello?")
 	return mp.save(key.ProxyKey_BackendList, mp.GetBackendsIds())
 }
-
-var ErrBackendNotFound = errors.New("backend not found")
 
 func (mp *Proxy) RemoveBackendId(id uuid.UUID) error {
 	mp.mu.Lock()
