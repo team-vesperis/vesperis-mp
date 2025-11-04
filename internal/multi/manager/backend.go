@@ -75,6 +75,7 @@ func (mm *MultiManager) createBackendUpdateListener() func(msg *redis.Message) {
 
 func (mm *MultiManager) NewMultiBackend(addr string, id uuid.UUID) (*multi.Backend, error) {
 	now := time.Now()
+	mm.l.Info("creating new backend")
 
 	data := &data.BackendData{
 		Proxy:       mm.ownerMP.GetId(),

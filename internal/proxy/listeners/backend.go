@@ -20,7 +20,6 @@ func (lm *ListenerManager) onRegister(e *proxy.ServerRegisteredEvent) {
 		lm.l.Error("error", "error", err)
 		return
 	}
-
 }
 
 func (lm *ListenerManager) onUnRegister(e *proxy.ServerUnregisteredEvent) {
@@ -28,6 +27,12 @@ func (lm *ListenerManager) onUnRegister(e *proxy.ServerUnregisteredEvent) {
 
 	addr := e.ServerInfo().Addr().String()
 	mb, err := lm.mm.GetMultiBackendUsingAddress(addr)
+	if err != nil {
+		lm.l.Error("error", "error", err)
+		return
+	}
+
+	err = mb.GetMultiProxy().RemoveBackendId(mb.GetId())
 	if err != nil {
 		lm.l.Error("error", "error", err)
 		return

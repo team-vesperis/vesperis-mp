@@ -81,10 +81,11 @@ func (mm *MultiManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 	addr := fmt.Sprintf("%s.proxy.default.svc.cluster.local:25565", id.String())
 
 	data := &data.ProxyData{
-		Address:     addr,
-		Maintenance: false,
-		Backends:    make([]uuid.UUID, 0),
-		Players:     make([]uuid.UUID, 0),
+		Address:       addr,
+		Maintenance:   false,
+		Backends:      make([]uuid.UUID, 0),
+		Players:       make([]uuid.UUID, 0),
+		LastHeartBeat: &now,
 	}
 
 	err := mm.db.SetProxyData(id, data)
