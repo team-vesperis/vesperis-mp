@@ -14,17 +14,6 @@ import (
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
-func (mm *MultiManager) StartPlayer() {
-	// start update listener
-	mm.db.CreateListener(multi.UpdateMultiPlayerChannel, mm.createUpdateListener())
-
-	// fill map
-	_, err := mm.GetAllMultiPlayersFromDatabase()
-	if err != nil {
-		mm.l.Error("filling up multiplayer map error", "error", err)
-	}
-}
-
 func (mm *MultiManager) GetDatabase() *database.Database {
 	return mm.db
 }

@@ -118,9 +118,10 @@ func (mb *Backend) setInMaintenance(maintenance, notify bool) error {
 
 func (mb *Backend) GetPlayerIds() []uuid.UUID {
 	mb.mu.RLock()
-	defer mb.mu.RUnlock()
+	c := append([]uuid.UUID(nil), mb.players...)
+	mb.mu.RUnlock()
 
-	return mb.players
+	return c
 }
 
 func (mb *Backend) SetPlayerIds(ids []uuid.UUID) error {

@@ -35,7 +35,7 @@ type Proxy struct {
 func NewProxy(id, managerId uuid.UUID, l *logger.Logger, db *database.Database, cf *config.Config, data *data.ProxyData) *Proxy {
 	mp := &Proxy{
 		id:        id,
-		managerId: id,
+		managerId: managerId,
 		l:         l,
 		db:        db,
 		cf:        cf,
@@ -144,9 +144,10 @@ func (mp *Proxy) setInMaintenance(maintenance, notify bool) error {
 
 func (mp *Proxy) GetPlayerIds() []uuid.UUID {
 	mp.mu.RLock()
-	defer mp.mu.RUnlock()
+	c := append([]uuid.UUID(nil), mp.players...)
+	mp.mu.RUnlock()
 
-	return mp.players
+	return c
 }
 
 func (mp *Proxy) SetPlayerIds(ids []uuid.UUID) error {
@@ -197,9 +198,10 @@ func (mp *Proxy) IsPlayerIdOnProxy(id uuid.UUID) bool {
 
 func (mp *Proxy) GetBackendsIds() []uuid.UUID {
 	mp.mu.RLock()
-	defer mp.mu.RUnlock()
+	c := append([]uuid.UUID(nil), mp.backends...)
+	mp.mu.RUnlock()
 
-	return mp.backends
+	return c
 }
 
 func (mp *Proxy) SetBackendsIds(ids []uuid.UUID) error {
@@ -225,7 +227,6 @@ func (mp *Proxy) AddBackend(id uuid.UUID) error {
 	}
 	mp.mu.Unlock()
 
-	mp.l.Info("hello?")
 	return mp.save(key.ProxyKey_BackendList, mp.GetBackendsIds())
 }
 

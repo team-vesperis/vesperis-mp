@@ -12,17 +12,6 @@ import (
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
-func (mm *MultiManager) StartBackend() {
-	// start update listener
-	mm.db.CreateListener(multi.UpdateMultiBackendChannel, mm.createBackendUpdateListener())
-
-	// fill map
-	_, err := mm.GetAllMultiBackendsFromDatabase()
-	if err != nil {
-		mm.l.Error("filling up multibackend map error", "error", err)
-	}
-}
-
 func (mm *MultiManager) createBackendUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
 		m := msg.Payload
@@ -73,9 +62,10 @@ func (mm *MultiManager) createBackendUpdateListener() func(msg *redis.Message) {
 	}
 }
 
+// creates a new backend under the manager proxy
 func (mm *MultiManager) NewMultiBackend(addr string, id uuid.UUID) (*multi.Backend, error) {
 	now := time.Now()
-	mm.l.Info("creating new backend")
+	mm.l.Debug("creating new multibackend", "id", id, "address", addr)
 
 	data := &data.BackendData{
 		Proxy:       mm.ownerMP.GetId(),
@@ -94,15 +84,15 @@ func (mm *MultiManager) NewMultiBackend(addr string, id uuid.UUID) (*multi.Backe
 		return nil, err
 	}
 
-	err = mm.ownerMP.AddBackend(mb.GetId())
+	err = mm.ownerMP.AddBackend(id)
 	if err != nil {
 		return nil, err
 	}
 
-	mm.l.Info("new list", "list", mm.ownerMP.GetBackendsIds())
+	mm.l.Debug("new multibackend added to list", "list", mm.ownerMP.GetBackendsIds())
 
 	m := mm.ownerMP.GetId().String() + "_" + id.String() + "_new"
-	err = mm.db.Publish(multi.UpdateMultiProxyChannel, m)
+	err = mm.db.Publish(multi.UpdateMultiBackendChannel, m)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +105,7 @@ func (mm *MultiManager) DeleteMultiBackend(id uuid.UUID) error {
 	now := time.Now()
 	for key := range mm.backendMap {
 		if key == id {
-			mm.backendMap[key] = nil
+			delete(mm.backendMap, id)
 		}
 	}
 
@@ -125,7 +115,7 @@ func (mm *MultiManager) DeleteMultiBackend(id uuid.UUID) error {
 			return nil
 		}
 
-		mm.l.Error("could not get backend data")
+		mm.l.Error("get backend data error", "error", err)
 		return err
 	}
 
@@ -162,13 +152,16 @@ func (mm *MultiManager) GetMultiBackend(id uuid.UUID) (*multi.Backend, error) {
 }
 
 func (mm *MultiManager) GetMultiBackendUsingAddress(addr string) (*multi.Backend, error) {
+	mm.l.Debug("getting multibackend using address", "address", addr)
 	l := mm.GetAllMultiBackends()
+
 	for _, mb := range l {
 		if mb.GetAddress() == addr {
 			return mb, nil
 		}
 	}
 
+	mm.l.Info("4")
 	l, err := mm.GetAllMultiBackendsFromDatabase()
 	if err != nil {
 		return nil, err

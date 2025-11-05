@@ -20,22 +20,20 @@ func (mm *MultiManager) InitHeartBeatManager() *hartBeatManager {
 	}
 
 	mm.hbm = hbm
-	hbm.start()
+	go hbm.start()
 
 	return hbm
 }
 
 func (hbm *hartBeatManager) start() {
-	go func() {
-		for {
-			select {
-			case <-hbm.d:
-				return
-			case t := <-hbm.t.C:
-				hbm.p.SetLastHeartBeat(&t)
-			}
+	for {
+		select {
+		case <-hbm.d:
+			return
+		case t := <-hbm.t.C:
+			hbm.p.SetLastHeartBeat(&t)
 		}
-	}()
+	}
 }
 
 func (hbm *hartBeatManager) stop() {

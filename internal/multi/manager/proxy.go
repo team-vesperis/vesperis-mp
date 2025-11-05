@@ -14,17 +14,6 @@ import (
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
-func (mm *MultiManager) StartProxy() {
-	// start update listener
-	mm.db.CreateListener(multi.UpdateMultiProxyChannel, mm.createProxyUpdateListener())
-
-	// fill map
-	_, err := mm.GetAllMultiProxiesFromDatabase()
-	if err != nil {
-		mm.l.Error("filling up multiproxy map error", "error", err)
-	}
-}
-
 func (mm *MultiManager) createProxyUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
 		m := msg.Payload
@@ -117,7 +106,7 @@ func (mm *MultiManager) DeleteMultiProxy(id uuid.UUID) error {
 	now := time.Now()
 	for key := range mm.proxyMap {
 		if key == id {
-			mm.proxyMap[key] = nil
+			delete(mm.proxyMap, key)
 		}
 	}
 

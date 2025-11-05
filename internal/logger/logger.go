@@ -52,16 +52,23 @@ func Init() (*Logger, error) {
 	jsonECf.EncodeLevel = zapcore.CapitalLevelEncoder
 	jsonE := zapcore.NewJSONEncoder(jsonECf)
 
-	// logger level gets changed after config is initialized
 	al := zap.NewAtomicLevel()
 	al.SetLevel(zapcore.InfoLevel)
-	consoleC := zapcore.NewCore(consoleE, zapcore.AddSync(zapcore.Lock(os.Stdout)), al)
-	fileC := zapcore.NewCore(jsonE, zapcore.AddSync(zapcore.Lock(file)), al)
 
-	c := zapcore.NewTee(consoleC, fileC)
+	mainConsole := zapcore.NewCore(consoleE, zapcore.AddSync(os.Stdout), al)
+	mainFile := zapcore.NewCore(jsonE, zapcore.AddSync(file), al)
 
-	lg := zap.New(c, zap.AddCaller(), zap.AddCallerSkip(1)).Named("mp")
-	g := zap.New(c, zap.AddCaller(), zap.AddCallerSkip(1)).Named("gate")
+	gateLevel := zap.NewAtomicLevel()
+	gateLevel.SetLevel(zapcore.InfoLevel)
+
+	gateConsole := zapcore.NewCore(consoleE, zapcore.AddSync(os.Stdout), gateLevel)
+	gateFile := zapcore.NewCore(jsonE, zapcore.AddSync(file), gateLevel)
+
+	mainTee := zapcore.NewTee(mainConsole, mainFile)
+	gateTee := zapcore.NewTee(gateConsole, gateFile)
+
+	lg := zap.New(mainTee, zap.AddCaller(), zap.AddCallerSkip(1)).Named("mp")
+	g := zap.New(gateTee, zap.AddCaller(), zap.AddCallerSkip(1)).Named("gate")
 	s := lg.Sugar()
 
 	l := &Logger{

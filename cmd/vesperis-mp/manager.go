@@ -70,19 +70,15 @@ func Init(ctx context.Context, cf *config.Config, l *logger.Logger, db *database
 		return m, err
 	}
 
-	if cf.IsInDebug() {
-		m.l.Debug("Found a id to use for this proxy.", "id", id)
-	}
+	m.l.Debug("Found a id to use for this proxy.", "id", id)
 
 	m.ownerMP, err = m.multi.NewMultiProxy(id)
 	if err != nil {
 		return &Manager{}, err
 	}
 
-	m.multi.StartProxy()
-	m.multi.StartBackend()
+	m.multi.Start()
 	tasks.Init()
-	m.multi.StartPlayer()
 
 	cfg, err := gate.LoadConfig(m.cf.GetViper())
 	if err != nil {

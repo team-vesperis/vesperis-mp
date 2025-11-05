@@ -42,14 +42,14 @@ func main() {
 		return
 	}
 
-	mm, err := Init(ctx, cf, l, db)
+	m, err := Init(ctx, cf, l, db)
 	if err != nil {
 		return
 	}
 
 	cf.GetViper().OnConfigChange(func(in fsnotify.Event) {
-		mm.l.Debug("config changed")
-		mm.SetDebug(cf.IsInDebug())
+		m.l.Debug("config changed")
+		m.SetDebug(cf.IsInDebug())
 	})
 
 	c := make(chan os.Signal, 1)
@@ -57,7 +57,7 @@ func main() {
 	go func() {
 		<-c
 		now := time.Now()
-		mm.ownerGate.Shutdown(&component.Text{
+		m.ownerGate.Shutdown(&component.Text{
 			Content: "This proxy has been manually shut using the terminal.",
 			S:       util.StyleColorRed,
 		})
@@ -68,5 +68,5 @@ func main() {
 	}()
 
 	l.GetGateLogger().Info("starting internal gate proxy")
-	mm.start()
+	m.start()
 }

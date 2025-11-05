@@ -32,12 +32,6 @@ func (lm *ListenerManager) onUnRegister(e *proxy.ServerUnregisteredEvent) {
 		return
 	}
 
-	err = mb.GetMultiProxy().RemoveBackendId(mb.GetId())
-	if err != nil {
-		lm.l.Error("error", "error", err)
-		return
-	}
-
 	err = lm.mm.DeleteMultiBackend(mb.GetId())
 	if err != nil {
 		lm.l.Error("error", "error", err)
