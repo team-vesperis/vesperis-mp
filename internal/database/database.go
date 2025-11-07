@@ -513,59 +513,11 @@ func (db *Database) DeleteBackendData(backendId uuid.UUID) error {
 }
 
 func (db *Database) GetAllPlayerIds() ([]uuid.UUID, error) {
-	query := `SELECT playerId FROM player_data`
-	rows, err := db.p.Query(db.ctx, query)
-	if err != nil {
-		db.l.Error("postgres get all player ids error", "error", err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
-		if err != nil {
-			db.l.Error("postgres scan player id error", "error", err)
-			return nil, err
-		}
-
-		ids = append(ids, id)
-	}
-	if rows.Err() != nil {
-		db.l.Error("postgres rows error", "error", rows.Err())
-		return nil, rows.Err()
-	}
-
-	return ids, nil
+	return db.getAllIds("player")
 }
 
 func (db *Database) GetAllProxyIds() ([]uuid.UUID, error) {
-	query := `SELECT proxyId FROM proxy_data`
-	rows, err := db.p.Query(db.ctx, query)
-	if err != nil {
-		db.l.Error("postgres get all proxy ids error", "error", err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		err := rows.Scan(&id)
-		if err != nil {
-			db.l.Error("postgres scan proxy id error", "error", err)
-			return nil, err
-		}
-
-		ids = append(ids, id)
-	}
-	if rows.Err() != nil {
-		db.l.Error("postgres rows error", "error", rows.Err())
-		return nil, rows.Err()
-	}
-
-	return ids, nil
+	return db.getAllIds("proxy")
 }
 
 func (db *Database) GetAllBackendsIds() ([]uuid.UUID, error) {

@@ -41,9 +41,9 @@ func Init(m event.Manager, l *logger.Logger, db *database.Database, mm *manager.
 
 func (lm *ListenerManager) registerListeners() {
 	event.Subscribe(lm.m, 0, lm.onProxyJoin)
-	event.Subscribe(lm.m, 0, lm.onServerJoin)
+	event.Subscribe(lm.m, 5, lm.onServerJoin)
 	event.Subscribe(lm.m, 0, lm.onLogin)
-	event.Subscribe(lm.m, 0, lm.onDisconnect)
+	event.Subscribe(lm.m, 5, lm.onDisconnect)
 	event.Subscribe(lm.m, 0, lm.onPing)
 
 	event.Subscribe(lm.m, 0, lm.onRegister)

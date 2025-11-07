@@ -52,10 +52,6 @@ func NewProxy(id, managerId uuid.UUID, l *logger.Logger, db *database.Database, 
 const UpdateMultiProxyChannel = "update_multiproxy"
 
 func (mp *Proxy) save(k key.ProxyKey, val any) error {
-	if !slices.Contains(key.AllowedProxyKeys, k) {
-		return key.ErrIncorrectProxyKey
-	}
-
 	err := mp.db.SetProxyDataField(mp.id, k, val)
 	if err != nil {
 		return err
@@ -66,23 +62,29 @@ func (mp *Proxy) save(k key.ProxyKey, val any) error {
 }
 
 func (mp *Proxy) Update(k key.ProxyKey) {
-	if !slices.Contains(key.AllowedProxyKeys, k) {
-		return
-	}
+	var err error
 
 	switch k {
 	case key.ProxyKey_Maintenance:
 		var maintenance bool
-		mp.db.GetProxyDataField(mp.id, key.ProxyKey_Maintenance, &maintenance)
+		err = mp.db.GetProxyDataField(mp.id, key.ProxyKey_Maintenance, &maintenance)
 		mp.setInMaintenance(maintenance, false)
 	case key.ProxyKey_BackendList:
 		var backends []uuid.UUID
-		mp.db.GetProxyDataField(mp.id, key.ProxyKey_BackendList, &backends)
+		err = mp.db.GetProxyDataField(mp.id, key.ProxyKey_BackendList, &backends)
 		mp.setBackendsIds(backends, false)
 	case key.ProxyKey_PlayerList:
 		var players []uuid.UUID
-		mp.db.GetProxyDataField(mp.id, key.ProxyKey_PlayerList, &players)
+		err = mp.db.GetProxyDataField(mp.id, key.ProxyKey_PlayerList, &players)
 		mp.setPlayerIds(players, false)
+	case key.ProxyKey_LastHeartBeat:
+		var time time.Time
+		err = mp.db.GetProxyDataField(mp.id, key.ProxyKey_LastHeartBeat, &time)
+		mp.setLastHeartBeat(&time, false)
+	}
+
+	if err != nil {
+		mp.l.Error("multiproxy update proxykey get field from database error", "error", err)
 	}
 }
 
@@ -144,7 +146,7 @@ func (mp *Proxy) setInMaintenance(maintenance, notify bool) error {
 
 func (mp *Proxy) GetPlayerIds() []uuid.UUID {
 	mp.mu.RLock()
-	c := append([]uuid.UUID(nil), mp.players...)
+	c := append([]uuid.UUID{}, mp.players...)
 	mp.mu.RUnlock()
 
 	return c

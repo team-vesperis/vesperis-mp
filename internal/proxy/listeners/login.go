@@ -44,12 +44,22 @@ func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 		return
 	}
 
-	if mp.GetProxy() == nil {
+	now := time.Now()
+	err = mp.SetLastSeen(&now)
+	if err != nil {
+		lm.l.Error("player disconnect set last seen error", "playerId", id, "error", err)
 		return
 	}
 
-	err = mp.GetProxy().RemovePlayerId(id)
+	err = mp.SetOnline(false)
 	if err != nil {
+		lm.l.Error("player disconnect set online error", "playerId", id, "error", err)
+		return
+	}
+
+	err = lm.ownerMultiProxy.RemovePlayerId(id)
+	if err != nil {
+		lm.l.Error("player disconnect remove playerId from proxy error", "playerId", id, "error", err)
 		return
 	}
 
@@ -65,25 +75,13 @@ func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 
 	err = mp.GetBackend().RemovePlayerId(id)
 	if err != nil {
+		lm.l.Error("player disconnect remove playerId from backend error", "playerId", id, "error", err)
 		return
 	}
 
 	err = mp.SetBackend(nil)
 	if err != nil {
 		lm.l.Error("player disconnect set backend error", "playerId", id, "error", err)
-		return
-	}
-
-	err = mp.SetOnline(false)
-	if err != nil {
-		lm.l.Error("player disconnect set online error", "playerId", id, "error", err)
-		return
-	}
-
-	now := time.Now()
-	err = mp.SetLastSeen(&now)
-	if err != nil {
-		lm.l.Error("player disconnect set last seen error", "playerId", id, "error", err)
 		return
 	}
 }

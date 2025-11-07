@@ -208,6 +208,18 @@ func (mm *MultiManager) GetAllMultiBackends() []*multi.Backend {
 	return l
 }
 
+func (mm *MultiManager) GetAllMultiBackendsUnderMultiProxy(mp *multi.Proxy) []*multi.Backend {
+	var l []*multi.Backend
+
+	for _, mb := range mm.GetAllMultiBackends() {
+		if mb.GetMultiProxy() == mp {
+			l = append(l, mb)
+		}
+	}
+
+	return l
+}
+
 func (mm *MultiManager) GetAllMultiBackendsFromDatabase() ([]*multi.Backend, error) {
 	var l []*multi.Backend
 

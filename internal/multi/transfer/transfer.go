@@ -31,8 +31,6 @@ type TransferManager struct {
 
 var transferKey = key.New("vesperis", "transfer")
 
-const transferRequestChannel = "transfer_request"
-
 func Init(l *logger.Logger, db *database.Database, tm *task.TaskManager, p *proxy.Proxy, mm *manager.MultiManager) *TransferManager {
 	now := time.Now()
 	trm := &TransferManager{
@@ -48,7 +46,7 @@ func Init(l *logger.Logger, db *database.Database, tm *task.TaskManager, p *prox
 }
 
 // send players to other proxies
-func (tm *TransferManager) OnPreShutdown(event *proxy.PreShutdownEvent) {
+func (tm *TransferManager) OnPreShutdown(e *proxy.PreShutdownEvent) {
 	for _, p := range tm.p.Players() {
 		proxy := tm.mm.GetProxyWithLowestPlayerCount(false)
 		tm.l.Info("found a proxy to send a player to", "proxyId", proxy.GetId())
@@ -61,9 +59,10 @@ func (tm *TransferManager) OnPreShutdown(event *proxy.PreShutdownEvent) {
 }
 
 // check if player has cookie specifying which server he needs.
-func (tm *TransferManager) OnChooseInitialServer(event *proxy.PlayerChooseInitialServerEvent) {
-	p := event.Player()
+func (tm *TransferManager) OnChooseInitialServer(e *proxy.PlayerChooseInitialServerEvent) {
+	p := e.Player()
 	if len(tm.p.Servers()) < 1 {
+		tm.l.Warn("no servers under gate proxy", "playerId", p.ID())
 		tm.sendNoAvailableServers(p)
 	} else {
 		ctx, canc := context.WithTimeout(p.Context(), 2*time.Second)
@@ -84,31 +83,36 @@ func (tm *TransferManager) OnChooseInitialServer(event *proxy.PlayerChooseInitia
 			server_name := string(c.Payload)
 			s := tm.p.Server(server_name)
 			if s != nil {
-				event.SetInitialServer(s)
+				e.SetInitialServer(s)
 			} else {
-				tm.chooseRandomServer(p, event)
+				tm.chooseRandomServer(p, e)
 			}
 		} else {
-			tm.chooseRandomServer(p, event)
+			tm.chooseRandomServer(p, e)
 		}
 	}
 }
 
-func (tm *TransferManager) chooseRandomServer(player proxy.Player, event *proxy.PlayerChooseInitialServerEvent) {
-	var servers []proxy.RegisteredServer
-	for _, server := range tm.p.Servers() {
-		if util.IsBackendResponding(server.ServerInfo().Addr().String()) {
-			servers = append(servers, server)
-		}
-	}
+func (tm *TransferManager) chooseRandomServer(p proxy.Player, e *proxy.PlayerChooseInitialServerEvent) {
+	// for _, mb := range tm.mm.GetAllMultiBackendsUnderMultiProxy(tm.mm.GetOwnerMultiProxy()) {
+	// 	//if util.IsBackendResponding(mb.GetAddress()) {
+	// 	server := tm.p.Server(mb.GetId().String())
+	// 	if server != nil {
+	// 		l = append(l, server)
+	// 	}
+	// 	//}
+	// }
 
-	if len(servers) < 1 {
-		tm.sendNoAvailableServers(player)
+	l := tm.p.Servers()
+
+	if len(l) < 1 {
+		tm.l.Warn("no servers under gate proxy", "playerId", p.ID())
+		tm.sendNoAvailableServers(p)
 		return
 	}
 
-	randomIndex := time.Now().UnixNano() % int64(len(servers))
-	event.SetInitialServer(servers[randomIndex])
+	randomIndex := time.Now().UnixNano() % int64(len(l))
+	e.SetInitialServer(l[randomIndex])
 }
 
 func (tm *TransferManager) disconnectPlayer(p proxy.Player) {

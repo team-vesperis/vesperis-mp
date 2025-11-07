@@ -51,10 +51,6 @@ var ErrBackendNotFound = errors.New("backend not found")
 const UpdateMultiBackendChannel = "update_multibackend"
 
 func (mb *Backend) save(k key.BackendKey, val any) error {
-	if !slices.Contains(key.AllowedBackendKeys, k) {
-		return key.ErrIncorrectBackendKey
-	}
-
 	err := mb.db.SetBackendDataField(mb.id, k, val)
 	if err != nil {
 		return err
@@ -65,19 +61,21 @@ func (mb *Backend) save(k key.BackendKey, val any) error {
 }
 
 func (mb *Backend) Update(k key.BackendKey) {
-	if !slices.Contains(key.AllowedBackendKeys, k) {
-		return
-	}
+	var err error
 
 	switch k {
 	case key.BackendKey_Maintenance:
 		var maintenance bool
-		mb.db.GetBackendDataField(mb.id, key.BackendKey_Maintenance, &maintenance)
+		err = mb.db.GetBackendDataField(mb.id, key.BackendKey_Maintenance, &maintenance)
 		mb.setInMaintenance(maintenance, false)
 	case key.BackendKey_PlayerList:
 		var playerList []uuid.UUID
-		mb.db.GetBackendDataField(mb.id, key.BackendKey_PlayerList, &playerList)
+		err = mb.db.GetBackendDataField(mb.id, key.BackendKey_PlayerList, &playerList)
 		mb.setPlayerIds(playerList, false)
+	}
+
+	if err != nil {
+		mb.l.Error("multibackend update backendkey get field from database error", "error", err)
 	}
 }
 
@@ -118,7 +116,7 @@ func (mb *Backend) setInMaintenance(maintenance, notify bool) error {
 
 func (mb *Backend) GetPlayerIds() []uuid.UUID {
 	mb.mu.RLock()
-	c := append([]uuid.UUID(nil), mb.players...)
+	c := append([]uuid.UUID{}, mb.players...)
 	mb.mu.RUnlock()
 
 	return c

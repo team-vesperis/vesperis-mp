@@ -91,10 +91,6 @@ const UpdateMultiPlayerChannel = "update_multiplayer"
 // Update specific value of the multi player into the database.
 // Notifies other proxies to update that value for themselves.
 func (mp *Player) save(k key.PlayerKey, val any) error {
-	if !slices.Contains(key.AllowedPlayerKeys, k) {
-		return key.ErrIncorrectPlayerKey
-	}
-
 	err := mp.db.SetPlayerDataField(mp.id, k, val)
 	if err != nil {
 		return err
@@ -109,23 +105,19 @@ func (mp *Player) Update(k key.PlayerKey) {
 		return
 	}
 
-	if !slices.Contains(key.AllowedPlayerKeys, k) {
-		return
-	}
-
-	mp.l.Info("received needed update", "playerId", mp.id, "key", k.String())
+	var err error
 
 	switch k {
 	case key.PlayerKey_ProxyId:
 		var proxyId uuid.UUID
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_ProxyId, &proxyId)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_ProxyId, &proxyId)
 		p, err := proxyManagerInstance.GetMultiProxy(proxyId)
 		if err == nil {
 			mp.setProxy(p, false)
 		}
 	case key.PlayerKey_BackendId:
 		var backendId uuid.UUID
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_BackendId, &backendId)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_BackendId, &backendId)
 		b, err := proxyManagerInstance.GetMultiBackend(backendId)
 		if err == nil {
 			mp.setBackend(b, false)
@@ -133,63 +125,67 @@ func (mp *Player) Update(k key.PlayerKey) {
 
 	case key.PlayerKey_Username:
 		var username string
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Username, &username)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Username, &username)
 		mp.setUsername(username, false)
 
 	case key.PlayerKey_Nickname:
 		var nickname string
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Nickname, &nickname)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Nickname, &nickname)
 		mp.setNickname(nickname, false)
 
 	case key.PlayerKey_Permission_Role:
 		var role string
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Role, &role)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Role, &role)
 		mp.pi.setRole(role, false)
 
 	case key.PlayerKey_Permission_Rank:
 		var rank string
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Rank, &rank)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Rank, &rank)
 		mp.pi.setRank(rank, false)
 
 	case key.PlayerKey_Ban_Banned:
 		var banned bool
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Banned, &banned)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Banned, &banned)
 		mp.bi.setBanned(banned, false)
 
 	case key.PlayerKey_Ban_Reason:
 		var reason string
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Reason, &reason)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Reason, &reason)
 		mp.bi.setReason(reason, false)
 
 	case key.PlayerKey_Ban_Permanently:
 		var permanently bool
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Permanently, &permanently)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Permanently, &permanently)
 		mp.bi.setPermanently(permanently, false)
 
 	case key.PlayerKey_Ban_Expiration:
 		var expiration time.Time
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Expiration, &expiration)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Ban_Expiration, &expiration)
 		mp.bi.setExpiration(expiration, false)
 
 	case key.PlayerKey_Online:
 		var online bool
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Online, &online)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Online, &online)
 		mp.setOnline(online, false)
 
 	case key.PlayerKey_Vanished:
 		var vanished bool
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Vanished, &vanished)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Vanished, &vanished)
 		mp.setVanished(vanished, false)
 
 	case key.PlayerKey_LastSeen:
 		var lastSeen *time.Time
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_LastSeen, &lastSeen)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_LastSeen, &lastSeen)
 		mp.setLastSeen(lastSeen, false)
 
 	case key.PlayerKey_Friends:
 		var friends []uuid.UUID
-		mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friends, &friends)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friends, &friends)
 		mp.setFriendsIds(friends, false)
+	}
+
+	if err != nil {
+		mp.l.Error("multiplayer update playerkey get field from database error", "error", err)
 	}
 }
 
