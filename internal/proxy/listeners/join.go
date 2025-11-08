@@ -61,16 +61,16 @@ func (lm *ListenerManager) onServerJoin(e *proxy.ServerPostConnectEvent) {
 		return
 	}
 
-	err = mb.AddPlayerId(p.ID())
+	err = mp.SetBackend(mb)
 	if err != nil {
-		lm.l.Error("player server post connect add playerId to multibackend error", "playerId", p.ID(), "error", err)
+		lm.l.Error("player server post connect set multibackend error", "playerId", p.ID(), "backendId", mb.GetId(), "error", err)
 		p.Disconnect(loginDenyComponent)
 		return
 	}
 
-	err = mp.SetBackend(mb)
+	err = mb.AddPlayerId(p.ID())
 	if err != nil {
-		lm.l.Error("player server post connect set multibackend error", "playerId", p.ID(), "backendId", mb.GetId(), "error", err)
+		lm.l.Error("player server post connect add playerId to multibackend error", "playerId", p.ID(), "error", err)
 		p.Disconnect(loginDenyComponent)
 		return
 	}

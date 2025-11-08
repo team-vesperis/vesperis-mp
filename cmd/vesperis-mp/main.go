@@ -20,14 +20,14 @@ func main() {
 	ctx, canc := context.WithCancel(context.Background())
 	defer canc()
 
-	l, logErr := logger.Init()
-	if logErr != nil {
+	l, err := logger.Init()
+	if err != nil {
 		return
 	}
 
-	cf, cfErr := config.Init(l)
-	if cfErr != nil {
-		l.Error("config initialization error")
+	cf, err := config.Init(l)
+	if err != nil {
+		l.Error("config initialization error", "error", err)
 		return
 	}
 
@@ -36,9 +36,9 @@ func main() {
 		l.Debug("debug mode active")
 	}
 
-	db, dbErr := database.Init(ctx, cf, l)
-	if dbErr != nil {
-		l.Error("database initialization error")
+	db, err := database.Init(ctx, cf, l)
+	if err != nil {
+		l.Error("database initialization error", "error", err)
 		return
 	}
 

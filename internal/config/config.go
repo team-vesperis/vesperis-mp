@@ -13,6 +13,7 @@ const p = "./config/mp.yml"
 type Config struct {
 	v *viper.Viper // nil until created with the load function
 	l *logger.Logger
+	m Mode
 }
 
 func Init(l *logger.Logger) (*Config, error) {
@@ -22,6 +23,11 @@ func Init(l *logger.Logger) (*Config, error) {
 	}
 
 	err := cfg.load()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.m, err = cfg.getMode()
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +63,10 @@ func (c *Config) load() error {
 	return nil
 }
 
+func (c *Config) GetMode() Mode {
+	return c.m
+}
+
 func (c *Config) GetViper() *viper.Viper {
 	return c.v
 }
@@ -65,9 +75,8 @@ func (c *Config) IsInDebug() bool {
 	return c.v.GetBool("debug")
 }
 
-func (c *Config) SetBind(bind string) error {
-	c.v.Set("config.bind", bind)
-	return c.v.WriteConfig()
+func (c *Config) GetBind() string {
+	return c.v.GetString("config.bind")
 }
 
 func (c *Config) GetRedisUrl() string {
@@ -96,6 +105,8 @@ func (c *Config) GetPostgresUrl() string {
 func (c *Config) createDefaultConfig() error {
 	defaultConfig := []byte(`
 debug: false
+
+mode: default
 
 # The behavior of the gate proxy. By standard not needed, but it can be used to change behavior that is not changed by this program.
 # config:

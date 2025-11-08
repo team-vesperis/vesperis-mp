@@ -10,11 +10,11 @@ import (
 )
 
 type ProxyData struct {
-	Address       string      `json:"address,omitempty"`
-	Maintenance   bool        `json:"maintenance,omitempty"`
-	Backends      []uuid.UUID `json:"backends,omitempty"`
-	Players       []uuid.UUID `json:"players,omitempty"`
-	LastHeartBeat *time.Time  `json:"last_hart_beat,omitempty"`
+	Address       string      `json:"address"`
+	Maintenance   bool        `json:"maintenance"`
+	Backends      []uuid.UUID `json:"backends"`
+	Players       []uuid.UUID `json:"players"`
+	LastHeartBeat *time.Time  `json:"lastHartBeat"`
 }
 
 func (pd ProxyData) Value() (driver.Value, error) {

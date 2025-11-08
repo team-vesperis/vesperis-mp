@@ -20,20 +20,27 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 	p := e.Player()
 	id := p.ID()
 
-	_, err := lm.mm.GetMultiPlayer(id)
-	// player hasn't joined before -> creating default mp
-	if err == database.ErrDataNotFound {
-		_, err := lm.mm.NewMultiPlayer(p)
+	mp, err := lm.mm.GetMultiPlayer(id)
+	if err != nil {
+		if err != database.ErrDataNotFound {
+			lm.l.Error("player login get multiplayer error", "playerId", id, "error", err)
+			e.Deny(loginDenyComponent)
+			return
+		}
+
+		// player hasn't joined before -> creating default mp
+		mp, err = lm.mm.NewMultiPlayer(p)
 		if err != nil {
 			lm.l.Error("player login create new multiplayer error", "playerId", id, "error", err)
 			e.Deny(loginDenyComponent)
 			return
 		}
-	} else if err != nil {
-		lm.l.Error("player login get multiplayer error", "playerId", id, "error", err)
-		e.Deny(loginDenyComponent)
-		return
 	}
+
+	if mp.GetBanInfo().IsBanned() {
+		e.Deny(&c.Text{Content: "you are banned"})
+	}
+
 }
 
 func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {

@@ -17,7 +17,7 @@ const (
 	ProxyKey_Maintenance   ProxyKey = "maintenance"
 	ProxyKey_BackendList   ProxyKey = "backends"
 	ProxyKey_PlayerList    ProxyKey = "players"
-	ProxyKey_LastHeartBeat ProxyKey = "lastHeartBeat"
+	ProxyKey_LastHeartBeat ProxyKey = "lastHartBeat"
 )
 
 var AllowedProxyKeys = []ProxyKey{

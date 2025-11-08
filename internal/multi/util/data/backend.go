@@ -9,10 +9,10 @@ import (
 )
 
 type BackendData struct {
-	Address     string      `json:"address,omitempty"`
-	Proxy       uuid.UUID   `json:"proxy,omitempty"`
-	Maintenance bool        `json:"maintenance,omitempty"`
-	Players     []uuid.UUID `json:"players,omitempty"`
+	Address     string      `json:"address"`
+	Proxy       uuid.UUID   `json:"proxy"`
+	Maintenance bool        `json:"maintenance"`
+	Players     []uuid.UUID `json:"players"`
 }
 
 func (bd BackendData) Value() (driver.Value, error) {

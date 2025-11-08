@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
@@ -67,7 +68,16 @@ func (mm *MultiManager) createProxyUpdateListener() func(msg *redis.Message) {
 func (mm *MultiManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 	now := time.Now()
 
-	addr := fmt.Sprintf("%s.proxy.default.svc.cluster.local:25565", id.String())
+	var addr string
+
+	switch mm.cf.GetMode() {
+	case config.Mode_Default:
+		addr = mm.cf.GetBind()
+	case config.Mode_Kubernetes:
+		addr = fmt.Sprintf("%s.proxy.default.svc.cluster.local:25565", id.String())
+	default:
+		return nil, config.ErrIncorrectMode
+	}
 
 	data := &data.ProxyData{
 		Address:       addr,
