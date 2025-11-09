@@ -13,7 +13,6 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi/manager"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task/tasks"
-	"github.com/team-vesperis/vesperis-mp/internal/multi/transfer"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/commands"
 	"github.com/team-vesperis/vesperis-mp/internal/proxy/listeners"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
@@ -51,8 +50,6 @@ type Manager struct {
 	multi *manager.MultiManager
 
 	task *task.TaskManager
-
-	transfer *transfer.TransferManager
 }
 
 func Init(ctx context.Context, cf *config.Config, l *logger.Logger, db *database.Database) (*Manager, error) {
@@ -105,14 +102,10 @@ func Init(ctx context.Context, cf *config.Config, l *logger.Logger, db *database
 		return m, nil
 	}
 
-	m.listener, err = listeners.Init(m.ownerGate.Event(), m.l, m.db, m.multi, m.ownerMP)
+	m.listener, err = listeners.Init(m.ownerGate.Event(), m.l, m.db, m.multi, m.ownerMP, m.ownerGate, m.task)
 	if err != nil {
 		return m, err
 	}
-
-	m.transfer = transfer.Init(l, db, m.task, m.ownerGate, m.multi)
-	event.Subscribe(m.ownerGate.Event(), 0, m.transfer.OnChooseInitialServer)
-	event.Subscribe(m.ownerGate.Event(), 0, m.transfer.OnPreShutdown)
 
 	m.multi.InitHeartBeatManager()
 

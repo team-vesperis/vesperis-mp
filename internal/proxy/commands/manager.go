@@ -67,6 +67,7 @@ func (cm *CommandManager) registerCommands() {
 	cm.m.Register(cm.messageCommand("message"))
 	cm.m.Register(cm.messageCommand("msg"))
 	cm.m.Register(cm.kickCommand("kick"))
+	cm.m.Register(cm.transferCommand("transfer"))
 }
 
 var (
@@ -172,6 +173,111 @@ func (cm *CommandManager) SuggestAllMultiPlayers(hideOfflinePlayers, hideOwn boo
 
 			id := mp.GetId().String()
 			if len(r) > 3 && strings.HasPrefix(strings.ToLower(id), r) {
+				b.Suggest(id)
+			}
+		}
+
+		return b.Build()
+	})
+}
+
+func (cm *CommandManager) SuggestAllMultiProxies(hideOwn bool) brigodier.SuggestionProvider {
+	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+		r := b.RemainingLowerCase
+		l := cm.mm.GetAllMultiProxies()
+
+		for _, mp := range l {
+			if hideOwn && mp == cm.mm.GetOwnerMultiProxy() {
+				continue
+			}
+
+			id := mp.GetId().String()
+			if strings.HasPrefix(strings.ToLower(id), r) {
+				b.Suggest(id)
+			}
+		}
+
+		return b.Build()
+	})
+}
+
+func (cm *CommandManager) SuggestAllMultiBackends(hideOwn bool) brigodier.SuggestionProvider {
+	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+		r := b.RemainingLowerCase
+
+		l := cm.mm.GetAllMultiBackends()
+
+		var hiddenBackend *multi.Backend
+		if hideOwn {
+			hiddenBackendName := c.String("backendId")
+			if hiddenBackendName != "" {
+				id, err := uuid.Parse(hiddenBackendName)
+				if err == nil {
+					mp, err := cm.mm.GetMultiBackend(id)
+					if err == nil {
+						hiddenBackend = mp
+					}
+				}
+			}
+		}
+
+		for _, mb := range l {
+			if mb == hiddenBackend {
+				continue
+			}
+
+			id := mb.GetId().String()
+			if strings.HasPrefix(strings.ToLower(id), r) {
+				b.Suggest(id)
+			}
+		}
+
+		return b.Build()
+	})
+}
+
+func (cm *CommandManager) SuggestAllMultiBackendsUnderProxy(hideOwn bool) brigodier.SuggestionProvider {
+	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+		r := b.RemainingLowerCase
+
+		ownProxyName := c.String("proxyId")
+		if ownProxyName == "" {
+			return b.Build()
+		}
+
+		id, err := uuid.Parse(ownProxyName)
+		if err != nil {
+			return b.Build()
+		}
+
+		mp, err := cm.mm.GetMultiProxy(id)
+		if err != nil {
+			return b.Build()
+		}
+
+		l := cm.mm.GetAllMultiBackendsUnderMultiProxy(mp)
+
+		var hiddenBackend *multi.Backend
+		if hideOwn {
+			hiddenBackendName := c.String("backendId")
+			if hiddenBackendName != "" {
+				id, err := uuid.Parse(hiddenBackendName)
+				if err == nil {
+					mp, err := cm.mm.GetMultiBackend(id)
+					if err == nil {
+						hiddenBackend = mp
+					}
+				}
+			}
+		}
+
+		for _, mb := range l {
+			if mb == hiddenBackend {
+				continue
+			}
+
+			id := mb.GetId().String()
+			if strings.HasPrefix(strings.ToLower(id), r) {
 				b.Suggest(id)
 			}
 		}

@@ -28,7 +28,7 @@ func NewMessageTask(originName string, targetPlayerId, targetProxyId uuid.UUID, 
 func (mt *MessageTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 	t := tm.GetOwnerGate().Player(mt.TargetPlayerId)
 	if t == nil {
-		return task.NewTaskResponse(false, "target not found")
+		return task.NewTaskResponse(false, ErrStringTargetNotFound)
 	}
 
 	t.SendMessage(&c.Text{

@@ -232,6 +232,7 @@ func (mm *MultiManager) CreateNewProxyId() (uuid.UUID, error) {
 	return uuid.Nil, break_err
 }
 
+// can return nil if no other proxy is found
 func (mm *MultiManager) GetProxyWithLowestPlayerCount(includingThisProxy bool) *multi.Proxy {
 	var count int = math.MaxUint32
 	var proxy *multi.Proxy

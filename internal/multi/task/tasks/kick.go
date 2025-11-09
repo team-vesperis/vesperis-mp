@@ -25,7 +25,7 @@ func NewKickTask(targetPlayerId, targetProxyId uuid.UUID, reason string) *KickTa
 func (kt *KickTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 	t := tm.GetOwnerGate().Player(kt.TargetPlayerId)
 	if t == nil {
-		return task.NewTaskResponse(false, "target not found")
+		return task.NewTaskResponse(false, ErrStringTargetNotFound)
 	}
 
 	t.Disconnect(&component.Text{

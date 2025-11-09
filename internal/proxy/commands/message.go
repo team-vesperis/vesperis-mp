@@ -10,7 +10,6 @@ import (
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
-	"go.minekube.com/gate/pkg/util/uuid"
 
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
@@ -43,11 +42,6 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 						return multi.ErrProxyNilWhileOnline
 					}
 
-					if mp.GetId() == uuid.Nil {
-						c.SendMessage(util.TextInternalError("Could not send message.", multi.ErrProxyIdNilWhileOnline))
-						return multi.ErrProxyIdNilWhileOnline
-					}
-
 					var originName string
 					p, ok := c.Source.(proxy.Player)
 					if ok {
@@ -75,7 +69,7 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 						} else {
 							if mp.IsVanished() && !t.GetPermissionInfo().IsPrivileged() {
 								c.SendMessage(&component.Text{
-									Content: "Warning: You are in vanish but your sending a message to a non-privileged player. This player can not respond. Turn off vanish to message correctly with non-privileged players.",
+									Content: "Warning: You are in vanish but you're sending a message to a non-privileged player. This player can not respond. Turn off vanish to message correctly with non-privileged players.",
 									S:       util.StyleColorOrange,
 								})
 							}

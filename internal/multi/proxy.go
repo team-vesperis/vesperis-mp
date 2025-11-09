@@ -112,8 +112,9 @@ func (mp *Proxy) SetLastHeartBeat(t *time.Time) error {
 
 func (mp *Proxy) setLastHeartBeat(t *time.Time, notify bool) error {
 	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
 	mp.lastHeartBeat = t
-	mp.mu.Unlock()
 
 	if notify {
 		return mp.save(key.ProxyKey_LastHeartBeat, t)
@@ -134,8 +135,9 @@ func (mp *Proxy) SetInMaintenance(maintenance bool) error {
 
 func (mp *Proxy) setInMaintenance(maintenance, notify bool) error {
 	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
 	mp.maintenance = maintenance
-	mp.mu.Unlock()
 
 	if notify {
 		return mp.save(key.ProxyKey_Maintenance, maintenance)
@@ -158,8 +160,9 @@ func (mp *Proxy) SetPlayerIds(ids []uuid.UUID) error {
 
 func (mp *Proxy) setPlayerIds(ids []uuid.UUID, notify bool) error {
 	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
 	mp.players = ids
-	mp.mu.Unlock()
 
 	if notify {
 		return mp.save(key.ProxyKey_PlayerList, ids)
@@ -170,25 +173,26 @@ func (mp *Proxy) setPlayerIds(ids []uuid.UUID, notify bool) error {
 
 func (mp *Proxy) AddPlayerId(id uuid.UUID) error {
 	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
 	if !slices.Contains(mp.players, id) {
 		mp.players = append(mp.players, id)
 	}
-	mp.mu.Unlock()
 
-	return mp.save(key.ProxyKey_PlayerList, mp.GetPlayerIds())
+	return mp.save(key.ProxyKey_PlayerList, mp.players)
 }
 
 func (mp *Proxy) RemovePlayerId(id uuid.UUID) error {
 	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
 	i := slices.Index(mp.players, id)
 	if i == -1 {
-		mp.mu.Unlock()
 		return ErrPlayerNotFound
 	}
 	mp.players = slices.Delete(mp.players, i, i+1)
-	mp.mu.Unlock()
 
-	return mp.save(key.ProxyKey_PlayerList, mp.GetPlayerIds())
+	return mp.save(key.ProxyKey_PlayerList, mp.players)
 }
 
 func (mp *Proxy) IsPlayerIdOnProxy(id uuid.UUID) bool {
@@ -212,8 +216,9 @@ func (mp *Proxy) SetBackendsIds(ids []uuid.UUID) error {
 
 func (mp *Proxy) setBackendsIds(ids []uuid.UUID, notify bool) error {
 	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
 	mp.backends = ids
-	mp.mu.Unlock()
 
 	if notify {
 		return mp.save(key.ProxyKey_BackendList, ids)
@@ -224,23 +229,24 @@ func (mp *Proxy) setBackendsIds(ids []uuid.UUID, notify bool) error {
 
 func (mp *Proxy) AddBackend(id uuid.UUID) error {
 	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
 	if !slices.Contains(mp.backends, id) {
 		mp.backends = append(mp.backends, id)
 	}
-	mp.mu.Unlock()
 
-	return mp.save(key.ProxyKey_BackendList, mp.GetBackendsIds())
+	return mp.save(key.ProxyKey_BackendList, mp.backends)
 }
 
 func (mp *Proxy) RemoveBackendId(id uuid.UUID) error {
 	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
 	i := slices.Index(mp.backends, id)
 	if i == -1 {
-		mp.mu.Unlock()
 		return ErrBackendNotFound
 	}
 	mp.backends = slices.Delete(mp.backends, i, i+1)
-	mp.mu.Unlock()
 
-	return mp.save(key.ProxyKey_BackendList, mp.GetBackendsIds())
+	return mp.save(key.ProxyKey_BackendList, mp.backends)
 }

@@ -104,8 +104,9 @@ func (mb *Backend) SetInMaintenance(maintenance bool) error {
 
 func (mb *Backend) setInMaintenance(maintenance, notify bool) error {
 	mb.mu.Lock()
+	defer mb.mu.Unlock()
+
 	mb.maintenance = maintenance
-	mb.mu.Unlock()
 
 	if notify {
 		return mb.save(key.BackendKey_Maintenance, maintenance)
@@ -128,8 +129,9 @@ func (mb *Backend) SetPlayerIds(ids []uuid.UUID) error {
 
 func (mb *Backend) setPlayerIds(ids []uuid.UUID, notify bool) error {
 	mb.mu.Lock()
+	defer mb.mu.Unlock()
+
 	mb.players = ids
-	mb.mu.Unlock()
 
 	if notify {
 		return mb.save(key.BackendKey_PlayerList, ids)
@@ -140,25 +142,26 @@ func (mb *Backend) setPlayerIds(ids []uuid.UUID, notify bool) error {
 
 func (mb *Backend) AddPlayerId(id uuid.UUID) error {
 	mb.mu.Lock()
+	defer mb.mu.Unlock()
+
 	if !slices.Contains(mb.players, id) {
 		mb.players = append(mb.players, id)
 	}
-	mb.mu.Unlock()
 
-	return mb.save(key.BackendKey_PlayerList, mb.GetPlayerIds())
+	return mb.save(key.BackendKey_PlayerList, mb.players)
 }
 
 func (mb *Backend) RemovePlayerId(id uuid.UUID) error {
 	mb.mu.Lock()
+	defer mb.mu.Unlock()
+
 	i := slices.Index(mb.players, id)
 	if i == -1 {
-		mb.mu.Unlock()
 		return ErrPlayerNotFound
 	}
 	mb.players = slices.Delete(mb.players, i, i+1)
-	mb.mu.Unlock()
 
-	return mb.save(key.BackendKey_PlayerList, mb.GetPlayerIds())
+	return mb.save(key.BackendKey_PlayerList, mb.players)
 }
 
 func (mb *Backend) IsPlayerIdOnProxy(id uuid.UUID) bool {
