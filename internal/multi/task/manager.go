@@ -109,7 +109,9 @@ func (tm *TaskManager) createTaskListener() func(msg *redis.Message) {
 // Otherwise it will send out a message using Redis PubSub. The other proxies will check if its a task that they need to handle.
 // If they do need to handle it, the proxy will perform the task and send feedback back to the original proxy.
 //
-// Returns TaskResponse. Use .IsSuccessful() to check if everything went accordingly. If not, use .GetReason() to find out what happened.
+// Returns TaskResponse.
+// Use .IsSuccessful() to check if everything went accordingly.
+// Use .GetInfo() to get information, like error messages.
 func (tm *TaskManager) BuildTask(t Task) *TaskResponse {
 	if t.GetTargetProxyId() == tm.GetOwnerId() {
 		return t.PerformTask(tm)
