@@ -7,7 +7,6 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task/tasks"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
-	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
@@ -22,14 +21,14 @@ func (cm *CommandManager) kickCommand(name string) brigodier.LiteralNodeBuilder 
 					t, err := cm.getMultiPlayerFromTarget(c.String("target"))
 					if err != nil {
 						if err == ErrTargetNotFound {
-							c.SendMessage(ComponentTargetNotFound)
+							c.SendMessage(TextTargetNotFound)
 							return nil
 						}
 						return err
 					}
 
 					if !t.IsOnline() {
-						c.SendMessage(ComponentTargetIsOffline)
+						c.SendMessage(TextTargetIsOffline)
 						return nil
 					}
 
@@ -51,25 +50,7 @@ func (cm *CommandManager) kickCommand(name string) brigodier.LiteralNodeBuilder 
 						return err
 					}
 
-					c.SendMessage(&component.Text{
-						Content: "Kicked: ",
-						S:       util.StyleColorLightGreen,
-						Extra: []component.Component{
-							&component.Text{
-								Content: t.GetUsername(),
-								S:       util.StyleColorCyan,
-							},
-							&component.Text{
-								Content: ". Reason: ",
-								S:       util.StyleColorLightGreen,
-							},
-							&component.Text{
-								Content: c.String("reason"),
-								S:       util.StyleColorCyan,
-							},
-						},
-					})
-
+					c.SendMessage(util.TextSuccess("Kicked: ", t.GetUsername(), " Reason: ", c.String("reason")))
 					return nil
 				}))))
 }

@@ -9,6 +9,7 @@ func Init() {
 	task.RegisterTaskType(kickTask, func() task.Task { return &KickTask{} })
 	task.RegisterTaskType(transferRequestTask, func() task.Task { return &TransferRequestTask{} })
 	task.RegisterTaskType(transferTask, func() task.Task { return &TransferTask{} })
+	task.RegisterTaskType(banTask, func() task.Task { return &BanTask{} })
 }
 
 // task types
@@ -17,6 +18,7 @@ const (
 	kickTask            = "kick"
 	transferRequestTask = "transfer_request"
 	transferTask        = "transfer"
+	banTask             = "ban"
 )
 
 const ErrStringTargetNotFound = "target not found"

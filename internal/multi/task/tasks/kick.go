@@ -8,8 +8,9 @@ import (
 )
 
 type KickTask struct {
-	TargetPlayerId  uuid.UUID `json:"targetPlayerId"`
-	Reason          string    `json:"reason"`
+	TargetPlayerId uuid.UUID `json:"targetPlayerId"`
+	Reason         string    `json:"reason"`
+
 	TargetProxyId   uuid.UUID `json:"targetProxyId"`
 	ResponseChannel string    `json:"responseChannel"`
 }

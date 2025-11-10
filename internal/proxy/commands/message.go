@@ -23,7 +23,7 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 					t, err := cm.getMultiPlayerFromTarget(c.String("target"))
 					if err != nil {
 						if err == ErrTargetNotFound {
-							c.SendMessage(ComponentTargetNotFound)
+							c.SendMessage(TextTargetNotFound)
 							return nil
 						}
 
@@ -32,7 +32,7 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 					}
 
 					if !t.IsOnline() {
-						c.SendMessage(ComponentTargetIsOffline)
+						c.SendMessage(TextTargetIsOffline)
 						return nil
 					}
 
@@ -63,15 +63,12 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 						// hide vanished from non-privileged players
 						if !mp.GetPermissionInfo().IsPrivileged() {
 							if t.IsVanished() {
-								c.SendMessage(ComponentTargetIsOffline)
+								c.SendMessage(TextTargetIsOffline)
 								return nil
 							}
 						} else {
 							if mp.IsVanished() && !t.GetPermissionInfo().IsPrivileged() {
-								c.SendMessage(&component.Text{
-									Content: "Warning: You are in vanish but you're sending a message to a non-privileged player. This player can not respond. Turn off vanish to message correctly with non-privileged players.",
-									S:       util.StyleColorOrange,
-								})
+								c.SendMessage(util.TextWarn("Warning: You are in vanish but you're sending a message to a non-privileged player. This player can not respond. Turn off vanish to message correctly with non-privileged players."))
 							}
 						}
 

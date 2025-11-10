@@ -4,7 +4,6 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
-	. "go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
 )
 
@@ -18,27 +17,14 @@ func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuild
 					err := cm.db.GetData(c.String("key"), &val)
 					if err != nil {
 						if err == database.ErrDataNotFound {
-							c.SendMessage(&Text{
-								Content: "No value found in the database.",
-								S:       util.StyleColorOrange,
-							})
+							c.SendMessage(util.TextWarn("No value found in the database."))
 							return nil
 						}
-						c.SendMessage(&Text{
-							Content: "Could not get value from database.",
-							S: Style{
-								Color:      util.ColorRed,
-								HoverEvent: ShowText(&Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
-							},
-						})
+						c.SendMessage(util.TextInternalError("Could not get value from database.", err))
 						return err
 					}
 
-					c.SendMessage(&Text{
-						Content: "Returned value: " + val,
-						S:       util.StyleColorLightGreen,
-					})
-
+					c.SendMessage(util.TextSuccess("Returned value: ", val))
 					return nil
 				})))).
 		Then(brigodier.Literal("set").
@@ -47,20 +33,11 @@ func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuild
 					Executes(command.Command(func(c *command.Context) error {
 						err := cm.db.SetData(c.String("key"), c.String("value"))
 						if err != nil {
-							c.SendMessage(&Text{
-								Content: "Could not set value from database.",
-								S: Style{
-									Color:      util.ColorRed,
-									HoverEvent: ShowText(&Text{Content: "Internal error: " + err.Error(), S: util.StyleColorRed}),
-								},
-							})
+							c.SendMessage(util.TextInternalError("Could not set value from database.", err))
 							return err
 						}
 
-						c.SendMessage(&Text{
-							Content: "Successfully set value in database.",
-							S:       util.StyleColorLightGreen,
-						})
+						c.SendMessage(util.TextSuccess("Successfully set value in database."))
 
 						return nil
 					})))))

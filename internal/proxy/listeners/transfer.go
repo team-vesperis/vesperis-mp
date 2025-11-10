@@ -6,8 +6,6 @@ import (
 
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task/tasks"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
-	"go.minekube.com/common/minecraft/color"
-	c "go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/cookie"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.minekube.com/gate/pkg/util/uuid"
@@ -18,20 +16,14 @@ func (lm *ListenerManager) onPreShutdown(e *proxy.PreShutdownEvent) {
 	for _, p := range lm.ownerGate.Players() {
 		proxy := lm.mm.GetProxyWithLowestPlayerCount(false)
 		if proxy == nil {
-			e.SetReason(&c.Text{
-				Content: "The proxy you were on has closed and there was no other proxy to connect to.",
-				S:       util.StyleColorRed,
-			})
+			e.SetReason(util.TextError("The proxy you were on has closed and there was no other proxy to connect to."))
 			continue
 		}
 
 		tr := lm.tm.BuildTask(tasks.NewTransferTask(p.ID(), lm.tm.GetOwnerId(), proxy.GetId(), uuid.Nil))
 		if !tr.IsSuccessful() {
 			lm.l.Error("transfer not successful", "error", tr.GetInfo())
-			e.SetReason(&c.Text{
-				Content: "The proxy you were on has closed and there was no other proxy to connect to.",
-				S:       util.StyleColorRed,
-			})
+			e.SetReason(util.TextError("The proxy you were on has closed and there was no other proxy to connect to."))
 			continue
 		}
 
@@ -98,10 +90,5 @@ func (lm *ListenerManager) chooseRandomServer(p proxy.Player, e *proxy.PlayerCho
 
 func (lm *ListenerManager) sendNoAvailableServers(player proxy.Player) {
 	time.Sleep(50 * time.Millisecond)
-	player.Disconnect(&c.Text{
-		Content: "No available server. Please try again.",
-		S: c.Style{
-			Color: color.Red,
-		},
-	})
+	player.Disconnect(util.TextError("No available server. Please try again."))
 }

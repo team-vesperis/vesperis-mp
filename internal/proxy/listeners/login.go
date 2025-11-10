@@ -1,20 +1,16 @@
 package listeners
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
-	"go.minekube.com/common/minecraft/color"
-	c "go.minekube.com/common/minecraft/component"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
+	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
-var loginDenyComponent = &c.Text{
-	Content: "There was an error while login in. Please try again later.",
-	S: c.Style{
-		Color: color.Red,
-	},
-}
+var loginDenyComponent = util.TextError("There was an error logging in. Please try again later.")
 
 func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 	p := e.Player()
@@ -38,9 +34,58 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 	}
 
 	if mp.GetBanInfo().IsBanned() {
-		e.Deny(&c.Text{Content: "you are banned"})
-	}
+		if mp.GetBanInfo().IsPermanently() {
+			e.Deny(&component.Text{
+				Content: "You are permanently banned.",
+				S:       util.StyleColorRed,
+				Extra: []component.Component{
+					&component.Text{
+						Content: "\n\nReason: ",
+						S:       util.StyleColorRed,
+					},
+					&component.Text{
+						Content: mp.GetBanInfo().GetReason(),
+						S:       util.StyleColorCyan,
+					},
+				},
+			})
+		} else {
+			duration := time.Until(mp.GetBanInfo().GetExpiration())
+			durationStr := formatDuration(duration)
 
+			e.Deny(&component.Text{
+				Content: "You are temporarily banned.",
+				S:       util.StyleColorRed,
+				Extra: []component.Component{
+					&component.Text{
+						Content: "\n\nReason: ",
+						S:       util.StyleColorRed,
+					},
+					&component.Text{
+						Content: mp.GetBanInfo().GetReason(),
+						S:       util.StyleColorCyan,
+					},
+					&component.Text{
+						Content: "\nExpiration: ",
+						S:       util.StyleColorRed,
+					},
+					&component.Text{
+						Content: durationStr,
+						S:       util.StyleColorCyan,
+					},
+				},
+			})
+		}
+	}
+}
+
+func formatDuration(d time.Duration) string {
+	days := int(d.Hours()) / 24
+	hours := int(d.Hours()) % 24
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
+
+	return fmt.Sprintf("%d days, %d hours, %d minutes and %d seconds", days, hours, minutes, seconds)
 }
 
 func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {

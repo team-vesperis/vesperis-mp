@@ -68,20 +68,15 @@ func (cm *CommandManager) registerCommands() {
 	cm.m.Register(cm.messageCommand("msg"))
 	cm.m.Register(cm.kickCommand("kick"))
 	cm.m.Register(cm.transferCommand("transfer"))
+	cm.m.Register(cm.banCommand("ban"))
 }
 
 var (
-	ErrTargetNotFound       = errors.New("target not found")
-	ComponentTargetNotFound = &Text{
-		Content: "Target not found.",
-		S:       util.StyleColorOrange,
-	}
+	ErrTargetNotFound  = errors.New("target not found")
+	TextTargetNotFound = util.TextWarn("Target not found.")
 
-	ErrTargetIsOffline       = errors.New("target is offline")
-	ComponentTargetIsOffline = &Text{
-		Content: "Target is offline.",
-		S:       util.StyleColorOrange,
-	}
+	ErrTargetIsOffline  = errors.New("target is offline")
+	TextTargetIsOffline = util.TextWarn("Target is offline.")
 )
 
 func (cm *CommandManager) getMultiPlayerFromTarget(t string) (*multi.Player, error) {

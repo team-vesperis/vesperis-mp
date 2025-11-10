@@ -3,7 +3,6 @@ package commands
 import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
-	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
@@ -25,31 +24,14 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 					return err
 				}
 
-				var text component.Text
+				var v string
 				if mp.IsVanished() {
-					text = component.Text{
-						Content: "active",
-						S:       util.StyleColorLightGreen,
-					}
+					v = "active"
 				} else {
-					text = component.Text{
-						Content: "not active",
-						S:       util.StyleColorOrange,
-					}
+					v = "not active"
 				}
 
-				c.SendMessage(&component.Text{
-					Content: "Vanish is ",
-					S:       util.StyleColorCyan,
-					Extra: []component.Component{
-						&text,
-						&component.Text{
-							Content: ".",
-							S:       util.StyleColorCyan,
-						},
-					},
-				})
-
+				c.SendMessage(util.TextSuccess("Vanish is: ", v))
 				return nil
 			})).
 			Then(brigodier.Argument("target", brigodier.SingleWord).
@@ -59,108 +41,68 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 					mp, err := cm.getMultiPlayerFromTarget(t)
 					if err != nil {
 						if err == ErrTargetNotFound {
-							c.SendMessage(ComponentTargetNotFound)
+							c.SendMessage(TextTargetNotFound)
 							return nil
 						}
 						return err
 					}
 
-					var text component.Text
+					var v string
 					if mp.IsVanished() {
-						text = component.Text{
-							Content: "vanished",
-							S:       util.StyleColorLightGreen,
-						}
+						v = "vanished"
 					} else {
-						text = component.Text{
-							Content: "not vanished",
-							S:       util.StyleColorOrange,
-						}
+						v = "not vanished"
 					}
 
-					c.SendMessage(&component.Text{
-						Content: mp.GetUsername() + " is ",
-						S:       util.StyleColorCyan,
-						Extra: []component.Component{
-							&text,
-							&component.Text{
-								Content: ".",
-								S:       util.StyleColorCyan,
-							},
-						},
-					})
-
+					c.SendMessage(util.TextSuccess(mp.GetUsername()+" is ", v))
 					return nil
 				})))).
 		Then(brigodier.Literal("set").
 			Then(brigodier.Literal("on").
-				Executes(command.Command(func(c *command.Context) error {
-					p, ok := c.Source.(proxy.Player)
-					if !ok {
-						c.SendMessage(ComponentOnlyPlayersSubCommand)
-						return ErrOnlyPlayersSubCommand
-					}
-
-					mp, err := cm.mm.GetMultiPlayer(p.ID())
-					if err != nil {
-						c.SendMessage(util.TextInternalError("Could not set vanish.", err))
-						return err
-					}
-
-					if mp.IsVanished() {
-						c.SendMessage(&component.Text{
-							Content: "Vanish is already active.",
-							S:       util.StyleColorOrange,
-						})
-						return nil
-					}
-
-					err = mp.SetVanished(true)
-					if err != nil {
-						c.SendMessage(util.TextInternalError("Could not set vanish.", err))
-						return err
-					}
-
-					c.SendMessage(&component.Text{
-						Content: "Vanish is now active.",
-						S:       util.StyleColorLightGreen,
-					})
-
-					return nil
-				}))).
+				Executes(cm.executeVanish(true))).
 			Then(brigodier.Literal("off").
-				Executes(command.Command(func(c *command.Context) error {
-					p, ok := c.Source.(proxy.Player)
-					if !ok {
-						c.SendMessage(ComponentOnlyPlayersSubCommand)
-						return ErrOnlyPlayersSubCommand
-					}
+				Executes(cm.executeVanish(false))))
+}
 
-					mp, err := cm.mm.GetMultiPlayer(p.ID())
-					if err != nil {
-						c.SendMessage(util.TextInternalError("Could not set vanish.", err))
-						return err
-					}
+func (cm *CommandManager) executeVanish(vanish bool) brigodier.Command {
+	return command.Command(func(c *command.Context) error {
+		p, ok := c.Source.(proxy.Player)
+		if !ok {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
+			return ErrOnlyPlayersSubCommand
+		}
 
-					if !mp.IsVanished() {
-						c.SendMessage(&component.Text{
-							Content: "Vanish is not active.",
-							S:       util.StyleColorOrange,
-						})
-						return nil
-					}
+		mp, err := cm.mm.GetMultiPlayer(p.ID())
+		if err != nil {
+			c.SendMessage(util.TextInternalError("Could not set vanish.", err))
+			return err
+		}
 
-					err = mp.SetVanished(false)
-					if err != nil {
-						c.SendMessage(util.TextInternalError("Could not set vanish.", err))
-						return err
-					}
+		if vanish {
+			if mp.IsVanished() {
+				c.SendMessage(util.TextWarn("Vanish is already active"))
+				return nil
+			}
 
-					c.SendMessage(&component.Text{
-						Content: "Vanish is now off.",
-						S:       util.StyleColorLightGreen,
-					})
+		} else {
+			if !mp.IsVanished() {
+				c.SendMessage(util.TextWarn("Vanish is not active"))
+				return nil
+			}
+		}
 
-					return nil
-				}))))
+		err = mp.SetVanished(vanish)
+		if err != nil {
+			c.SendMessage(util.TextInternalError("Could not set vanish.", err))
+			return err
+		}
+
+		if vanish {
+			c.SendMessage(util.TextSuccess("Vanish is now active"))
+		} else {
+			c.SendMessage(util.TextSuccess("Vanish is now not active"))
+		}
+
+		return nil
+	})
 }

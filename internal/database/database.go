@@ -89,6 +89,9 @@ func (db *Database) GetData(key string, dest any) error {
 
 	err = db.p.QueryRow(db.ctx, query, key).Scan(&jsonData)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return ErrDataNotFound
+		}
 		db.l.Error("")
 		return err
 	}

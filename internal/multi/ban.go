@@ -108,21 +108,40 @@ func (bi *banInfo) setExpiration(expiration time.Time, notify bool) error {
 	return nil
 }
 
-func (bi *banInfo) Ban(reason string) {
-	bi.mu.Lock()
-	defer bi.mu.Unlock()
+func (bi *banInfo) Ban(reason string) error {
+	err := bi.setBanned(true, true)
+	if err != nil {
+		return err
+	}
 
-	bi.banned = true
-	bi.reason = reason
-	bi.permanently = true
+	err = bi.setReason(reason, true)
+	if err != nil {
+		return err
+	}
+
+	err = bi.setPermanently(true, true)
+	if err != nil {
+		return err
+	}
+
+	return bi.setExpiration(time.Time{}, true)
 }
 
-func (bi *banInfo) TempBan(reason string, expiration time.Time) {
-	bi.mu.Lock()
-	defer bi.mu.Unlock()
+func (bi *banInfo) TempBan(reason string, expiration time.Time) error {
+	err := bi.setBanned(true, true)
+	if err != nil {
+		return err
+	}
 
-	bi.banned = true
-	bi.reason = reason
-	bi.permanently = false
-	bi.expiration = expiration
+	err = bi.setReason(reason, true)
+	if err != nil {
+		return err
+	}
+
+	err = bi.setPermanently(false, true)
+	if err != nil {
+		return err
+	}
+
+	return bi.setExpiration(expiration, true)
 }
