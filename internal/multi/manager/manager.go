@@ -2,6 +2,7 @@ package manager
 
 import (
 	"sync"
+	"time"
 
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
@@ -25,7 +26,9 @@ type MultiManager struct {
 	l  *logger.Logger
 }
 
-func Init(cf *config.Config, db *database.Database, l *logger.Logger) *MultiManager {
+func Init(cf *config.Config, db *database.Database, l *logger.Logger) (*MultiManager, error) {
+	now := time.Now()
+
 	mm := &MultiManager{
 		proxyMap:   map[uuid.UUID]*multi.Proxy{},
 		playerMap:  map[uuid.UUID]*multi.Player{},
@@ -37,16 +40,24 @@ func Init(cf *config.Config, db *database.Database, l *logger.Logger) *MultiMana
 
 	multi.SetMultiManager(mm)
 
-	return mm
-}
+	id, err := mm.CreateNewProxyId()
+	if err != nil {
+		return &MultiManager{}, err
+	}
 
-func (mm *MultiManager) Start() {
+	mm.l.Debug("Found a id to use for this proxy.", "id", id)
+
+	_, err = mm.NewMultiProxy(id)
+	if err != nil {
+		return &MultiManager{}, err
+	}
+
 	// start update listeners
 	mm.db.CreateListener(multi.UpdateMultiPlayerChannel, mm.createUpdateListener())
 	mm.db.CreateListener(multi.UpdateMultiBackendChannel, mm.createBackendUpdateListener())
 	mm.db.CreateListener(multi.UpdateMultiProxyChannel, mm.createProxyUpdateListener())
 
-	_, err := mm.GetAllMultiProxiesFromDatabase()
+	_, err = mm.GetAllMultiProxiesFromDatabase()
 	if err != nil {
 		mm.l.Warn("filling up multiproxy map error", "error", err)
 	}
@@ -60,18 +71,20 @@ func (mm *MultiManager) Start() {
 	if err != nil {
 		mm.l.Warn("filling up multiplayer map error", "error", err)
 	}
+
+	mm.l.Info("initialized multimanager", "duration", time.Since(now))
+	return mm, nil
 }
 
 func (mm *MultiManager) Close() error {
+	now := time.Now()
+
 	l := mm.ownerMP.GetBackendsIds()
-	mm.l.Debug("deleting list", "list", l)
 	for _, id := range l {
 		err := mm.DeleteMultiBackend(id)
 		if err != nil {
 			return err
 		}
-
-		mm.l.Debug("deleted backend")
 	}
 
 	err := mm.DeleteMultiProxy(mm.ownerMP.GetId())
@@ -81,7 +94,7 @@ func (mm *MultiManager) Close() error {
 
 	mm.hbm.stop()
 
-	mm.l.Debug("multimanager closed successfully")
+	mm.l.Info("multimanager closed successfully", "duration", time.Since(now))
 	return nil
 }
 

@@ -26,7 +26,7 @@ func TextWarn(message string) *c.Text {
 	}
 }
 
-func TextSuccess(values ...string) *c.Text {
+func TextAlternatingColors(values ...string) *c.Text {
 	components := make([]c.Component, 0, len(values))
 	colors := []c.Style{StyleColorLightGreen, StyleColorCyan}
 	for i, v := range values {

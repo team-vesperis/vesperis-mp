@@ -9,7 +9,6 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
-	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/manager"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task/tasks"
@@ -21,8 +20,6 @@ import (
 )
 
 type Manager struct {
-	ownerMP *multi.Proxy
-
 	ownerGate *proxy.Proxy
 
 	// The command manager used in the mp.
@@ -60,21 +57,12 @@ func Init(ctx context.Context, cf *config.Config, l *logger.Logger, db *database
 		db:  db,
 	}
 
-	m.multi = manager.Init(cf, db, l)
-
-	id, err := m.multi.CreateNewProxyId()
+	var err error
+	m.multi, err = manager.Init(cf, db, l)
 	if err != nil {
 		return m, err
 	}
 
-	m.l.Debug("Found a id to use for this proxy.", "id", id)
-
-	m.ownerMP, err = m.multi.NewMultiProxy(id)
-	if err != nil {
-		return &Manager{}, err
-	}
-
-	m.multi.Start()
 	tasks.Init()
 
 	cfg, err := gate.LoadConfig(m.cf.GetViper())
@@ -95,14 +83,14 @@ func Init(ctx context.Context, cf *config.Config, l *logger.Logger, db *database
 	m.ownerGate = gate.Java()
 	event.Subscribe(m.ownerGate.Event(), 0, m.onShutdown)
 
-	m.task = task.InitTaskManager(m.db, m.l, m.ownerMP, m.ownerGate, m.multi)
+	m.task = task.InitTaskManager(m.db, m.l, m.multi.GetOwnerMultiProxy(), m.ownerGate, m.multi)
 
 	m.command, err = commands.Init(m.ownerGate, m.l, m.db, m.multi, m.task)
 	if err != nil {
-		return m, nil
+		return m, err
 	}
 
-	m.listener, err = listeners.Init(m.ownerGate.Event(), m.l, m.db, m.multi, m.ownerMP, m.ownerGate, m.task)
+	m.listener, err = listeners.Init(m.ownerGate.Event(), m.l, m.db, m.multi, m.multi.GetOwnerMultiProxy(), m.ownerGate, m.task)
 	if err != nil {
 		return m, err
 	}
@@ -128,12 +116,12 @@ func (m *Manager) close() {
 
 	err := m.multi.Close()
 	if err != nil {
-		m.l.Error("", "error", err)
+		m.l.Error("multimanager close error", "error", err)
 	}
 
 	err = m.db.Close()
 	if err != nil {
-		m.l.Error("", "error", err)
+		m.l.Error("database close error", "error", err)
 	}
 }
 

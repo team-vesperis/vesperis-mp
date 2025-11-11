@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
@@ -20,12 +19,13 @@ type BanTask struct {
 	ResponseChannel string    `json:"responseChannel"`
 }
 
-func NewBanTask(targetPlayerId uuid.UUID, reason string, permanently bool, expiration time.Time) *BanTask {
+func NewBanTask(targetPlayerId, targetProxyId uuid.UUID, reason string, permanently bool, expiration time.Time) *BanTask {
 	return &BanTask{
 		TargetPlayerId: targetPlayerId,
 		Reason:         reason,
 		Permanently:    permanently,
 		Expiration:     expiration,
+		TargetProxyId:  targetProxyId,
 	}
 }
 
@@ -67,9 +67,6 @@ func (bt *BanTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 			return task.NewTaskResponse(false, err.Error())
 		}
 
-		duration := time.Until(bt.Expiration)
-		durationStr := formatDuration(duration)
-
 		t.Disconnect(&component.Text{
 			Content: "You have been temporarily banned.",
 			S:       util.StyleColorRed,
@@ -87,7 +84,7 @@ func (bt *BanTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 					S:       util.StyleColorRed,
 				},
 				&component.Text{
-					Content: durationStr,
+					Content: util.FormatTimeUntil(bt.Expiration),
 					S:       util.StyleColorCyan,
 				},
 			},
@@ -96,16 +93,6 @@ func (bt *BanTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 
 	return task.NewTaskResponse(true, "")
 }
-
-func formatDuration(d time.Duration) string {
-	days := int(d.Hours()) / 24
-	hours := int(d.Hours()) % 24
-	minutes := int(d.Minutes()) % 60
-	seconds := int(d.Seconds()) % 60
-
-	return fmt.Sprintf("%d days, %d hours, %d minutes and %d seconds", days, hours, minutes, seconds)
-}
-
 func (bt *BanTask) GetTargetProxyId() uuid.UUID {
 	return bt.TargetProxyId
 }

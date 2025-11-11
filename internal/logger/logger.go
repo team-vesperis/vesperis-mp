@@ -78,10 +78,13 @@ func Init() (*Logger, error) {
 		al: al,
 	}
 
-	l.Info("initialized logger", "duration", time.Since(now))
 	err = l.manageLogFiles()
+	if err != nil {
+		return l, err
+	}
 
-	return l, err
+	l.Info("initialized logger", "duration", time.Since(now))
+	return l, nil
 }
 
 func (l *Logger) GetSugaredLogger() *zap.SugaredLogger {
@@ -123,8 +126,6 @@ func (l *Logger) Warn(msg string, keysAndValues ...any) {
 
 // Checks folder, counts files and checks if it reaches file limit. Removes oldest files until under limit.
 func (l *Logger) manageLogFiles() error {
-	now := time.Now()
-
 	files, err := os.ReadDir(logDir)
 	if err != nil {
 		l.Error("logger read directory error", "files", files, "error", err)
@@ -156,6 +157,5 @@ func (l *Logger) manageLogFiles() error {
 		}
 	}
 
-	l.Info("logger files updated", "duration", time.Since(now))
 	return nil
 }

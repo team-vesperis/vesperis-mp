@@ -31,7 +31,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 					v = "not active"
 				}
 
-				c.SendMessage(util.TextSuccess("Vanish is: ", v))
+				c.SendMessage(util.TextAlternatingColors("Vanish is: ", v))
 				return nil
 			})).
 			Then(brigodier.Argument("target", brigodier.SingleWord).
@@ -54,7 +54,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 						v = "not vanished"
 					}
 
-					c.SendMessage(util.TextSuccess(mp.GetUsername()+" is ", v))
+					c.SendMessage(util.TextAlternatingColors(mp.GetUsername()+" is ", v))
 					return nil
 				})))).
 		Then(brigodier.Literal("set").
@@ -98,9 +98,9 @@ func (cm *CommandManager) executeVanish(vanish bool) brigodier.Command {
 		}
 
 		if vanish {
-			c.SendMessage(util.TextSuccess("Vanish is now active"))
+			c.SendMessage(util.TextAlternatingColors("Vanish is now active"))
 		} else {
-			c.SendMessage(util.TextSuccess("Vanish is now not active"))
+			c.SendMessage(util.TextAlternatingColors("Vanish is now not active"))
 		}
 
 		return nil

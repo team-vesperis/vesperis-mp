@@ -44,6 +44,7 @@ func main() {
 
 	m, err := Init(ctx, cf, l, db)
 	if err != nil {
+		l.Error("manager initialization error", "error", err)
 		return
 	}
 

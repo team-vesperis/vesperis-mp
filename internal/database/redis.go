@@ -25,6 +25,6 @@ func initRedis(ctx context.Context, l *logger.Logger, c *config.Config) (*redis.
 		return nil, pingErr
 	}
 
-	l.Info("initialized redis", "duration", time.Since(now))
+	l.Debug("initialized redis", "duration", time.Since(now))
 	return r, nil
 }

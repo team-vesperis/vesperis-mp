@@ -8,49 +8,54 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/gate/pkg/command"
-	"go.minekube.com/gate/pkg/util/uuid"
 )
 
 func (cm *CommandManager) kickCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
 		Requires(cm.requireAdminOrModerator()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
+			Executes(cm.executeKick()).
 			Suggests(cm.SuggestAllMultiPlayers(true, true)).
 			Then(brigodier.Argument("reason", brigodier.StringPhrase).
-				Executes(command.Command(func(c *command.Context) error {
-					t, err := cm.getMultiPlayerFromTarget(c.String("target"))
-					if err != nil {
-						if err == ErrTargetNotFound {
-							c.SendMessage(TextTargetNotFound)
-							return nil
-						}
-						return err
-					}
+				Executes(cm.executeKick())))
+}
 
-					if !t.IsOnline() {
-						c.SendMessage(TextTargetIsOffline)
-						return nil
-					}
+func (cm *CommandManager) executeKick() brigodier.Command {
+	return command.Command(func(c *command.Context) error {
+		r := c.String("reason")
+		if r == "" {
+			r = "no reason given"
+		}
 
-					mp := t.GetProxy()
-					if mp == nil {
-						c.SendMessage(util.TextInternalError("Could not send message.", multi.ErrProxyNilWhileOnline))
-						return multi.ErrProxyNilWhileOnline
-					}
+		t, err := cm.getMultiPlayerFromTarget(c.String("target"))
+		if err != nil {
+			if err == ErrTargetNotFound {
+				c.SendMessage(TextTargetNotFound)
+				return nil
+			}
+			return err
+		}
 
-					if mp.GetId() == uuid.Nil {
-						c.SendMessage(util.TextInternalError("Could not send message.", multi.ErrProxyIdNilWhileOnline))
-						return multi.ErrProxyIdNilWhileOnline
-					}
+		if !t.IsOnline() {
+			c.SendMessage(TextTargetIsOffline)
+			return nil
+		}
 
-					tr := cm.tm.BuildTask(tasks.NewKickTask(t.GetId(), t.GetProxy().GetId(), c.String("reason")))
-					if !tr.IsSuccessful() {
-						err := errors.New(tr.GetInfo())
-						c.SendMessage(util.TextInternalError("Could not kick.", err))
-						return err
-					}
+		mp := t.GetProxy()
+		if mp == nil {
+			c.SendMessage(util.TextInternalError("Could not kick.", multi.ErrProxyNilWhileOnline))
+			return multi.ErrProxyNilWhileOnline
+		}
 
-					c.SendMessage(util.TextSuccess("Kicked: ", t.GetUsername(), " Reason: ", c.String("reason")))
-					return nil
-				}))))
+		tr := cm.tm.BuildTask(tasks.NewKickTask(t.GetId(), mp.GetId(), r))
+		if !tr.IsSuccessful() {
+			err := errors.New(tr.GetInfo())
+			c.SendMessage(util.TextInternalError("Could not kick.", err))
+			return err
+		}
+
+		c.SendMessage(util.TextAlternatingColors("Kicked: ", t.GetUsername(), " Reason: ", r))
+		return nil
+
+	})
 }

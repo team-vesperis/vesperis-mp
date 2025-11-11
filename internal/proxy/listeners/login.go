@@ -1,7 +1,6 @@
 package listeners
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
@@ -50,9 +49,6 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 				},
 			})
 		} else {
-			duration := time.Until(mp.GetBanInfo().GetExpiration())
-			durationStr := formatDuration(duration)
-
 			e.Deny(&component.Text{
 				Content: "You are temporarily banned.",
 				S:       util.StyleColorRed,
@@ -70,22 +66,13 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 						S:       util.StyleColorRed,
 					},
 					&component.Text{
-						Content: durationStr,
+						Content: util.FormatTimeUntil(mp.GetBanInfo().GetExpiration()),
 						S:       util.StyleColorCyan,
 					},
 				},
 			})
 		}
 	}
-}
-
-func formatDuration(d time.Duration) string {
-	days := int(d.Hours()) / 24
-	hours := int(d.Hours()) % 24
-	minutes := int(d.Minutes()) % 60
-	seconds := int(d.Seconds()) % 60
-
-	return fmt.Sprintf("%d days, %d hours, %d minutes and %d seconds", days, hours, minutes, seconds)
 }
 
 func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
@@ -106,6 +93,10 @@ func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 	err = mp.SetOnline(false)
 	if err != nil {
 		lm.l.Error("player disconnect set online error", "playerId", id, "error", err)
+		return
+	}
+
+	if mp.GetProxy() == nil {
 		return
 	}
 

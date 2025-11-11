@@ -29,7 +29,7 @@ func initPostgres(ctx context.Context, l *logger.Logger, c *config.Config) (*pgx
 		return nil, err
 	}
 
-	l.Info("initialized postgres", "duration", time.Since(now))
+	l.Debug("initialized postgres", "duration", time.Since(now))
 	return p, nil
 }
 
