@@ -16,7 +16,9 @@ import (
 
 func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
+		Executes(cm.executeIncorrectMessage()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
+			Executes(cm.executeIncorrectMessage()).
 			Suggests(cm.SuggestAllMultiPlayers(true, true)).
 			Then(brigodier.Argument("message", brigodier.StringPhrase).
 				Executes(command.Command(func(c *command.Context) error {
@@ -106,4 +108,11 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 
 					return nil
 				}))))
+}
+
+func (cm *CommandManager) executeIncorrectMessage() brigodier.Command {
+	return command.Command(func(c *command.Context) error {
+		c.SendMessage(util.TextWarn("Incorrect usage: /message <target> <message>"))
+		return nil
+	})
 }

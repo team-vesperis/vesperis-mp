@@ -14,8 +14,10 @@ import (
 
 func (cm *CommandManager) transferCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
+		Executes(cm.executeIncorrectTransfer()).
 		Requires(cm.requireAdmin()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
+			Executes(cm.executeIncorrectTransfer()).
 			Suggests(cm.SuggestAllMultiPlayers(true, false)).
 			Then(brigodier.Argument("proxyId", brigodier.SingleWord).
 				Suggests(cm.SuggestAllMultiProxies(false)).
@@ -23,6 +25,13 @@ func (cm *CommandManager) transferCommand(name string) brigodier.LiteralNodeBuil
 				Then(brigodier.Argument("backendId", brigodier.SingleWord).
 					Suggests(cm.SuggestAllMultiBackendsUnderProxy(true)).
 					Executes(cm.executeTransfer()))))
+}
+
+func (cm *CommandManager) executeIncorrectTransfer() brigodier.Command {
+	return command.Command(func(c *command.Context) error {
+		c.SendMessage(util.TextWarn("Incorrect usage: /transfer <target> <proxyId> <backendId>"))
+		return nil
+	})
 }
 
 func (cm *CommandManager) executeTransfer() brigodier.Command {

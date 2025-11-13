@@ -12,7 +12,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/common/minecraft/color"
-	. "go.minekube.com/common/minecraft/component"
+	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.minekube.com/gate/pkg/util/uuid"
@@ -40,18 +40,18 @@ func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mm *manager.M
 }
 
 var (
-	ComponentOnlyPlayersCommand = &Text{
+	ComponentOnlyPlayersCommand = &component.Text{
 		Content: "Only players can use this command.",
-		S: Style{
+		S: component.Style{
 			Color: color.Red,
 		},
 	}
 
 	ErrOnlyPlayersCommand = errors.New("only players can use this command")
 
-	ComponentOnlyPlayersSubCommand = &Text{
+	ComponentOnlyPlayersSubCommand = &component.Text{
 		Content: "Only players can use this sub command.",
-		S: Style{
+		S: component.Style{
 			Color: color.Red,
 		},
 	}
