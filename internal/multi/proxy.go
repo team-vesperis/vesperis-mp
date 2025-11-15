@@ -1,7 +1,6 @@
 package multi
 
 import (
-	"errors"
 	"slices"
 	"sync"
 	"time"
@@ -87,8 +86,6 @@ func (mp *Proxy) Update(k key.ProxyKey) {
 		mp.l.Error("multiproxy update proxykey get field from database error", "error", err)
 	}
 }
-
-var ErrProxyIdNilWhileOnline = errors.New("proxyId is nil but player is online")
 
 func (mp *Proxy) GetId() uuid.UUID {
 	return mp.id

@@ -145,3 +145,22 @@ func (bi *banInfo) TempBan(reason string, expiration time.Time) error {
 
 	return bi.setExpiration(expiration, true)
 }
+
+func (bi *banInfo) UnBan() error {
+	err := bi.setBanned(false, true)
+	if err != nil {
+		return err
+	}
+
+	err = bi.setReason("", true)
+	if err != nil {
+		return err
+	}
+
+	err = bi.setPermanently(false, true)
+	if err != nil {
+		return err
+	}
+
+	return bi.setExpiration(time.Time{}, true)
+}

@@ -38,7 +38,13 @@ func (cm *CommandManager) executeBan() brigodier.Command {
 		}
 
 		if !t.IsOnline() {
-			c.SendMessage(TextTargetIsOffline)
+			err = t.GetBanInfo().Ban(r)
+			if err != nil {
+				c.SendMessage(util.TextInternalError("Could not ban.", err))
+				return err
+			}
+
+			c.SendMessage(util.TextAlternatingColors("Banned: ", t.GetUsername(), " Reason: ", r))
 			return nil
 		}
 
@@ -48,7 +54,7 @@ func (cm *CommandManager) executeBan() brigodier.Command {
 			return multi.ErrProxyNilWhileOnline
 		}
 
-		tr := cm.tm.BuildTask(tasks.NewBanTask(t.GetId(), mp.GetId(), r, true, time.Now()))
+		tr := cm.tm.BuildTask(tasks.NewBanTask(t.GetId(), mp.GetId(), r, true, time.Time{}))
 		if !tr.IsSuccessful() {
 			err := errors.New(tr.GetInfo())
 			c.SendMessage(util.TextInternalError("Could not ban.", err))

@@ -10,8 +10,8 @@ import (
 )
 
 type permissionInfo struct {
-	role string
-	rank string
+	role Role
+	rank Rank
 
 	mu sync.RWMutex
 
@@ -19,27 +19,30 @@ type permissionInfo struct {
 }
 
 func newPermissionInfo(mp *Player, data *data.PlayerData) *permissionInfo {
+	role, _ := GetRole(data.Permission.Role)
+	rank, _ := GetRank(data.Permission.Rank)
+
 	pi := &permissionInfo{
-		role: data.Permission.Role,
-		rank: data.Permission.Rank,
+		role: role,
+		rank: rank,
 		mp:   mp,
 	}
 
 	return pi
 }
 
-func (pi *permissionInfo) GetRole() string {
+func (pi *permissionInfo) GetRole() Role {
 	pi.mu.RLock()
 	defer pi.mu.RUnlock()
 
 	return pi.role
 }
 
-func (pi *permissionInfo) SetRole(role string) error {
+func (pi *permissionInfo) SetRole(role Role) error {
 	return pi.setRole(role, true)
 }
 
-func (pi *permissionInfo) setRole(role string, notify bool) error {
+func (pi *permissionInfo) setRole(role Role, notify bool) error {
 	if !IsValidRole(role) {
 		return ErrIncorrectRole
 	}
@@ -62,14 +65,14 @@ func (pi *permissionInfo) IsPrivileged() bool {
 	return pi.role == RoleAdmin || pi.role == RoleBuilder || pi.role == RoleModerator
 }
 
-func (pi *permissionInfo) GetRank() string {
+func (pi *permissionInfo) GetRank() Rank {
 	pi.mu.RLock()
 	defer pi.mu.RUnlock()
 
 	return pi.rank
 }
 
-func (pi *permissionInfo) SetRank(rank string) error {
+func (pi *permissionInfo) SetRank(rank Rank) error {
 	if !IsValidRank(rank) {
 		return ErrIncorrectRank
 	}
@@ -82,7 +85,7 @@ func (pi *permissionInfo) SetRank(rank string) error {
 	return pi.mp.save("permission.rank", rank)
 }
 
-func (pi *permissionInfo) setRank(rank string, notify bool) error {
+func (pi *permissionInfo) setRank(rank Rank, notify bool) error {
 	if !IsValidRank(rank) {
 		return ErrIncorrectRank
 	}
@@ -98,42 +101,72 @@ func (pi *permissionInfo) setRank(rank string, notify bool) error {
 	return nil
 }
 
+type Role string
+
+func (r Role) String() string {
+	return string(r)
+}
+
+func GetRole(s string) (Role, error) {
+	r := Role(s)
+	if !IsValidRole(r) {
+		return Role(""), ErrIncorrectRole
+	}
+
+	return r, nil
+}
+
 const (
-	RoleAdmin     = "admin"
-	RoleBuilder   = "builder"
-	RoleDefault   = "default"
-	RoleModerator = "moderator"
+	RoleAdmin     Role = "admin"
+	RoleBuilder   Role = "builder"
+	RoleDefault   Role = "default"
+	RoleModerator Role = "moderator"
 )
 
 var ErrIncorrectRole = errors.New("incorrect role")
 
+type Rank string
+
+func (r Rank) String() string {
+	return string(r)
+}
+
+func GetRank(s string) (Rank, error) {
+	r := Rank(s)
+	if !IsValidRank(r) {
+		return Rank(""), ErrIncorrectRank
+	}
+
+	return r, nil
+}
+
 const (
-	RankChampion = "champion"
-	RankDefault  = "default"
-	RankElite    = "elite"
-	RankLegend   = "legend"
+	RankChampion Rank = "champion"
+	RankDefault  Rank = "default"
+	RankElite    Rank = "elite"
+	RankLegend   Rank = "legend"
 )
 
 var ErrIncorrectRank = errors.New("incorrect rank")
 
-var validRoles = []string{
+var validRoles = []Role{
 	RoleAdmin,
 	RoleBuilder,
 	RoleDefault,
 	RoleModerator,
 }
 
-func IsValidRole(role string) bool {
-	return slices.Contains(validRoles, role)
+func IsValidRole(r Role) bool {
+	return slices.Contains(validRoles, r)
 }
 
-var validRanks = []string{
+var validRanks = []Rank{
 	RankChampion,
 	RankDefault,
 	RankElite,
 	RankLegend,
 }
 
-func IsValidRank(rank string) bool {
-	return slices.Contains(validRanks, rank)
+func IsValidRank(r Rank) bool {
+	return slices.Contains(validRanks, r)
 }

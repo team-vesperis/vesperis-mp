@@ -69,6 +69,10 @@ func (cm *CommandManager) registerCommands() {
 	cm.m.Register(cm.kickCommand("kick"))
 	cm.m.Register(cm.transferCommand("transfer"))
 	cm.m.Register(cm.banCommand("ban"))
+	cm.m.Register(cm.tempBanCommand("tempban"))
+	cm.m.Register(cm.unBanCommand("unban"))
+	cm.m.Register(cm.permissionCommand("permission"))
+	cm.m.Register(cm.permissionCommand("pm"))
 }
 
 var (
@@ -135,8 +139,8 @@ func (cm *CommandManager) SuggestAllMultiPlayers(hideOfflinePlayers, hideOwn boo
 
 		hide_vanished := false
 		own_username := ""
-		p, ok := c.Source.(proxy.Player)
-		if ok {
+		p := cm.getGatePlayerFromSource(c.Source)
+		if p != nil {
 			mp, err := cm.mm.GetMultiPlayer(p.ID())
 			if err != nil {
 				cm.l.Error("suggest all multiplayers get multiplayer error", "error", err)
@@ -162,6 +166,35 @@ func (cm *CommandManager) SuggestAllMultiPlayers(hideOfflinePlayers, hideOwn boo
 				continue
 			}
 
+			if strings.HasPrefix(strings.ToLower(name), r) {
+				b.Suggest(name)
+			}
+
+			id := mp.GetId().String()
+			if len(r) > 3 && strings.HasPrefix(strings.ToLower(id), r) {
+				b.Suggest(id)
+			}
+		}
+
+		return b.Build()
+	})
+}
+
+func (cm *CommandManager) SuggestAllBannedMultiPlayers() brigodier.SuggestionProvider {
+	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+		r := b.RemainingLowerCase
+
+		if len(r) < 1 {
+			b.Suggest("type a username or UUID...")
+			return b.Build()
+		}
+
+		for _, mp := range cm.mm.GetAllMultiPlayers() {
+			if !mp.GetBanInfo().IsBanned() {
+				continue
+			}
+
+			name := mp.GetUsername()
 			if strings.HasPrefix(strings.ToLower(name), r) {
 				b.Suggest(name)
 			}

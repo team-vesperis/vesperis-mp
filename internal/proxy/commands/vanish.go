@@ -4,16 +4,16 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/gate/pkg/command"
-	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
 func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
+		Executes(cm.executeVanishToggle()).
 		Requires(cm.requirePrivileged()).
 		Then(brigodier.Literal("get").
 			Executes(command.Command(func(c *command.Context) error {
-				p, ok := c.Source.(proxy.Player)
-				if !ok {
+				p := cm.getGatePlayerFromSource(c.Source)
+				if p == nil {
 					c.SendMessage(ComponentOnlyPlayersSubCommand)
 					return ErrOnlyPlayersSubCommand
 				}
@@ -58,16 +58,44 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 					return nil
 				})))).
 		Then(brigodier.Literal("set").
+			Executes(cm.executeVanishToggle()).
 			Then(brigodier.Literal("on").
 				Executes(cm.executeVanish(true))).
 			Then(brigodier.Literal("off").
 				Executes(cm.executeVanish(false))))
 }
 
-func (cm *CommandManager) executeVanish(vanish bool) brigodier.Command {
+func (cm *CommandManager) executeVanishToggle() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
-		p, ok := c.Source.(proxy.Player)
-		if !ok {
+		p := cm.getGatePlayerFromSource(c.Source)
+		if p == nil {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
+			return ErrOnlyPlayersSubCommand
+		}
+
+		mp, err := cm.mm.GetMultiPlayer(p.ID())
+		if err != nil {
+			c.SendMessage(util.TextInternalError("Could not toggle vanish.", err))
+			return err
+		}
+
+		v := !mp.IsVanished()
+
+		err = mp.SetVanished(v)
+		if err != nil {
+			c.SendMessage(util.TextInternalError("Could not toggle vanish.", err))
+			return err
+		}
+
+		cm.sendVanishMessage(v, c)
+		return nil
+	})
+}
+
+func (cm *CommandManager) executeVanish(v bool) brigodier.Command {
+	return command.Command(func(c *command.Context) error {
+		p := cm.getGatePlayerFromSource(c.Source)
+		if p == nil {
 			c.SendMessage(ComponentOnlyPlayersSubCommand)
 			return ErrOnlyPlayersSubCommand
 		}
@@ -78,7 +106,7 @@ func (cm *CommandManager) executeVanish(vanish bool) brigodier.Command {
 			return err
 		}
 
-		if vanish {
+		if v {
 			if mp.IsVanished() {
 				c.SendMessage(util.TextWarn("Vanish is already active"))
 				return nil
@@ -91,18 +119,24 @@ func (cm *CommandManager) executeVanish(vanish bool) brigodier.Command {
 			}
 		}
 
-		err = mp.SetVanished(vanish)
+		err = mp.SetVanished(v)
 		if err != nil {
 			c.SendMessage(util.TextInternalError("Could not set vanish.", err))
 			return err
 		}
 
-		if vanish {
-			c.SendMessage(util.TextAlternatingColors("Vanish is now active"))
-		} else {
-			c.SendMessage(util.TextAlternatingColors("Vanish is now not active"))
-		}
-
+		cm.sendVanishMessage(v, c)
 		return nil
 	})
+}
+
+func (cm *CommandManager) sendVanishMessage(v bool, c *command.Context) {
+	var m string
+	if v {
+		m = "on"
+	} else {
+		m = "off"
+	}
+
+	c.SendMessage(util.TextAlternatingColors("Set vanish ", m))
 }

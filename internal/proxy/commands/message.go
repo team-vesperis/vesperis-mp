@@ -10,8 +10,6 @@ import (
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
-
-	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
 func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuilder {
@@ -45,8 +43,8 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 					}
 
 					var originName string
-					p, ok := c.Source.(proxy.Player)
-					if ok {
+					p := cm.getGatePlayerFromSource(c.Source)
+					if p != nil {
 						mp, err := cm.mm.GetMultiPlayer(p.ID())
 						if err != nil {
 							c.SendMessage(util.TextInternalError("Could not send message.", err))

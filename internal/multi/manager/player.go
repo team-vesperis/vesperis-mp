@@ -77,8 +77,8 @@ func (mm *MultiManager) NewMultiPlayer(p proxy.Player) (*multi.Player, error) {
 		Username:  p.Username(),
 		Nickname:  p.Username(),
 		Permission: &data.PermissionData{
-			Role: multi.RoleDefault,
-			Rank: multi.RankDefault,
+			Role: multi.RoleDefault.String(),
+			Rank: multi.RankDefault.String(),
 		},
 		Ban: &data.BanData{
 			Banned:      false,

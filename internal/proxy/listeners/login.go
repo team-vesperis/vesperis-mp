@@ -49,28 +49,40 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 				},
 			})
 		} else {
-			e.Deny(&component.Text{
-				Content: "You are temporarily banned.",
-				S:       util.StyleColorRed,
-				Extra: []component.Component{
-					&component.Text{
-						Content: "\n\nReason: ",
-						S:       util.StyleColorRed,
+			// unban
+			if time.Now().After(mp.GetBanInfo().GetExpiration()) {
+				err := mp.GetBanInfo().UnBan()
+				if err != nil {
+					lm.l.Error("player login unban error", "playerId", id, "error", err)
+					e.Deny(loginDenyComponent)
+					return
+				}
+
+				e.Allow()
+			} else {
+				e.Deny(&component.Text{
+					Content: "You are temporarily banned.",
+					S:       util.StyleColorRed,
+					Extra: []component.Component{
+						&component.Text{
+							Content: "\n\nReason: ",
+							S:       util.StyleColorRed,
+						},
+						&component.Text{
+							Content: mp.GetBanInfo().GetReason(),
+							S:       util.StyleColorCyan,
+						},
+						&component.Text{
+							Content: "\nExpiration: ",
+							S:       util.StyleColorRed,
+						},
+						&component.Text{
+							Content: util.FormatTimeUntil(mp.GetBanInfo().GetExpiration()),
+							S:       util.StyleColorCyan,
+						},
 					},
-					&component.Text{
-						Content: mp.GetBanInfo().GetReason(),
-						S:       util.StyleColorCyan,
-					},
-					&component.Text{
-						Content: "\nExpiration: ",
-						S:       util.StyleColorRed,
-					},
-					&component.Text{
-						Content: util.FormatTimeUntil(mp.GetBanInfo().GetExpiration()),
-						S:       util.StyleColorCyan,
-					},
-				},
-			})
+				})
+			}
 		}
 	}
 }
@@ -80,6 +92,10 @@ func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 	mp, err := lm.mm.GetMultiPlayer(id)
 	if err != nil {
 		lm.l.Error("player disconnect get multiplayer error", "playerId", id, "error", err)
+		return
+	}
+
+	if !mp.IsOnline() {
 		return
 	}
 

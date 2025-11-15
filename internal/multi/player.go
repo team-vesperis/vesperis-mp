@@ -144,12 +144,12 @@ func (mp *Player) Update(k key.PlayerKey) {
 	case key.PlayerKey_Permission_Role:
 		var role string
 		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Role, &role)
-		mp.pi.setRole(role, false)
+		mp.pi.setRole(Role(role), false)
 
 	case key.PlayerKey_Permission_Rank:
 		var rank string
 		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Rank, &rank)
-		mp.pi.setRank(rank, false)
+		mp.pi.setRank(Rank(rank), false)
 
 	case key.PlayerKey_Ban_Banned:
 		var banned bool
