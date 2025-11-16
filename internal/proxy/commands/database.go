@@ -38,7 +38,6 @@ func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuild
 						}
 
 						c.SendMessage(util.TextAlternatingColors("Successfully set value in database."))
-
 						return nil
 					})))))
 }

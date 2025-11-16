@@ -22,6 +22,8 @@ func (cm *CommandManager) executeUnBan() brigodier.Command {
 				c.SendMessage(TextTargetNotFound)
 				return nil
 			}
+
+			c.SendMessage(util.TextInternalError("Could not unban.", err))
 			return err
 		}
 

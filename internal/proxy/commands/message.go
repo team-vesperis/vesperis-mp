@@ -52,11 +52,7 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 						}
 
 						if t == mp {
-							c.SendMessage(&component.Text{
-								Content: "You can't message yourself. You can add friends using /friends add <player_name>",
-								S:       util.StyleColorOrange,
-							})
-
+							c.SendMessage(util.TextWarn("You can't message yourself. You can add friends using /friends add <player_name>"))
 							return nil
 						}
 

@@ -14,6 +14,7 @@ import (
 func (cm *CommandManager) banCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
 		Requires(cm.requireAdminOrModerator()).
+		Executes(cm.executeIncorrectBanUsage()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
 			Executes(cm.executeBan()).
 			Suggests(cm.SuggestAllMultiPlayers(false, true)).
@@ -34,6 +35,8 @@ func (cm *CommandManager) executeBan() brigodier.Command {
 				c.SendMessage(TextTargetNotFound)
 				return nil
 			}
+
+			c.SendMessage(util.TextInternalError("Could not ban.", err))
 			return err
 		}
 
@@ -62,6 +65,13 @@ func (cm *CommandManager) executeBan() brigodier.Command {
 		}
 
 		c.SendMessage(util.TextAlternatingColors("Banned: ", t.GetUsername(), " Reason: ", r))
+		return nil
+	})
+}
+
+func (cm *CommandManager) executeIncorrectBanUsage() brigodier.Command {
+	return command.Command(func(context *command.Context) error {
+		context.SendMessage(util.TextWarn("Incorrect usage: /ban <target> <reason>"))
 		return nil
 	})
 }

@@ -8,19 +8,17 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task/tasks"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
-	"go.minekube.com/common/minecraft/color"
-	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
 )
 
 func (cm *CommandManager) tempBanCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
-		Executes(incorrectTempBanCommandUsage()).
+		Executes(cm.executeIncorrectTempBanUsage()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
-			Executes(incorrectTempBanCommandUsage()).
+			Executes(cm.executeIncorrectTempBanUsage()).
 			Suggests(cm.SuggestAllMultiPlayers(false, true)).
 			Then(brigodier.Argument("time_amount", brigodier.Int).
-				Executes(incorrectTempBanCommandUsage()).
+				Executes(cm.executeIncorrectTempBanUsage()).
 				Then(brigodier.Literal("seconds").
 					Executes(cm.executeTempBan(time.Second)).
 					Then(brigodier.Argument("reason", brigodier.StringPhrase).
@@ -53,6 +51,8 @@ func (cm *CommandManager) executeTempBan(time_type time.Duration) brigodier.Comm
 				c.SendMessage(TextTargetNotFound)
 				return nil
 			}
+
+			c.SendMessage(util.TextInternalError("Could not tempban.", err))
 			return err
 		}
 
@@ -89,14 +89,9 @@ func (cm *CommandManager) executeTempBan(time_type time.Duration) brigodier.Comm
 	})
 }
 
-func incorrectTempBanCommandUsage() brigodier.Command {
+func (cm *CommandManager) executeIncorrectTempBanUsage() brigodier.Command {
 	return command.Command(func(context *command.Context) error {
-		context.SendMessage(&component.Text{
-			Content: "Incorrect usage: /tempban <player> <time_amount> <time_type> <reason>",
-			S: component.Style{
-				Color: color.Red,
-			},
-		})
+		context.SendMessage(util.TextWarn("Incorrect usage: /tempban <target> <time_amount> <time_type> <reason>"))
 		return nil
 	})
 }

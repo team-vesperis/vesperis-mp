@@ -4,8 +4,6 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
-	"go.minekube.com/common/minecraft/color"
-	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
 )
 
@@ -22,10 +20,10 @@ func (cm *CommandManager) permissionCommand(name string) brigodier.LiteralNodeBu
 						Executes(cm.setRole(multi.RoleDefault))).
 					Then(brigodier.Literal(multi.RoleModerator.String()).
 						Executes(cm.setRole(multi.RoleModerator))).
-					Executes(executeIncorrectPermissionCommandSetUsage()).
+					Executes(cm.executeIncorrectPermissionCommandSetUsage()).
 					Suggests(cm.SuggestAllMultiPlayers(false, false))).
-				Executes(executeIncorrectPermissionCommandSetUsage())).
-			Executes(executeIncorrectPermissionCommandSetUsage()).
+				Executes(cm.executeIncorrectPermissionCommandSetUsage())).
+			Executes(cm.executeIncorrectPermissionCommandSetUsage()).
 			Then(brigodier.Literal("rank").
 				Then(brigodier.Argument("target", brigodier.SingleWord).
 					Then(brigodier.Literal(multi.RankChampion.String()).
@@ -36,9 +34,9 @@ func (cm *CommandManager) permissionCommand(name string) brigodier.LiteralNodeBu
 						Executes(cm.setRank(multi.RankElite))).
 					Then(brigodier.Literal(multi.RankLegend.String()).
 						Executes(cm.setRank(multi.RankLegend))).
-					Executes(executeIncorrectPermissionCommandSetUsage()).
+					Executes(cm.executeIncorrectPermissionCommandSetUsage()).
 					Suggests(cm.SuggestAllMultiPlayers(false, false))).
-				Executes(executeIncorrectPermissionCommandSetUsage())).
+				Executes(cm.executeIncorrectPermissionCommandSetUsage())).
 			Requires(cm.requireAdmin())).
 		Then(brigodier.Literal("get").
 			Then(brigodier.Literal("rank").
@@ -49,8 +47,8 @@ func (cm *CommandManager) permissionCommand(name string) brigodier.LiteralNodeBu
 				Then(brigodier.Argument("target", brigodier.SingleWord).
 					Executes(cm.getRole()).
 					Suggests(cm.SuggestAllMultiPlayers(false, false)))).
-			Executes(executeIncorrectPermissionCommandGetUsage())).
-		Executes(executeIncorrectPermissionCommandUsage()).
+			Executes(cm.executeIncorrectPermissionCommandGetUsage())).
+		Executes(cm.executeIncorrectPermissionCommandUsage()).
 		Requires(cm.requireAdminOrModerator())
 }
 
@@ -130,32 +128,23 @@ func (cm *CommandManager) getRank() brigodier.Command {
 	})
 }
 
-func executeIncorrectPermissionCommandUsage() brigodier.Command {
+func (cm *CommandManager) executeIncorrectPermissionCommandUsage() brigodier.Command {
 	return command.Command(func(context *command.Context) error {
-		context.SendMessage(&component.Text{
-			Content: "Incorrect usage:\n 1. /permission set role <player> <role>\n 2. /permission set rank <player> <rank>\n 3. /permission get role <player>\n 4. /permission get rank <player>",
-			S:       component.Style{Color: color.Red},
-		})
+		context.SendMessage(util.TextWarn("Incorrect usage:\n 1. /permission set role <player> <role>\n 2. /permission set rank <player> <rank>\n 3. /permission get role <player>\n 4. /permission get rank <player>"))
 		return nil
 	})
 }
 
-func executeIncorrectPermissionCommandSetUsage() brigodier.Command {
+func (cm *CommandManager) executeIncorrectPermissionCommandSetUsage() brigodier.Command {
 	return command.Command(func(context *command.Context) error {
-		context.SendMessage(&component.Text{
-			Content: "Incorrect usage: /permission set role/rank <target> <role/rank>",
-			S:       component.Style{Color: color.Red},
-		})
+		context.SendMessage(util.TextWarn("Incorrect usage: /permission set role/rank <target> <role/rank>"))
 		return nil
 	})
 }
 
-func executeIncorrectPermissionCommandGetUsage() brigodier.Command {
+func (cm *CommandManager) executeIncorrectPermissionCommandGetUsage() brigodier.Command {
 	return command.Command(func(context *command.Context) error {
-		context.SendMessage(&component.Text{
-			Content: "Incorrect usage: /permission get <target>",
-			S:       component.Style{Color: color.Red},
-		})
+		context.SendMessage(util.TextWarn("Incorrect usage: /permission get <target>"))
 		return nil
 	})
 }
