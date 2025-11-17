@@ -13,11 +13,11 @@ type hartBeatManager struct {
 	mm *MultiManager
 }
 
-const staleThreshold = 2 * time.Minute
+const maxLastHartBeat = 5 * time.Minute
 
 func (mm *MultiManager) InitHeartBeatManager() *hartBeatManager {
 	hbm := &hartBeatManager{
-		t:  time.NewTicker(10 * time.Second),
+		t:  time.NewTicker(3 * time.Minute),
 		p:  mm.ownerMP,
 		d:  make(chan bool),
 		mm: mm,
@@ -37,6 +37,7 @@ func (hbm *hartBeatManager) start() {
 		case t := <-hbm.t.C:
 			hbm.p.SetLastHeartBeat(&t)
 			go func() {
+				now := time.Now()
 				lockKey := "proxy_cleanup_leader"
 				got, err := hbm.mm.GetDatabase().AcquireLock(lockKey, 30*time.Second)
 				if err != nil {
@@ -47,8 +48,10 @@ func (hbm *hartBeatManager) start() {
 					return
 				}
 
-				defer hbm.mm.GetDatabase().ReleaseLock(lockKey)
 				hbm.checkOtherProxies()
+				d := time.Since(now)
+				time.Sleep((3 * time.Minute) - d)
+				hbm.mm.GetDatabase().ReleaseLock(lockKey)
 			}()
 		}
 	}
@@ -68,50 +71,42 @@ func (hbm *hartBeatManager) checkOtherProxies() {
 		}
 
 		lhb := mp.GetLastHeartBeat()
-		if lhb == nil {
-			err := hbm.mm.DeleteMultiProxy(mp.GetId())
-			if err != nil {
-				hbm.mm.l.Error("failed deleting stale proxy (no heartbeat)", "proxyId", mp.GetId(), "error", err)
-			}
-			continue
-		}
-
-		if now.Sub(*lhb) > staleThreshold {
+		if lhb == nil || now.Sub(*lhb) > maxLastHartBeat {
 			for _, b_id := range mp.GetBackendsIds() {
 				err := hbm.mm.DeleteMultiBackend(b_id)
 				if err != nil {
-					hbm.mm.l.Warn("deleting backend while deleting proxy error", "backendId", b_id, "error", err)
+					hbm.mm.l.Warn("hart beat manager delete multibackend error", "backendId", b_id, "error", err)
 				}
 			}
 
 			for _, p_id := range mp.GetPlayerIds() {
 				p, err := hbm.mm.GetMultiPlayer(p_id)
 				if err != nil {
-					hbm.mm.l.Warn("could not get player while cleaning crashed proxy", "playerId", p_id, "error", err)
+					hbm.mm.l.Warn("hart beat manager delete multiplayer error", "playerId", p_id, "error", err)
 					continue
 				}
 
 				err = p.SetProxy(nil)
 				if err != nil {
-					hbm.mm.l.Warn("could not clear player's proxy", "playerId", p_id, "error", err)
+					hbm.mm.l.Warn("hart beat manager set multiplayer's proxy error", "playerId", p_id, "error", err)
 				}
 
 				if p.IsOnline() {
 					err := p.SetOnline(false)
 					if err != nil {
-						hbm.mm.l.Warn("could not set player offline", "playerId", p_id, "error", err)
+						hbm.mm.l.Warn("hart beat manager set multiplayer's online error", "playerId", p_id, "error", err)
 					}
 				}
 
 				err = p.SetLastSeen(&now)
 				if err != nil {
-					hbm.mm.l.Warn("could not set player's last seen", "playerId", p_id, "error", err)
+					hbm.mm.l.Warn("hart beat manager set multiplayer's last seen", "playerId", p_id, "error", err)
 				}
 			}
 
 			err := hbm.mm.DeleteMultiProxy(mp.GetId())
 			if err != nil {
-				hbm.mm.l.Error("failed deleting stale proxy (timeout)", "proxyId", mp.GetId(), "error", err)
+				hbm.mm.l.Error("hart beat manager delete multiproxy error", "proxyId", mp.GetId(), "error", err)
 			}
 		}
 	}
