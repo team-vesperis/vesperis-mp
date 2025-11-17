@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
@@ -273,7 +274,7 @@ func (db *Database) SetPlayerDataField(playerId uuid.UUID, field key.PlayerKey, 
 	if err != nil {
 		db.l.Warn("redis player data set error", "playerId", playerId, "field", field, "error", err)
 	} else {
-		//err = db.r.HExpire(db.ctx, key, redisTTL, field.String()).Err()
+		err = db.r.HExpire(db.ctx, key, redisTTL, field.String()).Err()
 		if err != nil {
 			db.l.Warn("redis player data set expiration error", "playerId", playerId, "field", field, "error", err)
 		}
@@ -500,16 +501,14 @@ func (db *Database) DeleteProxyData(proxyId uuid.UUID) error {
 
 func (db *Database) DeleteBackendData(backendId uuid.UUID) error {
 	query := `DELETE FROM backend_data WHERE backendId = $1`
-	row, err := db.p.Exec(db.ctx, query, backendId)
+	_, err := db.p.Exec(db.ctx, query, backendId)
 	if err != nil {
+		if err != pgx.ErrNoRows {
+			return ErrDataNotFound
+		}
+
 		db.l.Error("postgres delete backend data error", "error", err)
 		return err
-	}
-
-	if row.RowsAffected() < 1 {
-		db.l.Warn("backend data not found to delete", "backendId", backendId)
-	} else if row.RowsAffected() > 1 {
-		db.l.Warn("multiple rows deleted after deleting backend data", "backendId", backendId)
 	}
 
 	return nil
@@ -553,6 +552,17 @@ func (db *Database) getAllIds(data_type string) ([]uuid.UUID, error) {
 	}
 
 	return ids, nil
+}
+
+// AcquireLock tries to acquire a simple Redis-based lock for the given key with TTL.
+// Returns true if lock was acquired, false otherwise.
+func (db *Database) AcquireLock(lockKey string, ttl time.Duration) (bool, error) {
+	return db.r.SetNX(db.ctx, lockKey, "1", ttl).Result()
+}
+
+// ReleaseLock releases a Redis-based lock.
+func (db *Database) ReleaseLock(lockKey string) error {
+	return db.r.Del(db.ctx, lockKey).Err()
 }
 
 func (db *Database) Publish(channel string, message any) error {

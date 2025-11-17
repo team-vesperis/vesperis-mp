@@ -114,23 +114,12 @@ func (mm *MultiManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 
 func (mm *MultiManager) DeleteMultiProxy(id uuid.UUID) error {
 	now := time.Now()
-	for key := range mm.proxyMap {
-		if key == id {
-			delete(mm.proxyMap, key)
-		}
-	}
 
-	_, err := mm.db.GetProxyData(id)
-	if err != nil {
-		if err == database.ErrDataNotFound {
-			return nil
-		}
+	mm.mu.Lock()
+	delete(mm.proxyMap, id)
+	mm.mu.Unlock()
 
-		mm.l.Error("could not get proxy data")
-		return err
-	}
-
-	err = mm.db.DeleteProxyData(id)
+	err := mm.db.DeleteProxyData(id)
 	if err != nil {
 		return err
 	}

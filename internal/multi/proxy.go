@@ -44,6 +44,7 @@ func NewProxy(id, managerId uuid.UUID, l *logger.Logger, db *database.Database, 
 	mp.maintenance = data.Maintenance
 	mp.backends = data.Backends
 	mp.players = data.Players
+	mp.lastHeartBeat = data.LastHeartBeat
 
 	return mp
 }

@@ -68,6 +68,11 @@ func main() {
 		defer os.Exit(0)
 	}()
 
+	go func() {
+		time.Sleep(30 * time.Second)
+		panic("")
+	}()
+
 	l.GetGateLogger().Info("starting internal gate proxy")
 	m.start()
 }

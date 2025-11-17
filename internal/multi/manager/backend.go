@@ -100,23 +100,11 @@ func (mm *MultiManager) NewMultiBackend(addr string, id uuid.UUID) (*multi.Backe
 
 func (mm *MultiManager) DeleteMultiBackend(id uuid.UUID) error {
 	now := time.Now()
-	for key := range mm.backendMap {
-		if key == id {
-			delete(mm.backendMap, id)
-		}
-	}
+	mm.mu.Lock()
+	delete(mm.backendMap, id)
+	mm.mu.Unlock()
 
-	_, err := mm.db.GetBackendData(id)
-	if err != nil {
-		if err == database.ErrDataNotFound {
-			return nil
-		}
-
-		mm.l.Error("get backend data error", "error", err)
-		return err
-	}
-
-	err = mm.db.DeleteBackendData(id)
+	err := mm.db.DeleteBackendData(id)
 	if err != nil {
 		return err
 	}

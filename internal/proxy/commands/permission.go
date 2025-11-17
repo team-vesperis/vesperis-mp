@@ -13,13 +13,13 @@ func (cm *CommandManager) permissionCommand(name string) brigodier.LiteralNodeBu
 			Then(brigodier.Literal("role").
 				Then(brigodier.Argument("target", brigodier.SingleWord).
 					Then(brigodier.Literal(multi.RoleAdmin.String()).
-						Executes(cm.setRole(multi.RoleAdmin))).
+						Executes(cm.executeSetRole(multi.RoleAdmin))).
 					Then(brigodier.Literal(multi.RoleBuilder.String()).
-						Executes(cm.setRole(multi.RoleBuilder))).
+						Executes(cm.executeSetRole(multi.RoleBuilder))).
 					Then(brigodier.Literal(multi.RoleDefault.String()).
-						Executes(cm.setRole(multi.RoleDefault))).
+						Executes(cm.executeSetRole(multi.RoleDefault))).
 					Then(brigodier.Literal(multi.RoleModerator.String()).
-						Executes(cm.setRole(multi.RoleModerator))).
+						Executes(cm.executeSetRole(multi.RoleModerator))).
 					Executes(cm.executeIncorrectPermissionCommandSetUsage()).
 					Suggests(cm.SuggestAllMultiPlayers(false, false))).
 				Executes(cm.executeIncorrectPermissionCommandSetUsage())).
@@ -27,13 +27,13 @@ func (cm *CommandManager) permissionCommand(name string) brigodier.LiteralNodeBu
 			Then(brigodier.Literal("rank").
 				Then(brigodier.Argument("target", brigodier.SingleWord).
 					Then(brigodier.Literal(multi.RankChampion.String()).
-						Executes(cm.setRank(multi.RankChampion))).
+						Executes(cm.executeSetRank(multi.RankChampion))).
 					Then(brigodier.Literal(multi.RankDefault.String()).
-						Executes(cm.setRank(multi.RankDefault))).
+						Executes(cm.executeSetRank(multi.RankDefault))).
 					Then(brigodier.Literal(multi.RankElite.String()).
-						Executes(cm.setRank(multi.RankElite))).
+						Executes(cm.executeSetRank(multi.RankElite))).
 					Then(brigodier.Literal(multi.RankLegend.String()).
-						Executes(cm.setRank(multi.RankLegend))).
+						Executes(cm.executeSetRank(multi.RankLegend))).
 					Executes(cm.executeIncorrectPermissionCommandSetUsage()).
 					Suggests(cm.SuggestAllMultiPlayers(false, false))).
 				Executes(cm.executeIncorrectPermissionCommandSetUsage())).
@@ -41,18 +41,18 @@ func (cm *CommandManager) permissionCommand(name string) brigodier.LiteralNodeBu
 		Then(brigodier.Literal("get").
 			Then(brigodier.Literal("rank").
 				Then(brigodier.Argument("target", brigodier.SingleWord).
-					Executes(cm.getRank()).
+					Executes(cm.executeGetRank()).
 					Suggests(cm.SuggestAllMultiPlayers(false, false)))).
 			Then(brigodier.Literal("role").
 				Then(brigodier.Argument("target", brigodier.SingleWord).
-					Executes(cm.getRole()).
+					Executes(cm.executeGetRole()).
 					Suggests(cm.SuggestAllMultiPlayers(false, false)))).
 			Executes(cm.executeIncorrectPermissionCommandGetUsage())).
 		Executes(cm.executeIncorrectPermissionCommandUsage()).
 		Requires(cm.requireAdminOrModerator())
 }
 
-func (cm *CommandManager) setRole(r multi.Role) brigodier.Command {
+func (cm *CommandManager) executeSetRole(r multi.Role) brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		t, err := cm.getMultiPlayerFromTarget(c.String("target"))
 		if err != nil {
@@ -71,7 +71,7 @@ func (cm *CommandManager) setRole(r multi.Role) brigodier.Command {
 	})
 }
 
-func (cm *CommandManager) setRank(r multi.Rank) brigodier.Command {
+func (cm *CommandManager) executeSetRank(r multi.Rank) brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		t, err := cm.getMultiPlayerFromTarget(c.String("target"))
 		if err != nil {
@@ -90,7 +90,7 @@ func (cm *CommandManager) setRank(r multi.Rank) brigodier.Command {
 	})
 }
 
-func (cm *CommandManager) getRole() brigodier.Command {
+func (cm *CommandManager) executeGetRole() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		t, err := cm.getMultiPlayerFromTarget(c.String("target"))
 		if err != nil {
@@ -98,18 +98,12 @@ func (cm *CommandManager) getRole() brigodier.Command {
 			return err
 		}
 
-		r := t.GetPermissionInfo().GetRole()
-		if err != nil {
-			c.SendMessage(util.TextInternalError("Could not get role.", err))
-			return err
-		}
-
-		c.SendMessage(util.TextAlternatingColors("", t.GetUsername(), "'s role is ", r.String()))
+		c.SendMessage(util.TextAlternatingColors("", t.GetUsername(), "'s role is ", t.GetPermissionInfo().GetRole().String()))
 		return nil
 	})
 }
 
-func (cm *CommandManager) getRank() brigodier.Command {
+func (cm *CommandManager) executeGetRank() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		t, err := cm.getMultiPlayerFromTarget(c.String("target"))
 		if err != nil {
@@ -117,13 +111,7 @@ func (cm *CommandManager) getRank() brigodier.Command {
 			return err
 		}
 
-		r := t.GetPermissionInfo().GetRank()
-		if err != nil {
-			c.SendMessage(util.TextInternalError("Could not get rank.", err))
-			return err
-		}
-
-		c.SendMessage(util.TextAlternatingColors("", t.GetUsername(), "'s rank is ", r.String()))
+		c.SendMessage(util.TextAlternatingColors("", t.GetUsername(), "'s rank is ", t.GetPermissionInfo().GetRank().String()))
 		return nil
 	})
 }
