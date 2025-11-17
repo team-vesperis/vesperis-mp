@@ -3,96 +3,76 @@ package main
 import (
 	"context"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/robinbraemer/event"
-	"github.com/team-vesperis/vesperis-mp/internal/ban"
-	"github.com/team-vesperis/vesperis-mp/internal/commands"
+	"github.com/fsnotify/fsnotify"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
 	"github.com/team-vesperis/vesperis-mp/internal/database"
-	"github.com/team-vesperis/vesperis-mp/internal/listeners"
-	log "github.com/team-vesperis/vesperis-mp/internal/logger"
-	"github.com/team-vesperis/vesperis-mp/internal/mp/datasync"
-	"github.com/team-vesperis/vesperis-mp/internal/mp/register"
-	"github.com/team-vesperis/vesperis-mp/internal/mp/task"
-	"github.com/team-vesperis/vesperis-mp/internal/playerdata"
-	"github.com/team-vesperis/vesperis-mp/internal/terminal"
-	"github.com/team-vesperis/vesperis-mp/internal/transfer"
-	"github.com/team-vesperis/vesperis-mp/internal/utils"
-
-	"go.minekube.com/gate/cmd/gate"
-	"go.minekube.com/gate/pkg/edition/java/proxy"
-	"go.minekube.com/gate/pkg/util/uuid"
-	"go.uber.org/zap"
-)
-
-var (
-	logger     *zap.SugaredLogger
-	proxy_name string
-	p          *proxy.Proxy
+	"github.com/team-vesperis/vesperis-mp/internal/logger"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
+	"go.minekube.com/common/minecraft/component"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
-	logger = log.InitializeLogger()
-	config.LoadConfig(logger)
-	proxy_name = config.GetProxyName()
+	ctx, canc := context.WithCancel(context.Background())
+	defer canc()
 
-	logger.Info("Starting " + proxy_name + "...")
-	err := database.InitializeDatabases(logger)
+	l, err := logger.Init()
 	if err != nil {
-		shutdown(false)
+		return
 	}
 
-	used := datasync.IsProxyAvailable(proxy_name)
-	if used {
-		logger.Warn("Proxy name is already used! Changing name to new one.")
-		proxy_name = "proxy_" + uuid.New().String()
-		config.SetProxyName(proxy_name)
+	cf, err := config.Init(l)
+	if err != nil {
+		l.Error("config initialization error", "error", err)
+		return
 	}
 
-	proxy.Plugins = append(proxy.Plugins, proxy.Plugin{
-		Name: "VesperisMP-" + proxy_name,
-		Init: func(ctx context.Context, proxy *proxy.Proxy) error {
-			p = proxy
-			logger.Info("Creating plugin...")
+	if cf.IsInDebug() {
+		l.SetLevel(zapcore.DebugLevel)
+		l.Debug("debug mode active")
+	}
 
-			event.Subscribe(p.Event(), 0, onShutdown)
+	db, err := database.Init(ctx, cf, l)
+	if err != nil {
+		l.Error("database initialization error", "error", err)
+		return
+	}
 
-			transfer.InitializeTransfer(p, logger, proxy_name)
-			commands.InitializeCommands(p, logger, proxy_name)
-			listeners.InitializeListeners(p, logger, proxy_name)
-			utils.InitializeUtils(p, logger)
-			register.InitializeRegister(p, logger, proxy_name)
-			ban.InitializeBanManager(logger)
-			datasync.InitializeDataSync(proxy, logger, proxy_name)
-			task.InitializeTask(proxy, logger, proxy_name)
-			playerdata.InitializePlayerData(logger)
+	m, err := Init(ctx, cf, l, db)
+	if err != nil {
+		l.Error("manager initialization error", "error", err)
+		return
+	}
 
-			go terminal.HandleTerminalInput(p, logger)
-
-			logger.Info("Successfully created plugin.")
-			return nil
-		},
+	cf.GetViper().OnConfigChange(func(in fsnotify.Event) {
+		m.l.Debug("config changed")
+		m.SetDebug(cf.IsInDebug())
 	})
 
-	gate.Execute()
-}
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		now := time.Now()
+		m.ownerGate.Shutdown(&component.Text{
+			Content: "This proxy has been manually shut using the terminal.",
+			S:       util.StyleColorRed,
+		})
 
-func shutdown(alreadyRunning bool) {
-	logger.Info("Stopping " + proxy_name + "...")
+		l.Info("stopped MultiProxy", "duration", time.Since(now))
+		l.Close()
+		defer os.Exit(0)
+	}()
 
-	if alreadyRunning {
-		ban.CloseBanManager()
-		datasync.CloseDataSync()
-		database.CloseDatabases()
-	}
+	go func() {
+		time.Sleep(30 * time.Second)
+		panic("")
+	}()
 
-	logger.Info("Successfully stopped " + proxy_name + ".")
-
-	if !alreadyRunning {
-		os.Exit(0)
-	}
-}
-
-func onShutdown(event *proxy.ShutdownEvent) {
-	shutdown(true)
+	l.GetGateLogger().Info("starting internal gate proxy")
+	m.start()
 }

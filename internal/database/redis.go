@@ -2,54 +2,29 @@ package database
 
 import (
 	"context"
-	"errors"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/team-vesperis/vesperis-mp/internal/config"
+	"github.com/team-vesperis/vesperis-mp/internal/logger"
 )
 
-var client *redis.Client
-
-func initializeRedis() error {
-	opt, urlError := redis.ParseURL(config.GetRedisUrl())
-	if urlError != nil {
-		logger.Error("Error parsing url in the Redis Database. - ", urlError)
-		return urlError
+func initRedis(ctx context.Context, l *logger.Logger, c *config.Config) (*redis.Client, error) {
+	now := time.Now()
+	opt, urlErr := redis.ParseURL(c.GetRedisUrl())
+	if urlErr != nil {
+		l.Error("redis parsing url error", "options", opt, "error", urlErr)
+		return nil, urlErr
 	}
 
-	client = redis.NewClient(opt)
+	r := redis.NewClient(opt)
 
-	setError := client.Set(context.Background(), "ping", "pong", 0).Err()
-	if setError != nil {
-		logger.Error("Error sending value to the Redis Database. - ", setError)
-		return setError
+	pingErr := r.Ping(ctx).Err()
+	if pingErr != nil {
+		l.Error("redis ping error", "error", pingErr)
+		return nil, pingErr
 	}
 
-	value, getError := client.Get(context.Background(), "ping").Result()
-	if getError != nil {
-		logger.Error("Error retrieving value from the Redis Database. - ", getError)
-		return getError
-	}
-
-	if value != "pong" {
-		err := errors.New("Incorrect value return with Redis Database.")
-		logger.Error(err)
-		return err
-	}
-
-	logger.Info("Successfully initialized the Redis Database.")
-	return nil
-}
-
-func GetRedisClient() *redis.Client {
-	if client == nil {
-		logger.Error("Redis client not found.")
-	}
-	return client
-}
-
-func closeRedis() {
-	if client != nil {
-		client.Close()
-	}
+	l.Debug("initialized redis", "duration", time.Since(now))
+	return r, nil
 }
