@@ -9,6 +9,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/gate/pkg/command"
+	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
 func (cm *CommandManager) tempBanCommand(name string) brigodier.LiteralNodeBuilder {
@@ -82,6 +83,11 @@ func (cm *CommandManager) executeTempBan(time_type time.Duration) brigodier.Comm
 			err := errors.New(tr.GetInfo())
 			c.SendMessage(util.TextInternalError("Could not tempban.", err))
 			return err
+		}
+
+		p, ok := c.Source.(proxy.Player)
+		if ok {
+			util.PlayThunderSound(p)
 		}
 
 		c.SendMessage(util.TextAlternatingColors("Temp banned: ", t.GetUsername(), "\nReason: ", r, "\nExpiration: ", e))

@@ -18,7 +18,6 @@ import (
 type TaskManager struct {
 	db           *database.Database
 	l            *logger.Logger
-	ownerMP      *multi.Proxy
 	ownerGate    *proxy.Proxy
 	multiManager *manager.MultiManager
 }
@@ -27,7 +26,6 @@ func InitTaskManager(db *database.Database, l *logger.Logger, mp *multi.Proxy, p
 	tm := &TaskManager{
 		db:           db,
 		l:            l,
-		ownerMP:      mp,
 		ownerGate:    proxy,
 		multiManager: mm,
 	}
@@ -54,10 +52,6 @@ func (tm *TaskManager) GetDatabase() *database.Database {
 
 func (tm *TaskManager) GetLogger() *logger.Logger {
 	return tm.l
-}
-
-func (tm *TaskManager) GetOwnerId() uuid.UUID {
-	return tm.ownerMP.GetId()
 }
 
 func (tm *TaskManager) GetOwnerGate() *proxy.Proxy {
@@ -91,7 +85,7 @@ func (tm *TaskManager) createTaskListener() func(msg *redis.Message) {
 			return
 		}
 
-		if tm.GetOwnerId() == t.GetTargetProxyId() {
+		if tm.multiManager.GetOwnerMultiProxy().GetId() == t.GetTargetProxyId() {
 			tr := t.PerformTask(tm)
 			m := strconv.FormatBool(tr.IsSuccessful()) + "_" + tr.GetInfo()
 
@@ -113,7 +107,7 @@ func (tm *TaskManager) createTaskListener() func(msg *redis.Message) {
 // Use .IsSuccessful() to check if everything went accordingly.
 // Use .GetInfo() to get information, like error messages.
 func (tm *TaskManager) BuildTask(t Task) *TaskResponse {
-	if t.GetTargetProxyId() == tm.GetOwnerId() {
+	if t.GetTargetProxyId() == tm.GetMultiManager().GetOwnerMultiProxy().GetId() {
 		return t.PerformTask(tm)
 	}
 

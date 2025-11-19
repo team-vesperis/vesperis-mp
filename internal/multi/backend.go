@@ -21,7 +21,7 @@ type Backend struct {
 	maintenance bool
 	players     []uuid.UUID
 
-	mu        *sync.RWMutex
+	mu        sync.RWMutex
 	managerId uuid.UUID
 
 	l  *logger.Logger
@@ -37,6 +37,7 @@ func NewBackend(id, managerId uuid.UUID, ownerMP *Proxy, l *logger.Logger, db *d
 		l:         l,
 		db:        db,
 		cf:        cf,
+		mu:        sync.RWMutex{},
 	}
 
 	mb.address = data.Address
@@ -117,7 +118,8 @@ func (mb *Backend) setInMaintenance(maintenance, notify bool) error {
 
 func (mb *Backend) GetPlayerIds() []uuid.UUID {
 	mb.mu.RLock()
-	c := append([]uuid.UUID{}, mb.players...)
+	c := make([]uuid.UUID, len(mb.players))
+	copy(c, mb.players)
 	mb.mu.RUnlock()
 
 	return c

@@ -116,7 +116,7 @@ func (lm *ListenerManager) onDisconnect(e *proxy.DisconnectEvent) {
 		return
 	}
 
-	err = lm.ownerMultiProxy.RemovePlayerId(id)
+	err = lm.mm.GetOwnerMultiProxy().RemovePlayerId(id)
 	if err != nil {
 		lm.l.Error("player disconnect remove playerId from proxy error", "playerId", id, "error", err)
 		return

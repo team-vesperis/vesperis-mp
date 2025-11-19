@@ -57,6 +57,7 @@ func NewPlayer(id, mId uuid.UUID, l *logger.Logger, db *database.Database, data 
 		managerId: mId,
 		l:         l,
 		db:        db,
+		mu:        sync.RWMutex{},
 	}
 
 	mp.pi = newPermissionInfo(mp, data)

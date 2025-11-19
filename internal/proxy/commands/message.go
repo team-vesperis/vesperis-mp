@@ -10,6 +10,7 @@ import (
 	"go.minekube.com/common/minecraft/color"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/command"
+	"go.minekube.com/gate/pkg/edition/java/sound"
 )
 
 func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuilder {
@@ -106,6 +107,15 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 
 func (cm *CommandManager) executeIncorrectMessage() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
+		p, ok := c.Source.(sound.Player)
+		if ok {
+			snd := sound.NewSound("entity.villager.no", sound.SourcePlayer).WithVolume(0.5)
+			err := sound.Play(p, snd, p)
+			if err != nil {
+				cm.l.Error("error playing sound", "error", err)
+			}
+		}
+
 		c.SendMessage(util.TextWarn("Incorrect usage: /message <target> <message>"))
 		return nil
 	})

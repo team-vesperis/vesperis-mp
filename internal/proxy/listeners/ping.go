@@ -49,7 +49,7 @@ func (lm *ListenerManager) onPing(event *proxy.PingEvent) {
 					ID:   uuid.New(),
 				},
 				{
-					Name: "§aVesperis-Proxy-" + lm.ownerMultiProxy.GetId().String(),
+					Name: "§aVesperis-Proxy-" + lm.mm.GetOwnerMultiProxy().GetId().String(),
 					ID:   uuid.New(),
 				},
 			},

@@ -15,9 +15,11 @@ import (
 func (mm *MultiManager) createBackendUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
 		m := msg.Payload
-		mm.l.Debug("received backend update request", "message", m)
-
 		s := strings.Split(m, "_")
+		if len(s) != 3 {
+			mm.l.Warn("multibackend update channel received message with incorrect length", "message", m)
+			return
+		}
 
 		originProxy := s[0]
 		// from own proxy, no update needed
@@ -39,13 +41,15 @@ func (mm *MultiManager) createBackendUpdateListener() func(msg *redis.Message) {
 			return
 		}
 
+		mm.l.Debug("received backend update request", "originProxyId", originProxy, "backendId", id, "key", k)
+
 		// already created
 		if k == "new" {
 			return
 		}
 
 		if k == "delete" {
-			err := mm.DeleteMultiBackend(id)
+			err := mm.deleteMultiBackend(id, false)
 			if err != nil {
 				mm.l.Error("multibackend update channel delete multibackend error", "backendId", id, "error", err)
 			}
@@ -99,6 +103,10 @@ func (mm *MultiManager) NewMultiBackend(addr string, id uuid.UUID) (*multi.Backe
 }
 
 func (mm *MultiManager) DeleteMultiBackend(id uuid.UUID) error {
+	return mm.deleteMultiBackend(id, true)
+}
+
+func (mm *MultiManager) deleteMultiBackend(id uuid.UUID, first bool) error {
 	now := time.Now()
 
 	mb, err := mm.GetMultiBackend(id)
@@ -110,20 +118,22 @@ func (mm *MultiManager) DeleteMultiBackend(id uuid.UUID) error {
 	delete(mm.backendMap, id)
 	mm.mu.Unlock()
 
-	err = mm.db.DeleteBackendData(id)
-	if err != nil {
-		return err
-	}
+	if first {
+		err = mb.GetMultiProxy().RemoveBackendId(id)
+		if err != nil {
+			return err
+		}
 
-	err = mb.GetMultiProxy().RemoveBackendId(id)
-	if err != nil {
-		return err
-	}
+		err = mm.db.DeleteBackendData(id)
+		if err != nil {
+			return err
+		}
 
-	m := mm.ownerMP.GetId().String() + "_" + id.String() + "_delete"
-	err = mm.db.Publish(multi.UpdateMultiBackendChannel, m)
-	if err != nil {
-		return err
+		m := mm.ownerMP.GetId().String() + "_" + id.String() + "_delete"
+		err = mm.db.Publish(multi.UpdateMultiBackendChannel, m)
+		if err != nil {
+			return err
+		}
 	}
 
 	mm.l.Info("deleted multibackend", "backendId", id, "duration", time.Since(now))

@@ -9,6 +9,7 @@ import (
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/brigodier"
 	"go.minekube.com/gate/pkg/command"
+	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
 func (cm *CommandManager) banCommand(name string) brigodier.LiteralNodeBuilder {
@@ -62,6 +63,11 @@ func (cm *CommandManager) executeBan() brigodier.Command {
 			err := errors.New(tr.GetInfo())
 			c.SendMessage(util.TextInternalError("Could not ban.", err))
 			return err
+		}
+
+		p, ok := c.Source.(proxy.Player)
+		if ok {
+			util.PlayThunderSound(p)
 		}
 
 		c.SendMessage(util.TextAlternatingColors("Banned: ", t.GetUsername(), " Reason: ", r))

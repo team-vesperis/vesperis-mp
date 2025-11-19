@@ -90,7 +90,7 @@ func Init(ctx context.Context, cf *config.Config, l *logger.Logger, db *database
 		return m, err
 	}
 
-	m.listener, err = listeners.Init(m.ownerGate.Event(), m.l, m.db, m.multi, m.multi.GetOwnerMultiProxy(), m.ownerGate, m.task)
+	m.listener, err = listeners.Init(m.ownerGate.Event(), m.l, m.db, m.multi, m.ownerGate, m.task)
 	if err != nil {
 		return m, err
 	}

@@ -16,14 +16,14 @@ func (lm *ListenerManager) onPreShutdown(e *proxy.PreShutdownEvent) {
 	for _, p := range lm.ownerGate.Players() {
 		proxy := lm.mm.GetProxyWithLowestPlayerCount(false)
 		if proxy == nil {
-			e.SetReason(util.TextError("The proxy you were on has closed and there was no other proxy to connect to."))
+			p.Disconnect(util.TextError("The proxy you were on has closed and there was no other proxy to connect to."))
 			continue
 		}
 
-		tr := lm.tm.BuildTask(tasks.NewTransferTask(p.ID(), lm.tm.GetOwnerId(), proxy.GetId(), uuid.Nil))
+		tr := lm.tm.BuildTask(tasks.NewTransferTask(p.ID(), lm.mm.GetOwnerMultiProxy().GetId(), proxy.GetId(), uuid.Nil))
 		if !tr.IsSuccessful() {
 			lm.l.Error("transfer not successful", "error", tr.GetInfo())
-			e.SetReason(util.TextError("The proxy you were on has closed and there was no other proxy to connect to."))
+			p.Disconnect(util.TextError("The proxy you were on has closed and there was no other proxy to connect to."))
 			continue
 		}
 
@@ -89,6 +89,6 @@ func (lm *ListenerManager) chooseRandomServer(p proxy.Player, e *proxy.PlayerCho
 }
 
 func (lm *ListenerManager) sendNoAvailableServers(player proxy.Player) {
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	player.Disconnect(util.TextError("No available server. Please try again."))
 }

@@ -38,6 +38,7 @@ func NewProxy(id, managerId uuid.UUID, l *logger.Logger, db *database.Database, 
 		l:         l,
 		db:        db,
 		cf:        cf,
+		mu:        sync.RWMutex{},
 	}
 
 	mp.address = data.Address

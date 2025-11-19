@@ -18,9 +18,11 @@ import (
 func (mm *MultiManager) createProxyUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
 		m := msg.Payload
-		mm.l.Debug("received proxy update request", "message", m)
-
 		s := strings.Split(m, "_")
+		if len(s) != 3 {
+			mm.l.Warn("multiproxy update channel received message with incorrect length", "message", m)
+			return
+		}
 
 		originProxy := s[0]
 		// from own proxy, no update needed
@@ -42,13 +44,15 @@ func (mm *MultiManager) createProxyUpdateListener() func(msg *redis.Message) {
 			return
 		}
 
+		mm.l.Debug("received proxy update request", "originProxyId", originProxy, "key", k)
+
 		// already created
 		if k == "new" {
 			return
 		}
 
 		if k == "delete" {
-			err := mm.DeleteMultiProxy(id)
+			err := mm.deleteMultiProxy(id, false)
 			if err != nil {
 				mm.l.Error("multiproxy update channel delete multiproxy error", "proxyId", id, "error", err)
 			}
@@ -113,21 +117,27 @@ func (mm *MultiManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 }
 
 func (mm *MultiManager) DeleteMultiProxy(id uuid.UUID) error {
+	return mm.deleteMultiProxy(id, true)
+}
+
+func (mm *MultiManager) deleteMultiProxy(id uuid.UUID, first bool) error {
 	now := time.Now()
 
 	mm.mu.Lock()
 	delete(mm.proxyMap, id)
 	mm.mu.Unlock()
 
-	err := mm.db.DeleteProxyData(id)
-	if err != nil {
-		return err
-	}
+	if first {
+		err := mm.db.DeleteProxyData(id)
+		if err != nil {
+			return err
+		}
 
-	m := mm.ownerMP.GetId().String() + "_" + id.String() + "_delete"
-	err = mm.db.Publish(multi.UpdateMultiProxyChannel, m)
-	if err != nil {
-		return err
+		m := mm.ownerMP.GetId().String() + "_" + id.String() + "_delete"
+		err = mm.db.Publish(multi.UpdateMultiProxyChannel, m)
+		if err != nil {
+			return err
+		}
 	}
 
 	mm.l.Info("deleted multiproxy", "proxyId", id, "duration", time.Since(now))

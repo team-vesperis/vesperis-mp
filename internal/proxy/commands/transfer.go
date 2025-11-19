@@ -97,6 +97,7 @@ func (cm *CommandManager) executeTransfer() brigodier.Command {
 		if !tr.IsSuccessful() {
 			if tr.GetInfo() == database.ErrDataNotFound.Error() {
 				c.SendMessage(util.TextWarn("Proxy not found."))
+				return nil
 			}
 			err := errors.New(tr.GetInfo())
 			c.SendMessage(util.TextInternalError("Could not transfer.", err))
