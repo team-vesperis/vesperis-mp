@@ -149,12 +149,18 @@ func (mm *MultiManager) CreateMultiPlayerFromDatabase(id uuid.UUID) (*multi.Play
 	return mp, nil
 }
 
-func (mm *MultiManager) GetAllMultiPlayers() []*multi.Player {
+func (mm *MultiManager) GetAllMultiPlayers(includeVanished bool) []*multi.Player {
 	var l []*multi.Player
 
 	mm.mu.RLock()
 	for _, mp := range mm.playerMap {
-		l = append(l, mp)
+		if !includeVanished {
+			if !mp.IsVanished() {
+				l = append(l, mp)
+			}
+		} else {
+			l = append(l, mp)
+		}
 	}
 	mm.mu.RUnlock()
 
@@ -181,12 +187,10 @@ func (mm *MultiManager) GetAllMultiPlayersFromDatabase() ([]*multi.Player, error
 	return l, nil
 }
 
-func (mm *MultiManager) GetAllOnlinePlayers() []*multi.Player {
+func (mm *MultiManager) GetAllOnlinePlayers(includeVanished bool) []*multi.Player {
 	var l []*multi.Player
 
-	all := mm.GetAllMultiPlayers()
-
-	for _, mp := range all {
+	for _, mp := range mm.GetAllMultiPlayers(includeVanished) {
 		if mp.IsOnline() {
 			l = append(l, mp)
 		}

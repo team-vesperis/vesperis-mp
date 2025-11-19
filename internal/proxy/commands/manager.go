@@ -88,7 +88,7 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string) (*multi.Player, err
 	id, err := uuid.Parse(t)
 	if err != nil {
 		// try to get the id from a player name
-		l := cm.mm.GetAllMultiPlayers()
+		l := cm.mm.GetAllMultiPlayers(false)
 
 		id = uuid.Nil
 		for _, mp := range l {
@@ -129,14 +129,6 @@ func (cm *CommandManager) SuggestAllMultiPlayers(hideOfflinePlayers, hideOwn boo
 			return b.Build()
 		}
 
-		// use list to get all names and ids
-		var l []*multi.Player
-		if hideOfflinePlayers {
-			l = cm.mm.GetAllOnlinePlayers()
-		} else {
-			l = cm.mm.GetAllMultiPlayers()
-		}
-
 		hide_vanished := false
 		own_username := ""
 		p := cm.getGatePlayerFromSource(c.Source)
@@ -156,11 +148,15 @@ func (cm *CommandManager) SuggestAllMultiPlayers(hideOfflinePlayers, hideOwn boo
 			}
 		}
 
-		for _, mp := range l {
-			if hide_vanished && mp.IsVanished() {
-				continue
-			}
+		// use list to get all names and ids
+		var l []*multi.Player
+		if hideOfflinePlayers {
+			l = cm.mm.GetAllOnlinePlayers(hide_vanished)
+		} else {
+			l = cm.mm.GetAllMultiPlayers(hide_vanished)
+		}
 
+		for _, mp := range l {
 			name := mp.GetUsername()
 			if name == own_username {
 				continue
@@ -171,7 +167,7 @@ func (cm *CommandManager) SuggestAllMultiPlayers(hideOfflinePlayers, hideOwn boo
 			}
 
 			id := mp.GetId().String()
-			if len(r) > 3 && strings.HasPrefix(strings.ToLower(id), r) {
+			if len(r) > 2 && strings.HasPrefix(strings.ToLower(id), r) {
 				b.Suggest(id)
 			}
 		}
@@ -189,7 +185,7 @@ func (cm *CommandManager) SuggestAllBannedMultiPlayers() brigodier.SuggestionPro
 			return b.Build()
 		}
 
-		for _, mp := range cm.mm.GetAllMultiPlayers() {
+		for _, mp := range cm.mm.GetAllMultiPlayers(false) {
 			if !mp.GetBanInfo().IsBanned() {
 				continue
 			}
@@ -200,7 +196,7 @@ func (cm *CommandManager) SuggestAllBannedMultiPlayers() brigodier.SuggestionPro
 			}
 
 			id := mp.GetId().String()
-			if len(r) > 3 && strings.HasPrefix(strings.ToLower(id), r) {
+			if len(r) > 2 && strings.HasPrefix(strings.ToLower(id), r) {
 				b.Suggest(id)
 			}
 		}

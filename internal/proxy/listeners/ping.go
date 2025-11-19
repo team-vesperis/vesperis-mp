@@ -27,8 +27,8 @@ func (lm *ListenerManager) initFavicon() error {
 	return nil
 }
 
-func (lm *ListenerManager) onPing(event *proxy.PingEvent) {
-	playerCount := len(lm.mm.GetAllOnlinePlayers())
+func (lm *ListenerManager) onPing(e *proxy.PingEvent) {
+	playerCount := len(lm.mm.GetAllOnlinePlayers(false))
 
 	ping := &ping.ServerPing{
 		Description: &component.Text{
@@ -37,7 +37,7 @@ func (lm *ListenerManager) onPing(event *proxy.PingEvent) {
 
 		Version: ping.Version{
 			Name:     "Vesperis",
-			Protocol: event.Connection().Protocol(),
+			Protocol: e.Connection().Protocol(),
 		},
 
 		Players: &ping.Players{
@@ -58,5 +58,5 @@ func (lm *ListenerManager) onPing(event *proxy.PingEvent) {
 		Favicon: fav,
 	}
 
-	event.SetPing(ping)
+	e.SetPing(ping)
 }
