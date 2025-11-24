@@ -2,6 +2,13 @@ package util
 
 import c "go.minekube.com/common/minecraft/component"
 
+func TextSuccessful(message string) *c.Text {
+	return &c.Text{
+		Content: message,
+		S:       StyleColorLightGreen,
+	}
+}
+
 func TextInternalError(message string, err error) *c.Text {
 	return &c.Text{
 		Content: message,
@@ -26,9 +33,8 @@ func TextWarn(message string) *c.Text {
 	}
 }
 
-func TextAlternatingColors(values ...string) *c.Text {
+func TextAlternatingColors(colors []c.Style, values ...string) *c.Text {
 	components := make([]c.Component, 0, len(values))
-	colors := []c.Style{StyleColorLightGreen, StyleColorCyan}
 	for i, v := range values {
 		components = append(components, &c.Text{
 			Content: v,

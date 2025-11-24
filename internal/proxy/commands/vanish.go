@@ -31,11 +31,11 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 					v = "not active"
 				}
 
-				c.SendMessage(util.TextAlternatingColors("Vanish is: ", v))
+				c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Vanish is: ", v))
 				return nil
 			})).
 			Then(brigodier.Argument("target", brigodier.SingleWord).
-				Suggests(cm.SuggestAllMultiPlayers(false, false)).
+				Suggests(cm.suggestAllMultiPlayers(false, false)).
 				Executes(command.Command(func(c *command.Context) error {
 					t := c.String("target")
 					mp, err := cm.getMultiPlayerFromTarget(t)
@@ -54,7 +54,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 						v = "not vanished"
 					}
 
-					c.SendMessage(util.TextAlternatingColors(mp.GetUsername()+" is ", v))
+					c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorCyan, util.ColorLightGreen), mp.GetUsername()+" is ", v))
 					return nil
 				})))).
 		Then(brigodier.Literal("set").
@@ -138,5 +138,5 @@ func (cm *CommandManager) sendVanishMessage(v bool, c *command.Context) {
 		m = "off"
 	}
 
-	c.SendMessage(util.TextAlternatingColors("Set vanish ", m))
+	c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Set vanish ", m))
 }

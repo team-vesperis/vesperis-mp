@@ -18,7 +18,7 @@ func (cm *CommandManager) banCommand(name string) brigodier.LiteralNodeBuilder {
 		Executes(cm.executeIncorrectBanUsage()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
 			Executes(cm.executeBan()).
-			Suggests(cm.SuggestAllMultiPlayers(false, true)).
+			Suggests(cm.suggestAllMultiPlayers(false, true)).
 			Then(brigodier.Argument("reason", brigodier.StringPhrase).
 				Executes(cm.executeBan())))
 }
@@ -48,7 +48,7 @@ func (cm *CommandManager) executeBan() brigodier.Command {
 				return err
 			}
 
-			c.SendMessage(util.TextAlternatingColors("Banned: ", t.GetUsername(), " Reason: ", r))
+			c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Banned: ", t.GetUsername(), " Reason: ", r))
 			return nil
 		}
 
@@ -70,7 +70,7 @@ func (cm *CommandManager) executeBan() brigodier.Command {
 			util.PlayThunderSound(p)
 		}
 
-		c.SendMessage(util.TextAlternatingColors("Banned: ", t.GetUsername(), " Reason: ", r))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Banned: ", t.GetUsername(), " Reason: ", r))
 		return nil
 	})
 }

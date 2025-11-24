@@ -72,6 +72,7 @@ func (hbm *hartBeatManager) checkOtherProxies() {
 
 		lhb := mp.GetLastHeartBeat()
 		if lhb == nil || now.Sub(*lhb) > maxLastHartBeat {
+			hbm.mm.l.Info("deleting crashed multiproxy", "proxyId", mp.GetId(), "backendIds", mp.GetBackendsIds(), "playerIds", mp.GetPlayerIds())
 			for _, b_id := range mp.GetBackendsIds() {
 				err := hbm.mm.DeleteMultiBackend(b_id)
 				if err != nil {

@@ -12,16 +12,16 @@ import (
 
 func (cm *CommandManager) kickCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
-		Executes(cm.executeIncorrectKick()).
+		Executes(cm.executeIncorrectKickUsage()).
 		Requires(cm.requireAdminOrModerator()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
 			Executes(cm.executeKick()).
-			Suggests(cm.SuggestAllMultiPlayers(true, true)).
+			Suggests(cm.suggestAllMultiPlayers(true, true)).
 			Then(brigodier.Argument("reason", brigodier.StringPhrase).
 				Executes(cm.executeKick())))
 }
 
-func (cm *CommandManager) executeIncorrectKick() brigodier.Command {
+func (cm *CommandManager) executeIncorrectKickUsage() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		c.SendMessage(util.TextWarn("Incorrect usage: /kick <target> <reason>"))
 		return nil
@@ -62,7 +62,7 @@ func (cm *CommandManager) executeKick() brigodier.Command {
 			return err
 		}
 
-		c.SendMessage(util.TextAlternatingColors("Kicked: ", t.GetUsername(), " Reason: ", r))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorOrange, util.ColorCyan), "Kicked: ", t.GetUsername(), " Reason: ", r))
 		return nil
 
 	})

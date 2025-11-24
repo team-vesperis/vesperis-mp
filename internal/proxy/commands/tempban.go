@@ -17,7 +17,7 @@ func (cm *CommandManager) tempBanCommand(name string) brigodier.LiteralNodeBuild
 		Executes(cm.executeIncorrectTempBanUsage()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
 			Executes(cm.executeIncorrectTempBanUsage()).
-			Suggests(cm.SuggestAllMultiPlayers(false, true)).
+			Suggests(cm.suggestAllMultiPlayers(false, true)).
 			Then(brigodier.Argument("time_amount", brigodier.Int).
 				Executes(cm.executeIncorrectTempBanUsage()).
 				Then(brigodier.Literal("seconds").
@@ -68,7 +68,7 @@ func (cm *CommandManager) executeTempBan(time_type time.Duration) brigodier.Comm
 				return err
 			}
 
-			c.SendMessage(util.TextAlternatingColors("Temp banned: ", t.GetUsername(), "\nReason: ", r, "\nExpiration: ", e))
+			c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorOrange, util.ColorCyan), "Temp banned: ", t.GetUsername(), "\nReason: ", r, "\nExpiration: ", e))
 			return nil
 		}
 
@@ -90,7 +90,7 @@ func (cm *CommandManager) executeTempBan(time_type time.Duration) brigodier.Comm
 			util.PlayThunderSound(p)
 		}
 
-		c.SendMessage(util.TextAlternatingColors("Temp banned: ", t.GetUsername(), "\nReason: ", r, "\nExpiration: ", e))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorOrange, util.ColorCyan), "Temp banned: ", t.GetUsername(), "\nReason: ", r, "\nExpiration: ", e))
 		return nil
 	})
 }

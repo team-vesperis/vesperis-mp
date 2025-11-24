@@ -3,7 +3,6 @@ package commands
 import (
 	"errors"
 
-	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task/tasks"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
@@ -14,20 +13,20 @@ import (
 
 func (cm *CommandManager) transferCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
-		Executes(cm.executeIncorrectTransfer()).
+		Executes(cm.executeIncorrectTransferUsage()).
 		Requires(cm.requireAdmin()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
-			Executes(cm.executeIncorrectTransfer()).
-			Suggests(cm.SuggestAllMultiPlayers(true, false)).
+			Executes(cm.executeIncorrectTransferUsage()).
+			Suggests(cm.suggestAllMultiPlayers(true, false)).
 			Then(brigodier.Argument("proxyId", brigodier.SingleWord).
-				Suggests(cm.SuggestAllMultiProxies(false)).
+				Suggests(cm.suggestAllMultiProxies(false)).
 				Executes(cm.executeTransfer()).
 				Then(brigodier.Argument("backendId", brigodier.SingleWord).
-					Suggests(cm.SuggestAllMultiBackendsUnderProxy(true)).
+					Suggests(cm.suggestAllMultiBackendsUnderProxy(true)).
 					Executes(cm.executeTransfer()))))
 }
 
-func (cm *CommandManager) executeIncorrectTransfer() brigodier.Command {
+func (cm *CommandManager) executeIncorrectTransferUsage() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		c.SendMessage(util.TextWarn("Incorrect usage: /transfer <target> <proxyId> <backendId>"))
 		return nil
@@ -95,10 +94,16 @@ func (cm *CommandManager) executeTransfer() brigodier.Command {
 		tr := cm.tm.BuildTask(tasks.NewTransferTask(t.GetId(), mp.GetId(), proxyId, backendId))
 
 		if !tr.IsSuccessful() {
-			if tr.GetInfo() == database.ErrDataNotFound.Error() {
+			if tr.GetInfo() == tasks.ErrStringProxyNotFound {
 				c.SendMessage(util.TextWarn("Proxy not found."))
 				return nil
 			}
+
+			if tr.GetInfo() == tasks.ErrStringBackendNotFound {
+				c.SendMessage(util.TextWarn("Backend not found."))
+				return nil
+			}
+
 			err := errors.New(tr.GetInfo())
 			c.SendMessage(util.TextInternalError("Could not transfer.", err))
 			return err

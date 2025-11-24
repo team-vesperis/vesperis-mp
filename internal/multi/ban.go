@@ -16,7 +16,6 @@ type banInfo struct {
 	expiration  time.Time
 
 	mu sync.RWMutex
-
 	mp *Player
 }
 
@@ -26,7 +25,9 @@ func newBanInfo(mp *Player, data *data.PlayerData) *banInfo {
 		reason:      data.Ban.Reason,
 		permanently: data.Ban.Permanently,
 		expiration:  data.Ban.Expiration,
-		mp:          mp,
+
+		mp: mp,
+		mu: sync.RWMutex{},
 	}
 
 	return bi

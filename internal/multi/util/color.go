@@ -45,3 +45,12 @@ var StyleMysterious = c.Style{
 	Color:  ColorGray,
 	Italic: c.True,
 }
+
+func ColorList(colors ...*color.RGB) []c.Style {
+	var l []c.Style
+	for _, col := range colors {
+		l = append(l, c.Style{Color: col})
+	}
+
+	return l
+}

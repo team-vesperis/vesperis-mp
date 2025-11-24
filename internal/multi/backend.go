@@ -17,6 +17,7 @@ type Backend struct {
 	id uuid.UUID
 	mp *Proxy
 
+	name        string
 	address     string
 	maintenance bool
 	players     []uuid.UUID
@@ -40,6 +41,7 @@ func NewBackend(id, managerId uuid.UUID, ownerMP *Proxy, l *logger.Logger, db *d
 		mu:        sync.RWMutex{},
 	}
 
+	mb.name = data.Name
 	mb.address = data.Address
 	mb.maintenance = data.Maintenance
 	mb.players = data.Players
@@ -78,6 +80,10 @@ func (mb *Backend) Update(k key.BackendKey) {
 	if err != nil {
 		mb.l.Error("multibackend update backendkey get field from database error", "error", err)
 	}
+}
+
+func (mb *Backend) GetName() string {
+	return mb.name
 }
 
 func (mb *Backend) GetAddress() string {

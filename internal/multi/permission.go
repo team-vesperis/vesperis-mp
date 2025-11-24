@@ -26,6 +26,7 @@ func newPermissionInfo(mp *Player, data *data.PlayerData) *permissionInfo {
 		role: role,
 		rank: rank,
 		mp:   mp,
+		mu:   sync.RWMutex{},
 	}
 
 	return pi

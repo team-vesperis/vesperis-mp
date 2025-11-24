@@ -9,6 +9,7 @@ import (
 )
 
 type BackendData struct {
+	Name        string      `json:"name"`
 	Address     string      `json:"address"`
 	Proxy       uuid.UUID   `json:"proxy"`
 	Maintenance bool        `json:"maintenance"`

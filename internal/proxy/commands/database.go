@@ -10,6 +10,7 @@ import (
 // The database command is used for testing parts of the database.
 func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
+		Requires(cm.requireAdmin()).
 		Then(brigodier.Literal("get").
 			Then(brigodier.Argument("key", brigodier.SingleWord).
 				Executes(command.Command(func(c *command.Context) error {
@@ -24,7 +25,7 @@ func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuild
 						return err
 					}
 
-					c.SendMessage(util.TextAlternatingColors("Returned value: ", val))
+					c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Returned value: ", val))
 					return nil
 				})))).
 		Then(brigodier.Literal("set").
@@ -37,7 +38,7 @@ func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuild
 							return err
 						}
 
-						c.SendMessage(util.TextAlternatingColors("Successfully set value in database."))
+						c.SendMessage(util.TextSuccessful("Successfully set value in database."))
 						return nil
 					})))))
 }

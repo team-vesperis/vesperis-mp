@@ -73,6 +73,7 @@ func (cm *CommandManager) registerCommands() {
 	cm.m.Register(cm.unBanCommand("unban"))
 	cm.m.Register(cm.permissionCommand("permission"))
 	cm.m.Register(cm.permissionCommand("pm"))
+	cm.m.Register(cm.friendsCommand("friends"))
 }
 
 var (
@@ -120,7 +121,7 @@ func (cm *CommandManager) getMultiPlayerFromTarget(t string) (*multi.Player, err
 // Optional:
 // 1. offline players can be hidden
 // 2. own username and uuid can be hidden
-func (cm *CommandManager) SuggestAllMultiPlayers(hideOfflinePlayers, hideOwn bool) brigodier.SuggestionProvider {
+func (cm *CommandManager) suggestAllMultiPlayers(hideOfflinePlayers, hideOwn bool) brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
 		r := b.RemainingLowerCase
 
@@ -176,36 +177,7 @@ func (cm *CommandManager) SuggestAllMultiPlayers(hideOfflinePlayers, hideOwn boo
 	})
 }
 
-func (cm *CommandManager) SuggestAllBannedMultiPlayers() brigodier.SuggestionProvider {
-	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
-		r := b.RemainingLowerCase
-
-		if len(r) < 1 {
-			b.Suggest("type a username or UUID...")
-			return b.Build()
-		}
-
-		for _, mp := range cm.mm.GetAllMultiPlayers(false) {
-			if !mp.GetBanInfo().IsBanned() {
-				continue
-			}
-
-			name := mp.GetUsername()
-			if strings.HasPrefix(strings.ToLower(name), r) {
-				b.Suggest(name)
-			}
-
-			id := mp.GetId().String()
-			if len(r) > 2 && strings.HasPrefix(strings.ToLower(id), r) {
-				b.Suggest(id)
-			}
-		}
-
-		return b.Build()
-	})
-}
-
-func (cm *CommandManager) SuggestAllMultiProxies(hideOwn bool) brigodier.SuggestionProvider {
+func (cm *CommandManager) suggestAllMultiProxies(hideOwn bool) brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
 		r := b.RemainingLowerCase
 		l := cm.mm.GetAllMultiProxies()
@@ -225,7 +197,7 @@ func (cm *CommandManager) SuggestAllMultiProxies(hideOwn bool) brigodier.Suggest
 	})
 }
 
-func (cm *CommandManager) SuggestAllMultiBackends(hideOwn bool) brigodier.SuggestionProvider {
+func (cm *CommandManager) suggestAllMultiBackends(hideOwn bool) brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
 		r := b.RemainingLowerCase
 
@@ -260,7 +232,7 @@ func (cm *CommandManager) SuggestAllMultiBackends(hideOwn bool) brigodier.Sugges
 	})
 }
 
-func (cm *CommandManager) SuggestAllMultiBackendsUnderProxy(hideOwn bool) brigodier.SuggestionProvider {
+func (cm *CommandManager) suggestAllMultiBackendsUnderProxy(hideOwn bool) brigodier.SuggestionProvider {
 	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
 		r := b.RemainingLowerCase
 

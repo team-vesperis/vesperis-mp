@@ -6,7 +6,6 @@ import "go.minekube.com/gate/pkg/edition/java/proxy"
 func (lm *ListenerManager) onRegister(e *proxy.ServerRegisteredEvent) {
 	lm.l.Info("registering server ", "name", e.Server().ServerInfo().Name())
 
-	addr := e.Server().ServerInfo().Addr().String()
 	id, err := lm.mm.CreateNewBackendId()
 	if err != nil {
 		lm.l.Error("error", "error", err)
@@ -15,7 +14,8 @@ func (lm *ListenerManager) onRegister(e *proxy.ServerRegisteredEvent) {
 
 	lm.l.Debug("found a backend id to use", "id", id)
 
-	_, err = lm.mm.NewMultiBackend(addr, id)
+	si := e.Server().ServerInfo()
+	_, err = lm.mm.NewMultiBackend(si.Name(), si.Addr().String(), id)
 	if err != nil {
 		lm.l.Error("error", "error", err)
 		return

@@ -10,8 +10,8 @@ import (
 )
 
 type PlayerData struct {
-	ProxyId    uuid.UUID       `json:"proxyId"`
-	BackendId  uuid.UUID       `json:"backendId"`
+	Proxy      uuid.UUID       `json:"proxy"`
+	Backend    uuid.UUID       `json:"backend"`
 	Username   string          `json:"username"`
 	Nickname   string          `json:"nickname"`
 	Permission *PermissionData `json:"permission"`
@@ -19,7 +19,13 @@ type PlayerData struct {
 	Online     bool            `json:"online"`
 	Vanished   bool            `json:"vanished"`
 	LastSeen   *time.Time      `json:"lastSeen"`
-	Friends    []uuid.UUID     `json:"friends"`
+	Friend     *FriendData     `json:"friend"`
+}
+
+type FriendData struct {
+	Friends               []uuid.UUID `json:"friends"`
+	FriendRequests        []uuid.UUID `json:"friendRequests"`
+	FriendPendingRequests []uuid.UUID `json:"friendPendingRequests"`
 }
 
 type PermissionData struct {

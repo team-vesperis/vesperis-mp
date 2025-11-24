@@ -2,7 +2,6 @@ package multi
 
 import (
 	"errors"
-	"slices"
 	"sync"
 	"time"
 
@@ -22,28 +21,19 @@ type Player struct {
 	// can be nil!
 	b *Backend
 
-	// The id of the underlying player
 	id uuid.UUID
 
-	// The username of the underlying player
 	username string
-
 	nickname string
 
-	// The permission info of the multiplayer.
 	pi *permissionInfo
-
-	// The ban info of the multiplayer.
 	bi *banInfo
+	fi *friendInfo
 
-	online bool
-
+	online   bool
 	vanished bool
 
 	lastSeen *time.Time
-
-	// List of friend UUIDs.
-	friends []uuid.UUID
 
 	managerId uuid.UUID
 	l         *logger.Logger
@@ -62,13 +52,13 @@ func NewPlayer(id, mId uuid.UUID, l *logger.Logger, db *database.Database, data 
 
 	mp.pi = newPermissionInfo(mp, data)
 	mp.bi = newBanInfo(mp, data)
+	mp.fi = newFriendInfo(mp, data)
 
 	mp.username = data.Username
 	mp.nickname = data.Nickname
 	mp.online = data.Online
 	mp.vanished = data.Vanished
 	mp.lastSeen = data.LastSeen
-	mp.friends = data.Friends
 
 	return mp
 }
@@ -109,9 +99,9 @@ func (mp *Player) Update(k key.PlayerKey) {
 	var err error
 
 	switch k {
-	case key.PlayerKey_ProxyId:
+	case key.PlayerKey_Proxy:
 		var proxyId uuid.UUID
-		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_ProxyId, &proxyId)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Proxy, &proxyId)
 		if proxyId == uuid.Nil {
 			mp.setProxy(nil, false)
 			break
@@ -120,9 +110,9 @@ func (mp *Player) Update(k key.PlayerKey) {
 		if err == nil {
 			mp.setProxy(p, false)
 		}
-	case key.PlayerKey_BackendId:
+	case key.PlayerKey_Backend:
 		var backendId uuid.UUID
-		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_BackendId, &backendId)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Backend, &backendId)
 		if backendId == uuid.Nil {
 			mp.setBackend(nil, false)
 		}
@@ -187,10 +177,20 @@ func (mp *Player) Update(k key.PlayerKey) {
 		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_LastSeen, &lastSeen)
 		mp.setLastSeen(lastSeen, false)
 
-	case key.PlayerKey_Friends:
+	case key.PlayerKey_Friend_Friends:
 		var friends []uuid.UUID
-		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friends, &friends)
-		mp.setFriendsIds(friends, false)
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friend_Friends, &friends)
+		mp.fi.setFriendsIds(friends, false)
+
+	case key.PlayerKey_Friend_FriendPendingRequests:
+		var friends []uuid.UUID
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friend_FriendPendingRequests, &friends)
+		mp.fi.setPendingFriendIds(friends, false)
+
+	case key.PlayerKey_Friend_FriendRequests:
+		var friends []uuid.UUID
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friend_FriendRequests, &friends)
+		mp.fi.setFriendRequestIds(friends, false)
 	}
 
 	if err != nil {
@@ -219,10 +219,10 @@ func (mp *Player) setProxy(mproxy *Proxy, notify bool) error {
 
 	if notify {
 		if mproxy == nil {
-			return mp.save(key.PlayerKey_ProxyId, uuid.Nil)
+			return mp.save(key.PlayerKey_Proxy, uuid.Nil)
 		}
 
-		return mp.save(key.PlayerKey_ProxyId, mproxy.id)
+		return mp.save(key.PlayerKey_Proxy, mproxy.id)
 	}
 
 	return nil
@@ -250,10 +250,10 @@ func (mp *Player) setBackend(mb *Backend, notify bool) error {
 
 	if notify {
 		if mb == nil {
-			return mp.save(key.PlayerKey_BackendId, uuid.Nil)
+			return mp.save(key.PlayerKey_Backend, uuid.Nil)
 		}
 
-		return mp.save(key.PlayerKey_BackendId, mb.id)
+		return mp.save(key.PlayerKey_Backend, mb.id)
 	}
 
 	return nil
@@ -317,6 +317,10 @@ func (mp *Player) GetPermissionInfo() *permissionInfo {
 
 func (mp *Player) GetBanInfo() *banInfo {
 	return mp.bi
+}
+
+func (mp *Player) GetFriendInfo() *friendInfo {
+	return mp.fi
 }
 
 func (mp *Player) IsOnline() bool {
@@ -389,55 +393,4 @@ func (mp *Player) setLastSeen(lastSeen *time.Time, notify bool) error {
 	}
 
 	return nil
-}
-
-func (mp *Player) GetFriendsIds() []uuid.UUID {
-	mp.mu.RLock()
-	defer mp.mu.RUnlock()
-
-	return slices.Clone(mp.friends)
-}
-
-func (mp *Player) SetFriendsIds(ids []uuid.UUID) error {
-	return mp.setFriendsIds(ids, true)
-}
-
-func (mp *Player) setFriendsIds(ids []uuid.UUID, notify bool) error {
-	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
-	mp.friends = ids
-
-	if notify {
-		return mp.save(key.PlayerKey_Friends, ids)
-	}
-
-	return nil
-}
-
-func (mp *Player) AddFriendId(id uuid.UUID) error {
-	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
-	if !slices.Contains(mp.friends, id) {
-		mp.friends = append(mp.friends, id)
-	}
-
-	return mp.save(key.PlayerKey_Friends, mp.friends)
-}
-
-var ErrFriendNotFound = errors.New("friend not found")
-
-func (mp *Player) RemoveFriendId(id uuid.UUID) error {
-	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
-	i := slices.Index(mp.friends, id)
-	if i == -1 {
-		return ErrFriendNotFound
-	}
-	mp.friends = slices.Delete(mp.friends, i, i+1)
-
-	return mp.save(key.PlayerKey_Friends, mp.friends)
-
 }

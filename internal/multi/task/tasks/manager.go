@@ -10,6 +10,8 @@ func Init() {
 	task.RegisterTaskType(transferRequestTask, func() task.Task { return &TransferRequestTask{} })
 	task.RegisterTaskType(transferTask, func() task.Task { return &TransferTask{} })
 	task.RegisterTaskType(banTask, func() task.Task { return &BanTask{} })
+	task.RegisterTaskType(friendRequest, func() task.Task { return &FriendRequestTask{} })
+	task.RegisterTaskType(friendResponse, func() task.Task { return &FriendResponseTask{} })
 }
 
 // task types
@@ -19,6 +21,12 @@ const (
 	transferRequestTask = "transfer_request"
 	transferTask        = "transfer"
 	banTask             = "ban"
+	friendRequest       = "friend_request"
+	friendResponse      = "friend_response"
 )
 
-const ErrStringTargetNotFound = "target not found"
+const (
+	ErrStringBackendNotFound = "backend not found"
+	ErrStringProxyNotFound   = "proxy not found"
+	ErrStringTargetNotFound  = "target not found"
+)

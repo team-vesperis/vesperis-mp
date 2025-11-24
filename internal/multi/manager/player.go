@@ -72,10 +72,10 @@ func (mm *MultiManager) NewMultiPlayer(p proxy.Player) (*multi.Player, error) {
 	id := p.ID()
 
 	data := &data.PlayerData{
-		ProxyId:   uuid.Nil,
-		BackendId: uuid.Nil,
-		Username:  p.Username(),
-		Nickname:  p.Username(),
+		Proxy:    uuid.Nil,
+		Backend:  uuid.Nil,
+		Username: p.Username(),
+		Nickname: p.Username(),
 		Permission: &data.PermissionData{
 			Role: multi.RoleDefault.String(),
 			Rank: multi.RankDefault.String(),
@@ -89,7 +89,11 @@ func (mm *MultiManager) NewMultiPlayer(p proxy.Player) (*multi.Player, error) {
 		Online:   false,
 		Vanished: false,
 		LastSeen: &time.Time{},
-		Friends:  make([]uuid.UUID, 0),
+		Friend: &data.FriendData{
+			Friends:               make([]uuid.UUID, 0),
+			FriendRequests:        make([]uuid.UUID, 0),
+			FriendPendingRequests: make([]uuid.UUID, 0),
+		},
 	}
 
 	err := mm.db.SetPlayerData(id, data)

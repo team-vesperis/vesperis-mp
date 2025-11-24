@@ -12,10 +12,10 @@ func (db *Database) Test() error {
 		id := uuid.New()
 
 		data := &data.PlayerData{
-			ProxyId:   uuid.Nil,
-			BackendId: uuid.Nil,
-			Username:  "User-" + id.Undashed(),
-			Nickname:  "Bob",
+			Proxy:    uuid.Nil,
+			Backend:  uuid.Nil,
+			Username: "User-" + id.Undashed(),
+			Nickname: "Bob",
 			Permission: &data.PermissionData{
 				Role: "default",
 				Rank: "elite",
@@ -29,7 +29,11 @@ func (db *Database) Test() error {
 			Online:   false,
 			Vanished: false,
 			LastSeen: &time.Time{},
-			Friends:  make([]uuid.UUID, 0),
+			Friend: &data.FriendData{
+				Friends:               make([]uuid.UUID, 0),
+				FriendRequests:        make([]uuid.UUID, 0),
+				FriendPendingRequests: make([]uuid.UUID, 0),
+			},
 		}
 
 		err := db.SetPlayerData(id, data)

@@ -14,10 +14,14 @@ func (pk PlayerKey) String() string {
 var ErrIncorrectPlayerKey = errors.New("incorrect player key")
 
 const (
-	PlayerKey_ProxyId   PlayerKey = "proxyId"
-	PlayerKey_BackendId PlayerKey = "backendId"
-	PlayerKey_Username  PlayerKey = "username"
-	PlayerKey_Nickname  PlayerKey = "nickname"
+	PlayerKey_Proxy    PlayerKey = "proxy"
+	PlayerKey_Backend  PlayerKey = "backend"
+	PlayerKey_Username PlayerKey = "username"
+	PlayerKey_Nickname PlayerKey = "nickname"
+
+	PlayerKey_Friend_Friends               PlayerKey = "friend.friends"
+	PlayerKey_Friend_FriendRequests        PlayerKey = "friend.friendRequests"
+	PlayerKey_Friend_FriendPendingRequests PlayerKey = "friend.friendPendingRequests"
 
 	PlayerKey_Permission_Role PlayerKey = "permission.role"
 	PlayerKey_Permission_Rank PlayerKey = "permission.rank"
@@ -30,14 +34,17 @@ const (
 	PlayerKey_Online   PlayerKey = "online"
 	PlayerKey_Vanished PlayerKey = "vanished"
 	PlayerKey_LastSeen PlayerKey = "lastSeen"
-	PlayerKey_Friends  PlayerKey = "friends"
 )
 
 var AllowedPlayerKeys = []PlayerKey{
-	PlayerKey_ProxyId,
-	PlayerKey_BackendId,
+	PlayerKey_Proxy,
+	PlayerKey_Backend,
 	PlayerKey_Username,
 	PlayerKey_Nickname,
+
+	PlayerKey_Friend_Friends,
+	PlayerKey_Friend_FriendRequests,
+	PlayerKey_Friend_FriendPendingRequests,
 
 	PlayerKey_Permission_Role,
 	PlayerKey_Permission_Rank,
@@ -50,7 +57,6 @@ var AllowedPlayerKeys = []PlayerKey{
 	PlayerKey_Online,
 	PlayerKey_Vanished,
 	PlayerKey_LastSeen,
-	PlayerKey_Friends,
 }
 
 func GetPlayerKey(s string) (PlayerKey, error) {
