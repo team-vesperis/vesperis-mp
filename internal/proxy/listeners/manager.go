@@ -36,6 +36,11 @@ func Init(m event.Manager, l *logger.Logger, db *database.Database, mm *manager.
 		return nil, err
 	}
 
+	err = lm.initResourcePack()
+	if err != nil {
+		return nil, err
+	}
+
 	lm.registerListeners()
 
 	lm.l.Info("initialized listener manager", "duration", time.Since(now))
@@ -54,4 +59,6 @@ func (lm *ListenerManager) registerListeners() {
 
 	event.Subscribe(lm.m, 0, lm.onChooseInitialServer)
 	event.Subscribe(lm.m, 0, lm.onPreShutdown)
+
+	event.Subscribe(lm.m, 5, lm.sendResourcePack)
 }

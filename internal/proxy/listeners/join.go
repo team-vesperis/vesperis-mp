@@ -1,7 +1,6 @@
 package listeners
 
 import (
-	"github.com/team-vesperis/vesperis-mp/internal/multi/task/tasks"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
@@ -43,24 +42,6 @@ func (lm *ListenerManager) onProxyJoin(e *proxy.PostLoginEvent) {
 			lm.l.Error("player post login set name error", "playerId", p.ID(), "error", err)
 		}
 	}
-
-	for _, id := range mp.GetFriendInfo().GetFriendsIds() {
-		f, err := lm.mm.GetMultiPlayer(id)
-		if err != nil {
-			continue
-		}
-
-		if f.IsOnline() {
-			if f.GetProxy() == nil {
-				continue
-			}
-
-			tr := lm.tm.BuildTask(tasks.NewMessageTask("System", f.GetId(), f.GetProxy().GetId(), mp.GetUsername()+" went online!"))
-			if !tr.IsSuccessful() {
-				continue
-			}
-		}
-	}
 }
 
 func (lm *ListenerManager) onServerJoin(e *proxy.ServerPostConnectEvent) {
@@ -96,5 +77,4 @@ func (lm *ListenerManager) onServerJoin(e *proxy.ServerPostConnectEvent) {
 		p.Disconnect(loginDenyComponent)
 		return
 	}
-
 }

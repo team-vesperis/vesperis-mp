@@ -68,6 +68,7 @@ func (cm *CommandManager) registerCommands() {
 	cm.m.Register(cm.messageCommand("msg"))
 	cm.m.Register(cm.kickCommand("kick"))
 	cm.m.Register(cm.transferCommand("transfer"))
+	cm.m.Register(cm.transferCommand("tf"))
 	cm.m.Register(cm.banCommand("ban"))
 	cm.m.Register(cm.tempBanCommand("tempban"))
 	cm.m.Register(cm.unBanCommand("unban"))

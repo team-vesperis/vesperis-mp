@@ -35,7 +35,7 @@ func (kt *KickTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 		Extra: []component.Component{
 			&component.Text{
 				Content: "\n\n" + kt.Reason,
-				S:       util.StyleColorCyan,
+				S:       util.StyleColorLightBlue,
 			},
 		},
 	})

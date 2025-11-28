@@ -56,7 +56,7 @@ func (bt *BanTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 				},
 				&component.Text{
 					Content: bt.Reason,
-					S:       util.StyleColorCyan,
+					S:       util.StyleColorLightBlue,
 				},
 			},
 		})
@@ -77,7 +77,7 @@ func (bt *BanTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 				},
 				&component.Text{
 					Content: bt.Reason,
-					S:       util.StyleColorCyan,
+					S:       util.StyleColorLightBlue,
 				},
 				&component.Text{
 					Content: "\nExpiration: ",
@@ -85,7 +85,7 @@ func (bt *BanTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 				},
 				&component.Text{
 					Content: util.FormatTimeUntil(bt.Expiration),
-					S:       util.StyleColorCyan,
+					S:       util.StyleColorLightBlue,
 				},
 			},
 		})

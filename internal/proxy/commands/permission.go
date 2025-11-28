@@ -66,7 +66,7 @@ func (cm *CommandManager) executeSetRole(r multi.Role) brigodier.Command {
 			return err
 		}
 
-		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Set role for ", t.GetUsername(), " to ", r.String()))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorLightBlue), "Set role for ", t.GetUsername(), " to ", r.String()))
 		return nil
 	})
 }
@@ -85,7 +85,7 @@ func (cm *CommandManager) executeSetRank(r multi.Rank) brigodier.Command {
 			return err
 		}
 
-		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Set rank for ", t.GetUsername(), " to ", r.String()))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorLightBlue), "Set rank for ", t.GetUsername(), " to ", r.String()))
 		return nil
 	})
 }
@@ -98,7 +98,7 @@ func (cm *CommandManager) executeGetRole() brigodier.Command {
 			return err
 		}
 
-		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorCyan, util.ColorLightGreen), t.GetUsername(), "'s role is ", t.GetPermissionInfo().GetRole().String()))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightBlue, util.ColorLightGreen), t.GetUsername(), "'s role is ", t.GetPermissionInfo().GetRole().String()))
 		return nil
 	})
 }
@@ -111,7 +111,7 @@ func (cm *CommandManager) executeGetRank() brigodier.Command {
 			return err
 		}
 
-		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorCyan, util.ColorLightGreen), t.GetUsername(), "'s rank is ", t.GetPermissionInfo().GetRank().String()))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightBlue, util.ColorLightGreen), t.GetUsername(), "'s rank is ", t.GetPermissionInfo().GetRank().String()))
 		return nil
 	})
 }

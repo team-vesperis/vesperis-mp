@@ -25,7 +25,7 @@ func (cm CommandManager) databaseCommand(name string) brigodier.LiteralNodeBuild
 						return err
 					}
 
-					c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Returned value: ", val))
+					c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorLightBlue), "Returned value: ", val))
 					return nil
 				})))).
 		Then(brigodier.Literal("set").

@@ -48,7 +48,7 @@ func (cm *CommandManager) executeUnBan() brigodier.Command {
 			return err
 		}
 
-		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Unbanned: ", t.GetUsername()))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorLightBlue), "Unbanned: ", t.GetUsername()))
 		return nil
 	})
 }

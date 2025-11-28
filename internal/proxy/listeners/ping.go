@@ -1,6 +1,7 @@
 package listeners
 
 import (
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/ping"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
@@ -33,6 +34,7 @@ func (lm *ListenerManager) onPing(e *proxy.PingEvent) {
 	ping := &ping.ServerPing{
 		Description: &component.Text{
 			Content: "Vesperis",
+			S:       util.StyleColorLightBlue,
 		},
 
 		Version: ping.Version{

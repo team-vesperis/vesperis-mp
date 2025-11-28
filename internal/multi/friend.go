@@ -58,6 +58,13 @@ func (fi *friendInfo) setFriendRequestIds(ids []uuid.UUID, notify bool) error {
 	return nil
 }
 
+func (fi *friendInfo) IsFriendRequest(id uuid.UUID) bool {
+	fi.mu.RLock()
+	defer fi.mu.RUnlock()
+
+	return slices.Contains(fi.friendRequests, id)
+}
+
 func (fi *friendInfo) AddFriendRequestId(id uuid.UUID) error {
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
@@ -106,6 +113,13 @@ func (fi *friendInfo) setPendingFriendIds(ids []uuid.UUID, notify bool) error {
 	return nil
 }
 
+func (fi *friendInfo) IsPendingFriend(id uuid.UUID) bool {
+	fi.mu.RLock()
+	defer fi.mu.RUnlock()
+
+	return slices.Contains(fi.friendPendingRequests, id)
+}
+
 func (fi *friendInfo) AddPendingFriendRequestId(id uuid.UUID) error {
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
@@ -152,6 +166,13 @@ func (fi *friendInfo) setFriendsIds(ids []uuid.UUID, notify bool) error {
 	}
 
 	return nil
+}
+
+func (fi *friendInfo) IsFriend(id uuid.UUID) bool {
+	fi.mu.RLock()
+	defer fi.mu.RUnlock()
+
+	return slices.Contains(fi.friends, id)
 }
 
 func (fi *friendInfo) AddFriendId(id uuid.UUID) error {

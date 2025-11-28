@@ -62,7 +62,7 @@ func (cm *CommandManager) executeKick() brigodier.Command {
 			return err
 		}
 
-		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorOrange, util.ColorCyan), "Kicked: ", t.GetUsername(), " Reason: ", r))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorOrange, util.ColorLightBlue), "Kicked: ", t.GetUsername(), " Reason: ", r))
 		return nil
 
 	})

@@ -38,7 +38,7 @@ func (lm *ListenerManager) onChooseInitialServer(e *proxy.PlayerChooseInitialSer
 		lm.l.Warn("no servers under gate proxy", "playerId", p.ID())
 		lm.sendNoAvailableServers(p)
 	} else {
-		ctx, canc := context.WithTimeout(p.Context(), 2*time.Second)
+		ctx, canc := context.WithTimeout(p.Context(), 5*time.Second)
 		defer canc()
 
 		c, err := cookie.Request(ctx, p, tasks.TransferKey, lm.ownerGate.Event())

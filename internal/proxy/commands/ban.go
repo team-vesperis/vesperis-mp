@@ -48,7 +48,7 @@ func (cm *CommandManager) executeBan() brigodier.Command {
 				return err
 			}
 
-			c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Banned: ", t.GetUsername(), " Reason: ", r))
+			c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorLightBlue), "Banned: ", t.GetUsername(), " Reason: ", r))
 			return nil
 		}
 
@@ -70,7 +70,7 @@ func (cm *CommandManager) executeBan() brigodier.Command {
 			util.PlayThunderSound(p)
 		}
 
-		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Banned: ", t.GetUsername(), " Reason: ", r))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorLightBlue), "Banned: ", t.GetUsername(), " Reason: ", r))
 		return nil
 	})
 }

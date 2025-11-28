@@ -73,7 +73,26 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 						originName = "VesperisMP-" + cm.mm.GetOwnerMultiProxy().GetId().String()
 					}
 
-					tr := cm.tm.BuildTask(tasks.NewMessageTask(originName, t.GetId(), t.GetProxy().GetId(), c.String("message")))
+					tr := cm.tm.BuildTask(tasks.NewMessageTask(t.GetId(), t.GetProxy().GetId(), util.ComponentToString(&component.Text{
+						Content: "[<- " + originName + "]",
+						S: component.Style{
+							Color: util.ColorLightBlue,
+							HoverEvent: component.ShowText(&component.Text{
+								Content: "Click to reply",
+								S:       util.StyleColorGray,
+							}),
+							ClickEvent: component.NewClickEvent(component.SuggestCommandAction, "/message "+originName+" "),
+						},
+						Extra: []component.Component{
+							&component.Text{
+								Content: ": " + c.String("message"),
+								S: component.Style{
+									Color: color.White,
+								},
+							},
+						},
+					})))
+
 					if !tr.IsSuccessful() {
 						err := errors.New(tr.GetInfo())
 						c.SendMessage(util.TextInternalError("Could not send message.", err))
@@ -83,7 +102,7 @@ func (cm *CommandManager) messageCommand(name string) brigodier.LiteralNodeBuild
 					c.SendMessage(&component.Text{
 						Content: "[-> " + t.GetUsername() + "]",
 						S: component.Style{
-							Color: util.ColorCyan,
+							Color: util.ColorLightBlue,
 							HoverEvent: component.ShowText(&component.Text{
 								Content: "Click to send another message",
 								S:       util.StyleColorGray,

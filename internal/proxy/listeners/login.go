@@ -44,7 +44,7 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 					},
 					&component.Text{
 						Content: mp.GetBanInfo().GetReason(),
-						S:       util.StyleColorCyan,
+						S:       util.StyleColorLightBlue,
 					},
 				},
 			})
@@ -70,7 +70,7 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 						},
 						&component.Text{
 							Content: mp.GetBanInfo().GetReason(),
-							S:       util.StyleColorCyan,
+							S:       util.StyleColorLightBlue,
 						},
 						&component.Text{
 							Content: "\nExpiration: ",
@@ -78,7 +78,7 @@ func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 						},
 						&component.Text{
 							Content: util.FormatTimeUntil(mp.GetBanInfo().GetExpiration()),
-							S:       util.StyleColorCyan,
+							S:       util.StyleColorLightBlue,
 						},
 					},
 				})

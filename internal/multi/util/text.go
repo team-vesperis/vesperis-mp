@@ -1,6 +1,11 @@
 package util
 
-import c "go.minekube.com/common/minecraft/component"
+import (
+	"strings"
+
+	c "go.minekube.com/common/minecraft/component"
+	"go.minekube.com/common/minecraft/component/codec"
+)
 
 func TextSuccessful(message string) *c.Text {
 	return &c.Text{
@@ -51,4 +56,23 @@ func TextAlternatingColors(colors []c.Style, values ...string) *c.Text {
 	extra = append(extra, components[1:]...)
 	first.Extra = extra
 	return first
+}
+
+func ComponentToString(comp c.Component) string {
+	var buf strings.Builder
+	err := codec.JsonModern.Marshal(&buf, comp)
+	if err != nil {
+		return ""
+	}
+
+	return buf.String()
+}
+
+func StringToComponent(s string) c.Component {
+	comp, err := codec.JsonModern.Unmarshal([]byte(s))
+	if err != nil {
+		return &c.Text{}
+	}
+
+	return comp
 }

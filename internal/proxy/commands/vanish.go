@@ -31,7 +31,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 					v = "not active"
 				}
 
-				c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Vanish is: ", v))
+				c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorLightBlue), "Vanish is: ", v))
 				return nil
 			})).
 			Then(brigodier.Argument("target", brigodier.SingleWord).
@@ -54,7 +54,7 @@ func (cm *CommandManager) vanishCommand(name string) brigodier.LiteralNodeBuilde
 						v = "not vanished"
 					}
 
-					c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorCyan, util.ColorLightGreen), mp.GetUsername()+" is ", v))
+					c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightBlue, util.ColorLightGreen), mp.GetUsername()+" is ", v))
 					return nil
 				})))).
 		Then(brigodier.Literal("set").
@@ -138,5 +138,5 @@ func (cm *CommandManager) sendVanishMessage(v bool, c *command.Context) {
 		m = "off"
 	}
 
-	c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorCyan), "Set vanish ", m))
+	c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightGreen, util.ColorLightBlue), "Set vanish ", m))
 }

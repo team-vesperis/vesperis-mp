@@ -68,7 +68,7 @@ func (cm *CommandManager) executeTempBan(time_type time.Duration) brigodier.Comm
 				return err
 			}
 
-			c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorOrange, util.ColorCyan), "Temp banned: ", t.GetUsername(), "\nReason: ", r, "\nExpiration: ", e))
+			c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorOrange, util.ColorLightBlue), "Temp banned: ", t.GetUsername(), "\nReason: ", r, "\nExpiration: ", e))
 			return nil
 		}
 
@@ -90,7 +90,7 @@ func (cm *CommandManager) executeTempBan(time_type time.Duration) brigodier.Comm
 			util.PlayThunderSound(p)
 		}
 
-		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorOrange, util.ColorCyan), "Temp banned: ", t.GetUsername(), "\nReason: ", r, "\nExpiration: ", e))
+		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorOrange, util.ColorLightBlue), "Temp banned: ", t.GetUsername(), "\nReason: ", r, "\nExpiration: ", e))
 		return nil
 	})
 }
