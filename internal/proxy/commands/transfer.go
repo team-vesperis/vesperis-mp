@@ -13,10 +13,10 @@ import (
 
 func (cm *CommandManager) transferCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
-		Executes(cm.executeIncorrectTransferUsage()).
+		Executes(cm.executeIncorrectUsage("/transfer <target> <proxyId> <backendId>")).
 		Requires(cm.requireAdmin()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
-			Executes(cm.executeIncorrectTransferUsage()).
+			Executes(cm.executeIncorrectUsage("/transfer <target> <proxyId> <backendId>")).
 			Suggests(cm.suggestAllMultiPlayers(true, false)).
 			Then(brigodier.Argument("proxyId", brigodier.SingleWord).
 				Suggests(cm.suggestAllMultiProxies(false)).
@@ -24,13 +24,6 @@ func (cm *CommandManager) transferCommand(name string) brigodier.LiteralNodeBuil
 				Then(brigodier.Argument("backendId", brigodier.SingleWord).
 					Suggests(cm.suggestAllMultiBackendsUnderProxy(true)).
 					Executes(cm.executeTransfer()))))
-}
-
-func (cm *CommandManager) executeIncorrectTransferUsage() brigodier.Command {
-	return command.Command(func(c *command.Context) error {
-		c.SendMessage(util.TextWarn("Incorrect usage: /transfer <target> <proxyId> <backendId>"))
-		return nil
-	})
 }
 
 func (cm *CommandManager) executeTransfer() brigodier.Command {
@@ -101,6 +94,11 @@ func (cm *CommandManager) executeTransfer() brigodier.Command {
 
 			if tr.GetInfo() == tasks.ErrStringBackendNotFound {
 				c.SendMessage(util.TextWarn("Backend not found."))
+				return nil
+			}
+
+			if tr.GetInfo() == util.ErrStringBackendNotResponding {
+				c.SendMessage(util.TextWarn("Backend was found but is not responding."))
 				return nil
 			}
 

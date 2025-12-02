@@ -61,4 +61,6 @@ func (lm *ListenerManager) registerListeners() {
 	event.Subscribe(lm.m, 0, lm.onPreShutdown)
 
 	event.Subscribe(lm.m, 5, lm.sendResourcePack)
+
+	event.Subscribe(lm.m, 0, lm.onChatMessage)
 }

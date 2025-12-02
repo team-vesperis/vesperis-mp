@@ -14,12 +14,12 @@ import (
 
 func (cm *CommandManager) tempBanCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
-		Executes(cm.executeIncorrectTempBanUsage()).
+		Executes(cm.executeIncorrectUsage("/tempban <target> <time_amount> <time_type> <reason>")).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
-			Executes(cm.executeIncorrectTempBanUsage()).
+			Executes(cm.executeIncorrectUsage("/tempban <target> <time_amount> <time_type> <reason>")).
 			Suggests(cm.suggestAllMultiPlayers(false, true)).
 			Then(brigodier.Argument("time_amount", brigodier.Int).
-				Executes(cm.executeIncorrectTempBanUsage()).
+				Executes(cm.executeIncorrectUsage("/tempban <target> <time_amount> <time_type> <reason>")).
 				Then(brigodier.Literal("seconds").
 					Executes(cm.executeTempBan(time.Second)).
 					Then(brigodier.Argument("reason", brigodier.StringPhrase).
@@ -91,13 +91,6 @@ func (cm *CommandManager) executeTempBan(time_type time.Duration) brigodier.Comm
 		}
 
 		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorOrange, util.ColorLightBlue), "Temp banned: ", t.GetUsername(), "\nReason: ", r, "\nExpiration: ", e))
-		return nil
-	})
-}
-
-func (cm *CommandManager) executeIncorrectTempBanUsage() brigodier.Command {
-	return command.Command(func(context *command.Context) error {
-		context.SendMessage(util.TextWarn("Incorrect usage: /tempban <target> <time_amount> <time_type> <reason>"))
 		return nil
 	})
 }

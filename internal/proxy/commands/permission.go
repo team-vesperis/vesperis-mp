@@ -20,10 +20,10 @@ func (cm *CommandManager) permissionCommand(name string) brigodier.LiteralNodeBu
 						Executes(cm.executeSetRole(multi.RoleDefault))).
 					Then(brigodier.Literal(multi.RoleModerator.String()).
 						Executes(cm.executeSetRole(multi.RoleModerator))).
-					Executes(cm.executeIncorrectPermissionCommandSetUsage()).
+					Executes(cm.executeIncorrectUsage("/permission set role <target> <role>")).
 					Suggests(cm.suggestAllMultiPlayers(false, false))).
-				Executes(cm.executeIncorrectPermissionCommandSetUsage())).
-			Executes(cm.executeIncorrectPermissionCommandSetUsage()).
+				Executes(cm.executeIncorrectUsage("/permission set role <target> <role>"))).
+			Executes(cm.executeIncorrectUsage("/permission set role/rank <target> <role/rank>")).
 			Then(brigodier.Literal("rank").
 				Then(brigodier.Argument("target", brigodier.SingleWord).
 					Then(brigodier.Literal(multi.RankChampion.String()).
@@ -34,21 +34,23 @@ func (cm *CommandManager) permissionCommand(name string) brigodier.LiteralNodeBu
 						Executes(cm.executeSetRank(multi.RankElite))).
 					Then(brigodier.Literal(multi.RankLegend.String()).
 						Executes(cm.executeSetRank(multi.RankLegend))).
-					Executes(cm.executeIncorrectPermissionCommandSetUsage()).
+					Executes(cm.executeIncorrectUsage("/permission set rank <target> <rank>")).
 					Suggests(cm.suggestAllMultiPlayers(false, false))).
-				Executes(cm.executeIncorrectPermissionCommandSetUsage())).
+				Executes(cm.executeIncorrectUsage("/permission set rank <target> <rank>"))).
 			Requires(cm.requireAdmin())).
 		Then(brigodier.Literal("get").
 			Then(brigodier.Literal("rank").
+				Executes(cm.executeIncorrectUsage("/permission get rank <target>")).
 				Then(brigodier.Argument("target", brigodier.SingleWord).
 					Executes(cm.executeGetRank()).
 					Suggests(cm.suggestAllMultiPlayers(false, false)))).
 			Then(brigodier.Literal("role").
+				Executes(cm.executeIncorrectUsage("/permission get role <target>")).
 				Then(brigodier.Argument("target", brigodier.SingleWord).
 					Executes(cm.executeGetRole()).
 					Suggests(cm.suggestAllMultiPlayers(false, false)))).
-			Executes(cm.executeIncorrectPermissionCommandGetUsage())).
-		Executes(cm.executeIncorrectPermissionCommandUsage()).
+			Executes(cm.executeIncorrectUsage("/permission get role/rank <target>"))).
+		Executes(cm.executeIncorrectUsage("\n 1. /permission set role/rank <target> <role/rank>\n 2. /permission get role/rank <target>")).
 		Requires(cm.requireAdminOrModerator())
 }
 
@@ -112,27 +114,6 @@ func (cm *CommandManager) executeGetRank() brigodier.Command {
 		}
 
 		c.SendMessage(util.TextAlternatingColors(util.ColorList(util.ColorLightBlue, util.ColorLightGreen), t.GetUsername(), "'s rank is ", t.GetPermissionInfo().GetRank().String()))
-		return nil
-	})
-}
-
-func (cm *CommandManager) executeIncorrectPermissionCommandUsage() brigodier.Command {
-	return command.Command(func(context *command.Context) error {
-		context.SendMessage(util.TextWarn("Incorrect usage:\n 1. /permission set role <player> <role>\n 2. /permission set rank <player> <rank>\n 3. /permission get role <player>\n 4. /permission get rank <player>"))
-		return nil
-	})
-}
-
-func (cm *CommandManager) executeIncorrectPermissionCommandSetUsage() brigodier.Command {
-	return command.Command(func(context *command.Context) error {
-		context.SendMessage(util.TextWarn("Incorrect usage: /permission set role/rank <target> <role/rank>"))
-		return nil
-	})
-}
-
-func (cm *CommandManager) executeIncorrectPermissionCommandGetUsage() brigodier.Command {
-	return command.Command(func(context *command.Context) error {
-		context.SendMessage(util.TextWarn("Incorrect usage: /permission get <target>"))
 		return nil
 	})
 }

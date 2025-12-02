@@ -16,63 +16,28 @@ import (
 func (cm *CommandManager) friendsCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
 		Then(brigodier.Literal("decline").
-			Executes(cm.executeIncorrectFriendsDeclineUsage()).
+			Executes(cm.executeIncorrectUsage("/friends decline <target>")).
 			Then(brigodier.Argument("target", brigodier.SingleWord).
 				Suggests(cm.suggestAllFriendRequestMultiPlayers()).
 				Executes(cm.executeFriendsResponse(false)))).
 		Then(brigodier.Literal("accept").
-			Executes(cm.executeIncorrectFriendsAcceptUsage()).
+			Executes(cm.executeIncorrectUsage("/friends accept <target>")).
 			Then(brigodier.Argument("target", brigodier.SingleWord).
 				Suggests(cm.suggestAllFriendRequestMultiPlayers()).
 				Executes(cm.executeFriendsResponse(true)))).
 		Then(brigodier.Literal("request").
-			Executes(cm.executeIncorrectFriendsRequestUsage()).
+			Executes(cm.executeIncorrectUsage("/friends request <target>")).
 			Then(brigodier.Argument("target", brigodier.SingleWord).
 				Suggests(cm.suggestAllNonFriendMultiPlayers()).
 				Executes(cm.executeFriendsRequest()))).
 		Then(brigodier.Literal("list").
 			Executes(cm.executeFriendsList())).
 		Then(brigodier.Literal("remove").
-			Executes(cm.executeIncorrectFriendsRemoveUsage()).
+			Executes(cm.executeIncorrectUsage("/friends remove <target>")).
 			Then(brigodier.Argument("target", brigodier.SingleWord).
 				Suggests(cm.suggestAllFriends()).
 				Executes(cm.executeFriendsRemove()))).
-		Executes(cm.executeIncorrectFriendsUsage())
-}
-
-func (cm *CommandManager) executeIncorrectFriendsUsage() brigodier.Command {
-	return command.Command(func(c *command.Context) error {
-		c.SendMessage(util.TextWarn("Incorrect usage:\n 1. /friends request <target>\n 2. /friends list\n 3. /friends accept <target>\n 4. /friends decline <target>"))
-		return nil
-	})
-}
-
-func (cm *CommandManager) executeIncorrectFriendsRequestUsage() brigodier.Command {
-	return command.Command(func(c *command.Context) error {
-		c.SendMessage(util.TextWarn("Incorrect usage: /friends request <target>"))
-		return nil
-	})
-}
-
-func (cm *CommandManager) executeIncorrectFriendsAcceptUsage() brigodier.Command {
-	return command.Command(func(c *command.Context) error {
-		c.SendMessage(util.TextWarn("Incorrect usage: /friends accept <target>"))
-		return nil
-	})
-}
-
-func (cm *CommandManager) executeIncorrectFriendsDeclineUsage() brigodier.Command {
-	return command.Command(func(c *command.Context) error {
-		c.SendMessage(util.TextWarn("Incorrect usage: /friends decline <target>"))
-		return nil
-	})
-}
-
-func (cm *CommandManager) executeIncorrectFriendsRemoveUsage() brigodier.Command {
-	return command.Command(func(c *command.Context) error {
-		c.SendMessage(util.TextWarn("Incorrect usage: /friends remove <target>"))
-		return nil
-	})
+		Executes(cm.executeIncorrectUsage("\n 1. /friends request <target>\n 2. /friends list\n 3. /friends accept <target>\n 4. /friends decline <target>"))
 }
 
 func (cm *CommandManager) executeFriendsRemove() brigodier.Command {

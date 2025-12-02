@@ -77,4 +77,20 @@ func (lm *ListenerManager) onServerJoin(e *proxy.ServerPostConnectEvent) {
 		p.Disconnect(loginDenyComponent)
 		return
 	}
+
+	if e.PreviousServer() != nil {
+		mb, err := lm.mm.GetMultiBackendUsingAddress(e.PreviousServer().ServerInfo().Addr().String())
+		if err != nil {
+			lm.l.Error("player server post connect get multibackend error", "playerId", p.ID(), "error", err)
+			p.Disconnect(loginDenyComponent)
+			return
+		}
+
+		err = mb.RemovePlayerId(p.ID())
+		if err != nil {
+			lm.l.Error("player server post connect remove playerId from multibackend error", "playerId", p.ID(), "error", err)
+			p.Disconnect(loginDenyComponent)
+			return
+		}
+	}
 }

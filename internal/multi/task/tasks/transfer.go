@@ -5,6 +5,7 @@ import (
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/task"
+	"github.com/team-vesperis/vesperis-mp/internal/multi/util"
 	"go.minekube.com/common/minecraft/key"
 	"go.minekube.com/gate/pkg/edition/java/cookie"
 	"go.minekube.com/gate/pkg/util/uuid"
@@ -63,7 +64,7 @@ func (tt *TransferTask) PerformTask(tm *task.TaskManager) *task.TaskResponse {
 
 	if tr.GetInfo() == "1" {
 		tm.GetLogger().Warn("transfer backend found but not responding error", "playerId", t.ID(), "targetBackendId", tt.TransferBackendId)
-		return task.NewTaskResponse(false, "backend was found but not responding")
+		return task.NewTaskResponse(false, util.ErrStringBackendNotResponding)
 	}
 
 	if tr.GetInfo() == "2" {

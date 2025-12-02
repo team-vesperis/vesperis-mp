@@ -11,17 +11,10 @@ import (
 func (cm *CommandManager) unBanCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
 		Requires(cm.requireAdminOrModerator()).
-		Executes(cm.executeIncorrectUnBanUsage()).
+		Executes(cm.executeIncorrectUsage("/unban <target>")).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
 			Suggests(cm.suggestAllBannedMultiPlayers()).
 			Executes(cm.executeUnBan()))
-}
-
-func (cm *CommandManager) executeIncorrectUnBanUsage() brigodier.Command {
-	return command.Command(func(c *command.Context) error {
-		c.SendMessage(util.TextWarn("Incorrect usage: /unban <target>"))
-		return nil
-	})
 }
 
 func (cm *CommandManager) executeUnBan() brigodier.Command {

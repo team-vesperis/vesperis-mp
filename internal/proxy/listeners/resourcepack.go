@@ -44,8 +44,6 @@ func (lm *ListenerManager) initResourcePack() error {
 	return nil
 }
 
-func (lm *ListenerManager) sendResourcePack(e *proxy.PostLoginEvent) {
-	if len(e.Player().AppliedResourcePacks()) < 1 {
-		e.Player().SendResourcePack(rp)
-	}
+func (lm *ListenerManager) sendResourcePack(e *proxy.ServerPostConnectEvent) {
+	go e.Player().SendResourcePack(rp)
 }

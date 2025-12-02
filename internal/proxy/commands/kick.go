@@ -12,20 +12,13 @@ import (
 
 func (cm *CommandManager) kickCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
-		Executes(cm.executeIncorrectKickUsage()).
+		Executes(cm.executeIncorrectUsage("/kick <target> <reason>")).
 		Requires(cm.requireAdminOrModerator()).
 		Then(brigodier.Argument("target", brigodier.SingleWord).
 			Executes(cm.executeKick()).
 			Suggests(cm.suggestAllMultiPlayers(true, true)).
 			Then(brigodier.Argument("reason", brigodier.StringPhrase).
 				Executes(cm.executeKick())))
-}
-
-func (cm *CommandManager) executeIncorrectKickUsage() brigodier.Command {
-	return command.Command(func(c *command.Context) error {
-		c.SendMessage(util.TextWarn("Incorrect usage: /kick <target> <reason>"))
-		return nil
-	})
 }
 
 func (cm *CommandManager) executeKick() brigodier.Command {

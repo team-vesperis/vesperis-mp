@@ -7,6 +7,12 @@ import (
 
 // https://lospec.com/palette-list/ribe-64
 
+var ColorWhite, _ = color.Hex("#f8f6f5")
+
+var StyleColorWhite = c.Style{
+	Color: ColorWhite,
+}
+
 var ColorLightGreen, _ = color.Hex("#97ca63")
 
 var StyleColorLightGreen = c.Style{

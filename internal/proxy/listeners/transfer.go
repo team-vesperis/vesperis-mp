@@ -76,7 +76,12 @@ func (lm *ListenerManager) chooseRandomServer(p proxy.Player, e *proxy.PlayerCho
 	// 	//}
 	// }
 
-	l := lm.ownerGate.Servers()
+	var l []proxy.RegisteredServer
+	for _, s := range lm.ownerGate.Servers() {
+		if util.IsBackendResponding(s.ServerInfo().Addr().String()) {
+			l = append(l, s)
+		}
+	}
 
 	if len(l) < 1 {
 		lm.l.Warn("no servers under gate proxy", "playerId", p.ID())
@@ -88,7 +93,21 @@ func (lm *ListenerManager) chooseRandomServer(p proxy.Player, e *proxy.PlayerCho
 	e.SetInitialServer(l[randomIndex])
 }
 
-func (lm *ListenerManager) sendNoAvailableServers(player proxy.Player) {
+func (lm *ListenerManager) sendNoAvailableServers(p proxy.Player) {
 	time.Sleep(200 * time.Millisecond)
-	player.Disconnect(util.TextError("No available server. Please try again."))
+
+	proxy := lm.mm.GetProxyWithLowestPlayerCount(false)
+	if proxy == nil {
+		p.Disconnect(util.TextError("No available server. Please try again."))
+		return
+	}
+
+	tr := lm.tm.BuildTask(tasks.NewTransferTask(p.ID(), lm.mm.GetOwnerMultiProxy().GetId(), proxy.GetId(), uuid.Nil))
+	if !tr.IsSuccessful() {
+		lm.l.Error("transfer not successful", "playerId", p.ID(), "error", tr.GetInfo())
+		p.Disconnect(util.TextError("No available server. Please try again."))
+		return
+	}
+
+	lm.l.Info("transferring player", "playerId", p.ID(), "proxyId", proxy.GetId())
 }
