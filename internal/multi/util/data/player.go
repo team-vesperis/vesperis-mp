@@ -20,12 +20,21 @@ type PlayerData struct {
 	Vanished   bool            `json:"vanished"`
 	LastSeen   *time.Time      `json:"lastSeen"`
 	Friend     *FriendData     `json:"friend"`
+	Party      *PartyData      `json:"party"`
 }
 
 type FriendData struct {
 	Friends               []uuid.UUID `json:"friends"`
 	FriendRequests        []uuid.UUID `json:"friendRequests"`
 	FriendPendingRequests []uuid.UUID `json:"friendPendingRequests"`
+}
+
+type PartyData struct {
+	IsInParty     bool        `json:"isInParty"`
+	PartyOwner    uuid.UUID   `json:"partyOwner"`
+	Party         []uuid.UUID `json:"party"`
+	PartyRequests []uuid.UUID `json:"partyRequests"`
+	PartyInvites  []uuid.UUID `json:"partyInvites"`
 }
 
 type PermissionData struct {

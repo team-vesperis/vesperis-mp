@@ -26,9 +26,10 @@ type Player struct {
 	username string
 	nickname string
 
-	pi *permissionInfo
-	bi *banInfo
-	fi *friendInfo
+	pmi *permissionInfo
+	bi  *banInfo
+	fi  *friendInfo
+	pi  *partyInfo
 
 	online   bool
 	vanished bool
@@ -50,9 +51,10 @@ func NewPlayer(id, mId uuid.UUID, l *logger.Logger, db *database.Database, data 
 		mu:        sync.RWMutex{},
 	}
 
-	mp.pi = newPermissionInfo(mp, data)
+	mp.pmi = newPermissionInfo(mp, data)
 	mp.bi = newBanInfo(mp, data)
 	mp.fi = newFriendInfo(mp, data)
+	mp.pi = newPartyInfo(mp, data)
 
 	mp.username = data.Username
 	mp.nickname = data.Nickname
@@ -135,12 +137,12 @@ func (mp *Player) Update(k key.PlayerKey) {
 	case key.PlayerKey_Permission_Role:
 		var role string
 		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Role, &role)
-		mp.pi.setRole(Role(role), false)
+		mp.pmi.setRole(Role(role), false)
 
 	case key.PlayerKey_Permission_Rank:
 		var rank string
 		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Rank, &rank)
-		mp.pi.setRank(Rank(rank), false)
+		mp.pmi.setRank(Rank(rank), false)
 
 	case key.PlayerKey_Ban_Banned:
 		var banned bool
@@ -312,7 +314,7 @@ func (mp *Player) setNickname(name string, notify bool) error {
 }
 
 func (mp *Player) GetPermissionInfo() *permissionInfo {
-	return mp.pi
+	return mp.pmi
 }
 
 func (mp *Player) GetBanInfo() *banInfo {

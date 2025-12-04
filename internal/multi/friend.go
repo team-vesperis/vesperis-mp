@@ -20,7 +20,7 @@ type friendInfo struct {
 }
 
 func newFriendInfo(mp *Player, data *data.PlayerData) *friendInfo {
-	fi := &friendInfo{
+	return &friendInfo{
 		friends:               data.Friend.Friends,
 		friendRequests:        data.Friend.FriendRequests,
 		friendPendingRequests: data.Friend.FriendPendingRequests,
@@ -28,8 +28,6 @@ func newFriendInfo(mp *Player, data *data.PlayerData) *friendInfo {
 		mu: sync.RWMutex{},
 		mp: mp,
 	}
-
-	return fi
 }
 
 var ErrFriendNotFound = errors.New("friend not found")
