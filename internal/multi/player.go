@@ -26,9 +26,10 @@ type Player struct {
 	username string
 	nickname string
 
-	pi *permissionInfo
-	bi *banInfo
-	fi *friendInfo
+	pmi *permissionInfo
+	bi  *banInfo
+	fi  *friendInfo
+	pi  *partyInfo
 
 	online   bool
 	vanished bool
@@ -50,9 +51,10 @@ func NewPlayer(id, mId uuid.UUID, l *logger.Logger, db *database.Database, data 
 		mu:        sync.RWMutex{},
 	}
 
-	mp.pi = newPermissionInfo(mp, data)
+	mp.pmi = newPermissionInfo(mp, data)
 	mp.bi = newBanInfo(mp, data)
 	mp.fi = newFriendInfo(mp, data)
+	mp.pi = newPartyInfo(mp, data)
 
 	mp.username = data.Username
 	mp.nickname = data.Nickname
@@ -135,12 +137,12 @@ func (mp *Player) Update(k key.PlayerKey) {
 	case key.PlayerKey_Permission_Role:
 		var role string
 		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Role, &role)
-		mp.pi.setRole(Role(role), false)
+		mp.pmi.setRole(Role(role), false)
 
 	case key.PlayerKey_Permission_Rank:
 		var rank string
 		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Permission_Rank, &rank)
-		mp.pi.setRank(Rank(rank), false)
+		mp.pmi.setRank(Rank(rank), false)
 
 	case key.PlayerKey_Ban_Banned:
 		var banned bool
@@ -191,6 +193,31 @@ func (mp *Player) Update(k key.PlayerKey) {
 		var friends []uuid.UUID
 		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friend_FriendRequests, &friends)
 		mp.fi.setFriendRequestIds(friends, false)
+
+	case key.PlayerKey_Party_IsInParty:
+		var isInParty bool
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Party_IsInParty, &isInParty)
+		mp.pi.setIsInParty(isInParty, false)
+
+	case key.PlayerKey_Party_PartyOwner:
+		var partyOwner uuid.UUID
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Party_PartyOwner, &partyOwner)
+		mp.pi.setPartyOwner(partyOwner, false)
+
+	case key.PlayerKey_Party_Party:
+		var party []uuid.UUID
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Party_Party, &party)
+		mp.pi.setPartyIds(party, false)
+
+	case key.PlayerKey_Party_PartyJoinRequests:
+		var partyJoinRequests []uuid.UUID
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Party_PartyJoinRequests, &partyJoinRequests)
+		mp.pi.setPartyJoinRequestIds(partyJoinRequests, false)
+
+	case key.PlayerKey_Party_PartyInvites:
+		var partyInvites []uuid.UUID
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Party_PartyInvites, &partyInvites)
+		mp.pi.setPartyInviteIds(partyInvites, false)
 	}
 
 	if err != nil {
@@ -312,7 +339,7 @@ func (mp *Player) setNickname(name string, notify bool) error {
 }
 
 func (mp *Player) GetPermissionInfo() *permissionInfo {
-	return mp.pi
+	return mp.pmi
 }
 
 func (mp *Player) GetBanInfo() *banInfo {

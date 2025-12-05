@@ -42,19 +42,27 @@ func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mm *manager.M
 func (cm *CommandManager) registerCommands() {
 	cm.m.Register(cm.databaseCommand("database"))
 	cm.m.Register(cm.databaseCommand("db"))
+
 	cm.m.Register(cm.vanishCommand("vanish"))
 	cm.m.Register(cm.vanishCommand("v"))
+
 	cm.m.Register(cm.messageCommand("message"))
 	cm.m.Register(cm.messageCommand("msg"))
+
 	cm.m.Register(cm.kickCommand("kick"))
+
 	cm.m.Register(cm.transferCommand("transfer"))
 	cm.m.Register(cm.transferCommand("tf"))
+
 	cm.m.Register(cm.banCommand("ban"))
 	cm.m.Register(cm.tempBanCommand("tempban"))
 	cm.m.Register(cm.unBanCommand("unban"))
+
 	cm.m.Register(cm.permissionCommand("permission"))
 	cm.m.Register(cm.permissionCommand("pm"))
+
 	cm.m.Register(cm.friendsCommand("friends"))
+	cm.m.Register(cm.partyCommand("party"))
 }
 
 func (cm *CommandManager) executeIncorrectUsage(correctUsage string) brigodier.Command {
