@@ -1,7 +1,6 @@
 package multi
 
 import (
-	"errors"
 	"slices"
 	"sync"
 
@@ -29,8 +28,6 @@ func newFriendInfo(mp *Player, data *data.PlayerData) *friendInfo {
 		mp: mp,
 	}
 }
-
-var ErrFriendNotFound = errors.New("friend not found")
 
 func (fi *friendInfo) GetFriendRequestIds() []uuid.UUID {
 	fi.mu.RLock()
@@ -80,7 +77,7 @@ func (fi *friendInfo) RemoveFriendRequestId(id uuid.UUID) error {
 
 	i := slices.Index(fi.friendRequests, id)
 	if i == -1 {
-		return ErrFriendNotFound
+		return ErrPlayerNotFound
 	}
 	fi.friendRequests = slices.Delete(fi.friendRequests, i, i+1)
 
@@ -135,7 +132,7 @@ func (fi *friendInfo) RemovePendingFriendRequestId(id uuid.UUID) error {
 
 	i := slices.Index(fi.friendPendingRequests, id)
 	if i == -1 {
-		return ErrFriendNotFound
+		return ErrPlayerNotFound
 	}
 	fi.friendPendingRequests = slices.Delete(fi.friendPendingRequests, i, i+1)
 
@@ -190,7 +187,7 @@ func (fi *friendInfo) RemoveFriendId(id uuid.UUID) error {
 
 	i := slices.Index(fi.friends, id)
 	if i == -1 {
-		return ErrFriendNotFound
+		return ErrPlayerNotFound
 	}
 	fi.friends = slices.Delete(fi.friends, i, i+1)
 

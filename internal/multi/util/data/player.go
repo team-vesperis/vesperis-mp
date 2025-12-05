@@ -30,11 +30,11 @@ type FriendData struct {
 }
 
 type PartyData struct {
-	IsInParty     bool        `json:"isInParty"`
-	PartyOwner    uuid.UUID   `json:"partyOwner"`
-	Party         []uuid.UUID `json:"party"`
-	PartyRequests []uuid.UUID `json:"partyRequests"`
-	PartyInvites  []uuid.UUID `json:"partyInvites"`
+	IsInParty         bool        `json:"isInParty"`
+	PartyOwner        uuid.UUID   `json:"partyOwner"`
+	Party             []uuid.UUID `json:"party"`
+	PartyJoinRequests []uuid.UUID `json:"partyJoinRequests"`
+	PartyInvites      []uuid.UUID `json:"partyInvites"`
 }
 
 type PermissionData struct {
