@@ -175,3 +175,35 @@ func (mm *MultiManager) CreateMultiPartyFromDatabase(id uuid.UUID) (*multi.Party
 
 	return mp, nil
 }
+
+func (mm *MultiManager) GetAllMultiParties() []*multi.Party {
+	var l []*multi.Party
+
+	mm.mu.RLock()
+	for _, mp := range mm.partyMap {
+		l = append(l, mp)
+	}
+	mm.mu.RUnlock()
+
+	return l
+}
+
+func (mm *MultiManager) GetAllMultiPartiesFromDatabase() ([]*multi.Party, error) {
+	var l []*multi.Party
+
+	i, err := mm.db.GetAllPartyIds()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, id := range i {
+		mp, err := mm.GetMultiParty(id)
+		if err != nil {
+			return nil, err
+		}
+
+		l = append(l, mp)
+	}
+
+	return l, nil
+}

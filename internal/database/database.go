@@ -597,6 +597,10 @@ func (db *Database) GetAllPlayerIds() ([]uuid.UUID, error) {
 	return db.getAllIds("player")
 }
 
+func (db *Database) GetAllPartyIds() ([]uuid.UUID, error) {
+	return db.getAllIds("party")
+}
+
 func (db *Database) GetAllProxyIds() ([]uuid.UUID, error) {
 	return db.getAllIds("proxy")
 }

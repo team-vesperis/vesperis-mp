@@ -67,8 +67,28 @@ func (mm *MultiManager) createBackendUpdateListener() func(msg *redis.Message) {
 }
 
 // creates a new backend under the manager proxy
-func (mm *MultiManager) NewMultiBackend(name, addr string, id uuid.UUID) (*multi.Backend, error) {
+func (mm *MultiManager) NewMultiBackend(name, addr string) (*multi.Backend, error) {
 	now := time.Now()
+
+	var id uuid.UUID
+	var err error
+	for {
+		id = uuid.New()
+		_, err = mm.GetMultiBackend(id)
+		if err == nil {
+			continue
+		}
+
+		if err == database.ErrDataNotFound {
+			err = nil
+		}
+
+		break
+	}
+
+	if err != nil {
+		return nil, err
+	}
 
 	data := &data.BackendData{
 		Name:        name,
@@ -78,7 +98,7 @@ func (mm *MultiManager) NewMultiBackend(name, addr string, id uuid.UUID) (*multi
 		Players:     make([]uuid.UUID, 0),
 	}
 
-	err := mm.db.SetBackendData(id, data)
+	err = mm.db.SetBackendData(id, data)
 	if err != nil {
 		return nil, err
 	}
@@ -239,25 +259,4 @@ func (mm *MultiManager) GetAllMultiBackendsFromDatabase() ([]*multi.Backend, err
 	}
 
 	return l, nil
-}
-
-// creates id
-func (mm *MultiManager) CreateNewBackendId() (uuid.UUID, error) {
-	var break_err error
-
-	for {
-		id := uuid.New()
-		_, err := mm.GetMultiBackend(id)
-		if err == database.ErrDataNotFound {
-			return id, nil
-		}
-
-		if err != nil {
-			break_err = err
-			break
-		}
-	}
-
-	mm.l.Error("create new backend id error", "error", break_err)
-	return uuid.Nil, break_err
 }

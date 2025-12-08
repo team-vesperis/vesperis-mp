@@ -69,8 +69,28 @@ func (mm *MultiManager) createProxyUpdateListener() func(msg *redis.Message) {
 	}
 }
 
-func (mm *MultiManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
+func (mm *MultiManager) NewMultiProxy() (*multi.Proxy, error) {
 	now := time.Now()
+
+	var id uuid.UUID
+	var err error
+	for {
+		id = uuid.New()
+		_, err = mm.GetMultiBackend(id)
+		if err == nil {
+			continue
+		}
+
+		if err == database.ErrDataNotFound {
+			err = nil
+		}
+
+		break
+	}
+
+	if err != nil {
+		return nil, err
+	}
 
 	var addr string
 
@@ -91,7 +111,7 @@ func (mm *MultiManager) NewMultiProxy(id uuid.UUID) (*multi.Proxy, error) {
 		LastHeartBeat: &now,
 	}
 
-	err := mm.db.SetProxyData(id, data)
+	err = mm.db.SetProxyData(id, data)
 	if err != nil {
 		return nil, err
 	}
@@ -208,27 +228,6 @@ func (mm *MultiManager) GetAllMultiProxiesFromDatabase() ([]*multi.Proxy, error)
 	}
 
 	return l, nil
-}
-
-// creates id
-func (mm *MultiManager) CreateNewProxyId() (uuid.UUID, error) {
-	var break_err error
-
-	for {
-		id := uuid.New()
-		_, err := mm.GetMultiProxy(id)
-		if err == database.ErrDataNotFound {
-			return id, nil
-		}
-
-		if err != nil {
-			break_err = err
-			break
-		}
-	}
-
-	mm.l.Error("create new proxy id error", "error", break_err)
-	return uuid.Nil, break_err
 }
 
 // can return nil if no other proxy is found

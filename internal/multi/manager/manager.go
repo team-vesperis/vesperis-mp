@@ -42,14 +42,7 @@ func Init(cf *config.Config, db *database.Database, l *logger.Logger) (*MultiMan
 
 	multi.SetMultiManager(mm)
 
-	id, err := mm.CreateNewProxyId()
-	if err != nil {
-		return &MultiManager{}, err
-	}
-
-	mm.l.Debug("Found a id to use for this proxy.", "id", id)
-
-	_, err = mm.NewMultiProxy(id)
+	_, err := mm.NewMultiProxy()
 	if err != nil {
 		return &MultiManager{}, err
 	}
