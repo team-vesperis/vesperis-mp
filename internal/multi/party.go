@@ -1,248 +1,260 @@
 package multi
 
 import (
+	"errors"
 	"slices"
 	"sync"
 
+	"github.com/team-vesperis/vesperis-mp/internal/database"
+	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
-type partyInfo struct {
-	isInParty  bool
+type Party struct {
+	id uuid.UUID
+
 	partyOwner uuid.UUID
 
-	party             []uuid.UUID
+	partyMembers      []uuid.UUID
 	partyJoinRequests []uuid.UUID
-	partyInvites      []uuid.UUID
+	partyInvitations  []uuid.UUID
 
-	mu sync.RWMutex
-	mp *Player
+	managerId uuid.UUID
+	l         *logger.Logger
+	db        *database.Database
+	mu        sync.RWMutex
 }
 
-func newPartyInfo(mp *Player, data *data.PlayerData) *partyInfo {
-	return &partyInfo{
-		isInParty:         data.Party.IsInParty,
-		partyOwner:        data.Party.PartyOwner,
-		party:             data.Party.Party,
-		partyJoinRequests: data.Party.PartyJoinRequests,
-		partyInvites:      data.Party.PartyInvites,
+func NewParty(id, managerId uuid.UUID, l *logger.Logger, db *database.Database, data *data.PartyData) *Party {
+	mp := &Party{
+		id:        id,
+		managerId: managerId,
+		l:         l,
+		db:        db,
+		mu:        sync.RWMutex{},
+	}
 
-		mu: sync.RWMutex{},
-		mp: mp,
+	mp.partyOwner = data.PartyOwner
+	mp.partyMembers = data.PartyMembers
+	mp.partyJoinRequests = data.PartyJoinRequests
+	mp.partyInvitations = data.PartyInvitations
+
+	return mp
+}
+
+var ErrPartyNotFound = errors.New("party not found")
+
+const UpdateMultiPartyChannel = "update_multiparty"
+
+func (mp *Party) save(k key.PartyKey, val any) error {
+	err := mp.db.SetPartyDataField(mp.id, k, val)
+	if err != nil {
+		return err
+	}
+
+	m := mp.managerId.String() + "_" + mp.id.String() + "_" + k.String()
+	return mp.db.Publish(UpdateMultiPartyChannel, m)
+}
+
+func (mp *Party) Update(k key.PartyKey) {
+	var err error
+
+	switch k {
+	case key.PartyKey_PartyOwner:
+		var owner uuid.UUID
+		err = mp.db.GetPartyDataField(mp.id, key.PartyKey_PartyOwner, &owner)
+		mp.setPartyOwner(owner, false)
+	case key.PartyKey_PartyMembers:
+		var members []uuid.UUID
+		err = mp.db.GetPartyDataField(mp.id, key.PartyKey_PartyMembers, &members)
+		mp.setPartyMembers(members, false)
+	case key.PartyKey_PartyJoinRequests:
+		var requests []uuid.UUID
+		err = mp.db.GetPartyDataField(mp.id, key.PartyKey_PartyJoinRequests, &requests)
+		mp.setPartyJoinRequests(requests, false)
+	case key.PartyKey_PartyInvitations:
+		var invitations []uuid.UUID
+		err = mp.db.GetPartyDataField(mp.id, key.PartyKey_PartyInvitations, &invitations)
+		mp.setPartyInvitations(invitations, false)
+	}
+
+	if err != nil {
+		mp.l.Error("multiparty update partykey get field from database error", "error", err)
 	}
 }
 
-func (pi *partyInfo) IsInParty() bool {
-	pi.mu.RLock()
-	defer pi.mu.RUnlock()
-
-	return pi.isInParty
+func (mp *Party) GetId() uuid.UUID {
+	return mp.id
 }
 
-func (pi *partyInfo) SetIsInParty(inParty bool) error {
-	return pi.setIsInParty(inParty, true)
+func (mp *Party) GetPartyOwner() uuid.UUID {
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+	return mp.partyOwner
 }
 
-func (pi *partyInfo) setIsInParty(inParty, notify bool) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
+func (mp *Party) SetPartyOwner(owner uuid.UUID) error {
+	return mp.setPartyOwner(owner, true)
+}
 
-	pi.isInParty = inParty
+func (mp *Party) setPartyOwner(owner uuid.UUID, notify bool) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
+	mp.partyOwner = owner
 
 	if notify {
-		return pi.mp.save(key.PlayerKey_Party_IsInParty, inParty)
+		return mp.save(key.PartyKey_PartyOwner, owner)
 	}
 
 	return nil
 }
 
-func (pi *partyInfo) GetPartyOwner() uuid.UUID {
-	pi.mu.RLock()
-	defer pi.mu.RUnlock()
+func (mp *Party) GetPartyMembers() []uuid.UUID {
+	mp.mu.RLock()
+	c := append([]uuid.UUID{}, mp.partyMembers...)
+	mp.mu.RUnlock()
 
-	return pi.partyOwner
+	return c
 }
 
-func (pi *partyInfo) SetPartyOwner(owner uuid.UUID) error {
-	return pi.setPartyOwner(owner, true)
+func (mp *Party) SetPartyMembers(ids []uuid.UUID) error {
+	return mp.setPartyMembers(ids, true)
 }
 
-func (pi *partyInfo) setPartyOwner(owner uuid.UUID, notify bool) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
+func (mp *Party) setPartyMembers(ids []uuid.UUID, notify bool) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
 
-	pi.partyOwner = owner
+	mp.partyMembers = ids
 
 	if notify {
-		return pi.mp.save(key.PlayerKey_Party_PartyOwner, owner)
+		return mp.save(key.PartyKey_PartyMembers, ids)
 	}
 
 	return nil
 }
 
-func (pi *partyInfo) GetPartyIds() []uuid.UUID {
-	pi.mu.RLock()
-	defer pi.mu.RUnlock()
+func (mp *Party) AddPartyMember(id uuid.UUID) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
 
-	return slices.Clone(pi.party)
-}
-
-func (pi *partyInfo) SetPartyIds(ids []uuid.UUID) error {
-	return pi.setPartyIds(ids, true)
-}
-
-func (pi *partyInfo) setPartyIds(ids []uuid.UUID, notify bool) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
-
-	pi.party = ids
-
-	if notify {
-		return pi.mp.save(key.PlayerKey_Party_Party, ids)
+	if !slices.Contains(mp.partyMembers, id) {
+		mp.partyMembers = append(mp.partyMembers, id)
 	}
 
-	return nil
+	return mp.save(key.PartyKey_PartyMembers, mp.partyMembers)
 }
 
-func (pi *partyInfo) IsInPartyMember(id uuid.UUID) bool {
-	pi.mu.RLock()
-	defer pi.mu.RUnlock()
+func (mp *Party) RemovePartyMember(id uuid.UUID) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
 
-	return slices.Contains(pi.party, id)
-}
-
-func (pi *partyInfo) AddPartyMemberId(id uuid.UUID) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
-
-	if !slices.Contains(pi.party, id) {
-		pi.party = append(pi.party, id)
-	}
-
-	return pi.mp.save(key.PlayerKey_Party_Party, pi.party)
-}
-
-func (pi *partyInfo) RemovePartyMemberId(id uuid.UUID) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
-
-	i := slices.Index(pi.party, id)
+	i := slices.Index(mp.partyMembers, id)
 	if i == -1 {
-		return ErrPlayerNotFound
+		return ErrPartyNotFound
 	}
-	pi.party = slices.Delete(pi.party, i, i+1)
+	mp.partyMembers = slices.Delete(mp.partyMembers, i, i+1)
 
-	return pi.mp.save(key.PlayerKey_Party_Party, pi.party)
+	return mp.save(key.PartyKey_PartyMembers, mp.partyMembers)
 }
 
-func (pi *partyInfo) GetPartyJoinRequestIds() []uuid.UUID {
-	pi.mu.RLock()
-	defer pi.mu.RUnlock()
+func (mp *Party) GetPartyJoinRequests() []uuid.UUID {
+	mp.mu.RLock()
+	c := append([]uuid.UUID{}, mp.partyJoinRequests...)
+	mp.mu.RUnlock()
 
-	return slices.Clone(pi.partyJoinRequests)
+	return c
 }
 
-func (pi *partyInfo) SetPartyJoinRequestIds(ids []uuid.UUID) error {
-	return pi.setPartyJoinRequestIds(ids, true)
+func (mp *Party) SetPartyJoinRequests(ids []uuid.UUID) error {
+	return mp.setPartyJoinRequests(ids, true)
 }
 
-func (pi *partyInfo) setPartyJoinRequestIds(ids []uuid.UUID, notify bool) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
+func (mp *Party) setPartyJoinRequests(ids []uuid.UUID, notify bool) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
 
-	pi.partyJoinRequests = ids
+	mp.partyJoinRequests = ids
 
 	if notify {
-		return pi.mp.save(key.PlayerKey_Party_PartyJoinRequests, ids)
+		return mp.save(key.PartyKey_PartyJoinRequests, ids)
 	}
 
 	return nil
 }
 
-func (pi *partyInfo) IsPartyJoinRequest(id uuid.UUID) bool {
-	pi.mu.RLock()
-	defer pi.mu.RUnlock()
+func (mp *Party) AddPartyJoinRequest(id uuid.UUID) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
 
-	return slices.Contains(pi.partyJoinRequests, id)
-}
-
-func (pi *partyInfo) AddPartyJoinRequestId(id uuid.UUID) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
-
-	if !slices.Contains(pi.partyJoinRequests, id) {
-		pi.partyJoinRequests = append(pi.partyJoinRequests, id)
+	if !slices.Contains(mp.partyJoinRequests, id) {
+		mp.partyJoinRequests = append(mp.partyJoinRequests, id)
 	}
 
-	return pi.mp.save(key.PlayerKey_Party_PartyJoinRequests, pi.partyJoinRequests)
+	return mp.save(key.PartyKey_PartyJoinRequests, mp.partyJoinRequests)
 }
 
-func (pi *partyInfo) RemovePartyJoinRequestId(id uuid.UUID) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
+func (mp *Party) RemovePartyJoinRequest(id uuid.UUID) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
 
-	i := slices.Index(pi.partyJoinRequests, id)
+	i := slices.Index(mp.partyJoinRequests, id)
 	if i == -1 {
-		return ErrPlayerNotFound
+		return ErrPartyNotFound
 	}
-	pi.partyJoinRequests = slices.Delete(pi.partyJoinRequests, i, i+1)
+	mp.partyJoinRequests = slices.Delete(mp.partyJoinRequests, i, i+1)
 
-	return pi.mp.save(key.PlayerKey_Party_PartyJoinRequests, pi.partyJoinRequests)
+	return mp.save(key.PartyKey_PartyJoinRequests, mp.partyJoinRequests)
 }
 
-func (pi *partyInfo) GetPartyInviteIds() []uuid.UUID {
-	pi.mu.RLock()
-	defer pi.mu.RUnlock()
+func (mp *Party) GetPartyInvitations() []uuid.UUID {
+	mp.mu.RLock()
+	c := append([]uuid.UUID{}, mp.partyInvitations...)
+	mp.mu.RUnlock()
 
-	return slices.Clone(pi.partyInvites)
+	return c
 }
 
-func (pi *partyInfo) SetPartyInviteIds(ids []uuid.UUID) error {
-	return pi.setPartyInviteIds(ids, true)
+func (mp *Party) SetPartyInvitations(ids []uuid.UUID) error {
+	return mp.setPartyInvitations(ids, true)
 }
 
-func (pi *partyInfo) setPartyInviteIds(ids []uuid.UUID, notify bool) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
+func (mp *Party) setPartyInvitations(ids []uuid.UUID, notify bool) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
 
-	pi.partyInvites = ids
+	mp.partyInvitations = ids
 
 	if notify {
-		return pi.mp.save(key.PlayerKey_Party_PartyInvites, ids)
+		return mp.save(key.PartyKey_PartyInvitations, ids)
 	}
 
 	return nil
 }
 
-func (pi *partyInfo) IsPartyInvite(id uuid.UUID) bool {
-	pi.mu.RLock()
-	defer pi.mu.RUnlock()
+func (mp *Party) AddPartyInvitation(id uuid.UUID) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
 
-	return slices.Contains(pi.partyInvites, id)
-}
-
-func (pi *partyInfo) AddPartyInviteId(id uuid.UUID) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
-
-	if !slices.Contains(pi.partyInvites, id) {
-		pi.partyInvites = append(pi.partyInvites, id)
+	if !slices.Contains(mp.partyInvitations, id) {
+		mp.partyInvitations = append(mp.partyInvitations, id)
 	}
 
-	return pi.mp.save(key.PlayerKey_Party_PartyInvites, pi.partyInvites)
+	return mp.save(key.PartyKey_PartyInvitations, mp.partyInvitations)
 }
 
-func (pi *partyInfo) RemovePartyInviteId(id uuid.UUID) error {
-	pi.mu.Lock()
-	defer pi.mu.Unlock()
+func (mp *Party) RemovePartyInvitation(id uuid.UUID) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
 
-	i := slices.Index(pi.partyInvites, id)
+	i := slices.Index(mp.partyInvitations, id)
 	if i == -1 {
-		return ErrPlayerNotFound
+		return ErrPartyNotFound
 	}
-	pi.partyInvites = slices.Delete(pi.partyInvites, i, i+1)
+	mp.partyInvitations = slices.Delete(mp.partyInvitations, i, i+1)
 
-	return pi.mp.save(key.PlayerKey_Party_PartyInvites, pi.partyInvites)
+	return mp.save(key.PartyKey_PartyInvitations, mp.partyInvitations)
 }

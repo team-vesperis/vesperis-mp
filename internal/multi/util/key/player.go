@@ -23,11 +23,8 @@ const (
 	PlayerKey_Friend_FriendRequests        PlayerKey = "friend.friendRequests"
 	PlayerKey_Friend_FriendPendingRequests PlayerKey = "friend.friendPendingRequests"
 
-	PlayerKey_Party_IsInParty         PlayerKey = "party.isInParty"
-	PlayerKey_Party_PartyOwner        PlayerKey = "party.partyOwner"
-	PlayerKey_Party_Party             PlayerKey = "party.party"
-	PlayerKey_Party_PartyJoinRequests PlayerKey = "party.partyJoinRequests"
-	PlayerKey_Party_PartyInvites      PlayerKey = "party.partyInvites"
+	PlayerKey_PartyId          PlayerKey = "partyId"
+	PlayerKey_PartyInvitations PlayerKey = "partyInvitations"
 
 	PlayerKey_Permission_Role PlayerKey = "permission.role"
 	PlayerKey_Permission_Rank PlayerKey = "permission.rank"
@@ -52,11 +49,8 @@ var AllowedPlayerKeys = []PlayerKey{
 	PlayerKey_Friend_FriendRequests,
 	PlayerKey_Friend_FriendPendingRequests,
 
-	PlayerKey_Party_IsInParty,
-	PlayerKey_Party_PartyOwner,
-	PlayerKey_Party_Party,
-	PlayerKey_Party_PartyJoinRequests,
-	PlayerKey_Party_PartyInvites,
+	PlayerKey_PartyId,
+	PlayerKey_PartyInvitations,
 
 	PlayerKey_Permission_Role,
 	PlayerKey_Permission_Rank,

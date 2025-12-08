@@ -2,6 +2,7 @@ package multi
 
 import (
 	"errors"
+	"slices"
 	"sync"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 )
 
 type Player struct {
+	id uuid.UUID
+
 	// The MultiProxy the player is located on.
 	// can be nil!
 	p *Proxy
@@ -21,15 +24,15 @@ type Player struct {
 	// can be nil!
 	b *Backend
 
-	id uuid.UUID
-
 	username string
 	nickname string
+
+	partyId          uuid.UUID
+	partyInvitations []uuid.UUID
 
 	pmi *permissionInfo
 	bi  *banInfo
 	fi  *friendInfo
-	pi  *partyInfo
 
 	online   bool
 	vanished bool
@@ -54,10 +57,11 @@ func NewPlayer(id, mId uuid.UUID, l *logger.Logger, db *database.Database, data 
 	mp.pmi = newPermissionInfo(mp, data)
 	mp.bi = newBanInfo(mp, data)
 	mp.fi = newFriendInfo(mp, data)
-	mp.pi = newPartyInfo(mp, data)
 
 	mp.username = data.Username
 	mp.nickname = data.Nickname
+	mp.partyId = data.PartyId
+	mp.partyInvitations = data.PartyInvitations
 	mp.online = data.Online
 	mp.vanished = data.Vanished
 	mp.lastSeen = data.LastSeen
@@ -185,39 +189,14 @@ func (mp *Player) Update(k key.PlayerKey) {
 		mp.fi.setFriendsIds(friends, false)
 
 	case key.PlayerKey_Friend_FriendPendingRequests:
-		var friends []uuid.UUID
-		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friend_FriendPendingRequests, &friends)
-		mp.fi.setPendingFriendIds(friends, false)
+		var pendingFriendRequests []uuid.UUID
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friend_FriendPendingRequests, &pendingFriendRequests)
+		mp.fi.setPendingFriendIds(pendingFriendRequests, false)
 
 	case key.PlayerKey_Friend_FriendRequests:
-		var friends []uuid.UUID
-		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friend_FriendRequests, &friends)
-		mp.fi.setFriendRequestIds(friends, false)
-
-	case key.PlayerKey_Party_IsInParty:
-		var isInParty bool
-		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Party_IsInParty, &isInParty)
-		mp.pi.setIsInParty(isInParty, false)
-
-	case key.PlayerKey_Party_PartyOwner:
-		var partyOwner uuid.UUID
-		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Party_PartyOwner, &partyOwner)
-		mp.pi.setPartyOwner(partyOwner, false)
-
-	case key.PlayerKey_Party_Party:
-		var party []uuid.UUID
-		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Party_Party, &party)
-		mp.pi.setPartyIds(party, false)
-
-	case key.PlayerKey_Party_PartyJoinRequests:
-		var partyJoinRequests []uuid.UUID
-		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Party_PartyJoinRequests, &partyJoinRequests)
-		mp.pi.setPartyJoinRequestIds(partyJoinRequests, false)
-
-	case key.PlayerKey_Party_PartyInvites:
-		var partyInvites []uuid.UUID
-		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Party_PartyInvites, &partyInvites)
-		mp.pi.setPartyInviteIds(partyInvites, false)
+		var friendRequests []uuid.UUID
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friend_FriendRequests, &friendRequests)
+		mp.fi.setFriendRequestIds(friendRequests, false)
 	}
 
 	if err != nil {
@@ -336,6 +315,86 @@ func (mp *Player) setNickname(name string, notify bool) error {
 	}
 
 	return nil
+}
+
+// the id of the party the player is in. returns uuid.Nil if the player is not in a party
+func (mp *Player) GetPartyId() uuid.UUID {
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+
+	return mp.partyId
+}
+
+func (mp *Player) SetPartyId(id uuid.UUID) error {
+	return mp.setPartyId(id, true)
+}
+
+func (mp *Player) setPartyId(id uuid.UUID, notify bool) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
+	mp.partyId = id
+
+	if notify {
+		return mp.save(key.PlayerKey_PartyId, id)
+	}
+
+	return nil
+}
+
+func (mp *Player) GetPartyInvitations() []uuid.UUID {
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+
+	return slices.Clone(mp.partyInvitations)
+}
+
+func (mp *Player) SetPartyInvitations(ids []uuid.UUID) error {
+	return mp.setPartyInvitations(ids, true)
+}
+
+func (mp *Player) setPartyInvitations(ids []uuid.UUID, notify bool) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
+	mp.partyInvitations = ids
+
+	if notify {
+		return mp.save(key.PlayerKey_PartyInvitations, ids)
+	}
+
+	return nil
+}
+
+func (mp *Player) IsInvitedToParty(id uuid.UUID) bool {
+	mp.mu.RLock()
+	defer mp.mu.RUnlock()
+
+	return slices.Contains(mp.partyInvitations, id)
+}
+
+func (mp *Player) AddPartyInvitation(id uuid.UUID) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
+	if !slices.Contains(mp.partyInvitations, id) {
+		mp.partyInvitations = append(mp.partyInvitations, id)
+	}
+
+	return mp.save(key.PlayerKey_PartyInvitations, mp.partyInvitations)
+}
+
+func (mp *Player) RemovePartyInvitation(id uuid.UUID) error {
+	mp.mu.Lock()
+	defer mp.mu.Unlock()
+
+	i := slices.Index(mp.partyInvitations, id)
+	if i == -1 {
+		return ErrPartyNotFound
+	}
+	mp.partyInvitations = slices.Delete(mp.partyInvitations, i, i+1)
+
+	return mp.save(key.PlayerKey_PartyInvitations, mp.partyInvitations)
 }
 
 func (mp *Player) GetPermissionInfo() *permissionInfo {

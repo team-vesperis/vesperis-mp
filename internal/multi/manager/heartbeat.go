@@ -39,7 +39,7 @@ func (hbm *hartBeatManager) start() {
 			go func() {
 				now := time.Now()
 				lockKey := "proxy_cleanup_leader"
-				got, err := hbm.mm.GetDatabase().AcquireLock(lockKey, 30*time.Second)
+				got, err := hbm.mm.db.AcquireLock(lockKey, 30*time.Second)
 				if err != nil {
 					hbm.mm.l.Warn("could not acquire cleanup leader lock", "error", err)
 					return
@@ -51,7 +51,7 @@ func (hbm *hartBeatManager) start() {
 				hbm.checkOtherProxies()
 				d := time.Since(now)
 				time.Sleep((3 * time.Minute) - d)
-				hbm.mm.GetDatabase().ReleaseLock(lockKey)
+				hbm.mm.db.ReleaseLock(lockKey)
 			}()
 		}
 	}

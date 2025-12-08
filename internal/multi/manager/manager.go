@@ -14,6 +14,7 @@ import (
 type MultiManager struct {
 	proxyMap   map[uuid.UUID]*multi.Proxy
 	playerMap  map[uuid.UUID]*multi.Player
+	partyMap   map[uuid.UUID]*multi.Party
 	backendMap map[uuid.UUID]*multi.Backend
 	mu         sync.RWMutex
 
@@ -30,9 +31,10 @@ func Init(cf *config.Config, db *database.Database, l *logger.Logger) (*MultiMan
 	now := time.Now()
 
 	mm := &MultiManager{
-		proxyMap:   map[uuid.UUID]*multi.Proxy{},
-		playerMap:  map[uuid.UUID]*multi.Player{},
-		backendMap: map[uuid.UUID]*multi.Backend{},
+		proxyMap:   make(map[uuid.UUID]*multi.Proxy),
+		playerMap:  make(map[uuid.UUID]*multi.Player),
+		partyMap:   make(map[uuid.UUID]*multi.Party),
+		backendMap: make(map[uuid.UUID]*multi.Backend),
 		cf:         cf,
 		db:         db,
 		l:          l,
@@ -53,7 +55,8 @@ func Init(cf *config.Config, db *database.Database, l *logger.Logger) (*MultiMan
 	}
 
 	// start update listeners
-	mm.db.CreateListener(multi.UpdateMultiPlayerChannel, mm.createUpdateListener())
+	mm.db.CreateListener(multi.UpdateMultiPlayerChannel, mm.createPlayerUpdateListener())
+	mm.db.CreateListener(multi.UpdateMultiPartyChannel, mm.createPartyUpdateListener())
 	mm.db.CreateListener(multi.UpdateMultiBackendChannel, mm.createBackendUpdateListener())
 	mm.db.CreateListener(multi.UpdateMultiProxyChannel, mm.createProxyUpdateListener())
 

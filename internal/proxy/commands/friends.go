@@ -44,6 +44,7 @@ func (cm *CommandManager) executeFriendsRemove() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		p := cm.getGatePlayerFromSource(c.Source)
 		if p == nil {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
 			return ErrOnlyPlayersSubCommand
 		}
 
@@ -90,6 +91,7 @@ func (cm *CommandManager) executeFriendsResponse(accept bool) brigodier.Command 
 	return command.Command(func(c *command.Context) error {
 		p := cm.getGatePlayerFromSource(c.Source)
 		if p == nil {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
 			return ErrOnlyPlayersSubCommand
 		}
 
@@ -176,6 +178,7 @@ func (cm *CommandManager) executeFriendsRequest() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		p := cm.getGatePlayerFromSource(c.Source)
 		if p == nil {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
 			return ErrOnlyPlayersSubCommand
 		}
 
@@ -275,6 +278,7 @@ func (cm *CommandManager) executeFriendsList() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		p := cm.getGatePlayerFromSource(c.Source)
 		if p == nil {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
 			return ErrOnlyPlayersSubCommand
 		}
 

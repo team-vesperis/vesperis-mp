@@ -33,43 +33,35 @@ func initPostgres(ctx context.Context, l *logger.Logger, c *config.Config) (*pgx
 	return p, nil
 }
 
+func createTable(ctx context.Context, p *pgxpool.Pool, data_type string) error {
+	table := "CREATE TABLE IF NOT EXISTS " + data_type + "_data (" + data_type + "Id UUID PRIMARY KEY," + data_type + "Data JSONB NOT NULL);"
+
+	_, err := p.Exec(ctx, table)
+	return err
+}
+
 func createTables(ctx context.Context, p *pgxpool.Pool, l *logger.Logger) error {
-	playerDataTable := `
-	CREATE TABLE IF NOT EXISTS player_data (
-		playerId UUID PRIMARY KEY,
-		playerData JSONB NOT NULL
-	);
-	`
-
-	_, err := p.Exec(ctx, playerDataTable)
+	err := createTable(ctx, p, "player")
 	if err != nil {
-		l.Error("postgres creating table error", "table", playerDataTable, "error", err)
+		l.Error("postgres creating player table error", "error", err)
 		return err
 	}
 
-	proxyDataTable := `
-	CREATE TABLE IF NOT EXISTS proxy_data (
-		proxyId UUID PRIMARY KEY,
-		proxyData JSONB NOT NULL
-	);
-	`
-
-	_, err = p.Exec(ctx, proxyDataTable)
+	err = createTable(ctx, p, "party")
 	if err != nil {
-		l.Error("postgres creating table error", "table", proxyDataTable, "error", err)
+		l.Error("postgres creating party table error", "error", err)
 		return err
 	}
 
-	backendDataTable := `
-	CREATE TABLE IF NOT EXISTS backend_data (
-		backendId UUID PRIMARY KEY,
-		backendData JSONB NOT NULL
-	);
-	`
-
-	_, err = p.Exec(ctx, backendDataTable)
+	err = createTable(ctx, p, "proxy")
 	if err != nil {
-		l.Error("postgres creating table error", "table", backendDataTable, "error", err)
+		l.Error("postgres creating proxy table error", "error", err)
+		return err
+	}
+
+	err = createTable(ctx, p, "backend")
+	if err != nil {
+		l.Error("postgres creating backend table error", "error", err)
 		return err
 	}
 
