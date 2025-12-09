@@ -84,6 +84,8 @@ func (mm *MultiManager) NewMultiPlayer(p proxy.Player) (*multi.Player, error) {
 			FriendRequests:        make([]uuid.UUID, 0),
 			FriendPendingRequests: make([]uuid.UUID, 0),
 		},
+		PartyId:          uuid.Nil,
+		PartyInvitations: make([]uuid.UUID, 0),
 	}
 
 	err := mm.db.SetPlayerData(id, data)

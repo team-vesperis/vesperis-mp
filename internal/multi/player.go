@@ -197,6 +197,16 @@ func (mp *Player) Update(k key.PlayerKey) {
 		var friendRequests []uuid.UUID
 		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_Friend_FriendRequests, &friendRequests)
 		mp.fi.setFriendRequestIds(friendRequests, false)
+
+	case key.PlayerKey_PartyId:
+		var partyId uuid.UUID
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_PartyId, &partyId)
+		mp.setPartyId(partyId, false)
+
+	case key.PlayerKey_PartyInvitations:
+		var invitations []uuid.UUID
+		err = mp.db.GetPlayerDataField(mp.id, key.PlayerKey_PartyInvitations, &invitations)
+		mp.setPartyInvitations(invitations, false)
 	}
 
 	if err != nil {

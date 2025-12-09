@@ -123,9 +123,21 @@ func (mm *MultiManager) DeleteMultiParty(id uuid.UUID) error {
 func (mm *MultiManager) deleteMultiParty(id uuid.UUID, first bool) error {
 	now := time.Now()
 
-	_, err := mm.GetMultiParty(id)
+	mp, err := mm.GetMultiParty(id)
 	if err != nil {
 		return err
+	}
+
+	for _, id := range mp.GetPartyMembers() {
+		p, err := mm.GetMultiPlayer(id)
+		if err != nil {
+			return err
+		}
+
+		err = p.SetPartyId(uuid.Nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	mm.mu.Lock()

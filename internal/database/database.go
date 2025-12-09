@@ -313,7 +313,7 @@ func (db *Database) SetPartyDataField(partyId uuid.UUID, field key.PartyKey, val
 		return err
 	}
 
-	key := redisPlayerKeyTranslator(partyId)
+	key := redisPartyKeyTranslator(partyId)
 	err = db.r.HSet(db.ctx, key, field.String(), jsonVal).Err()
 	if err != nil {
 		db.l.Warn("redis player data set error", "playerId", partyId, "field", field, "error", err)
