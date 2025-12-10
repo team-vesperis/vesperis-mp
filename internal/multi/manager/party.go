@@ -120,10 +120,10 @@ func (mm *MultiManager) DeleteMultiParty(id uuid.UUID) error {
 	return mm.deleteMultiParty(id, true)
 }
 
-func (mm *MultiManager) deleteMultiParty(id uuid.UUID, first bool) error {
+func (mm *MultiManager) deleteMultiParty(partyId uuid.UUID, first bool) error {
 	now := time.Now()
 
-	mp, err := mm.GetMultiParty(id)
+	mp, err := mm.GetMultiParty(partyId)
 	if err != nil {
 		return err
 	}
@@ -140,24 +140,36 @@ func (mm *MultiManager) deleteMultiParty(id uuid.UUID, first bool) error {
 		}
 	}
 
-	mm.mu.Lock()
-	delete(mm.partyMap, id)
-	mm.mu.Unlock()
-
-	if first {
-		err = mm.db.DeletePartyData(id)
+	for _, id := range mp.GetPartyInvitations() {
+		p, err := mm.GetMultiPlayer(id)
 		if err != nil {
 			return err
 		}
 
-		m := mm.ownerMP.GetId().String() + "_" + id.String() + "_delete"
+		err = p.RemovePartyInvitation(mp.GetId())
+		if err != nil {
+			return err
+		}
+	}
+
+	mm.mu.Lock()
+	delete(mm.partyMap, mp.GetId())
+	mm.mu.Unlock()
+
+	if first {
+		err = mm.db.DeletePartyData(mp.GetId())
+		if err != nil {
+			return err
+		}
+
+		m := mm.ownerMP.GetId().String() + "_" + mp.GetId().String() + "_delete"
 		err = mm.db.Publish(multi.UpdateMultiPartyChannel, m)
 		if err != nil {
 			return err
 		}
 	}
 
-	mm.l.Info("deleted multiparty", "partyId", id, "duration", time.Since(now))
+	mm.l.Info("deleted multiparty", "partyId", mp.GetId(), "duration", time.Since(now))
 	return nil
 }
 

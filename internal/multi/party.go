@@ -154,7 +154,7 @@ func (mp *Party) RemovePartyMember(id uuid.UUID) error {
 
 	i := slices.Index(mp.partyMembers, id)
 	if i == -1 {
-		return ErrPartyNotFound
+		return ErrPlayerNotFound
 	}
 	mp.partyMembers = slices.Delete(mp.partyMembers, i, i+1)
 
@@ -203,7 +203,7 @@ func (mp *Party) RemovePartyJoinRequest(id uuid.UUID) error {
 
 	i := slices.Index(mp.partyJoinRequests, id)
 	if i == -1 {
-		return ErrPartyNotFound
+		return ErrPlayerNotFound
 	}
 	mp.partyJoinRequests = slices.Delete(mp.partyJoinRequests, i, i+1)
 
@@ -252,7 +252,7 @@ func (mp *Party) RemovePartyInvitation(id uuid.UUID) error {
 
 	i := slices.Index(mp.partyInvitations, id)
 	if i == -1 {
-		return ErrPartyNotFound
+		return ErrPlayerNotFound
 	}
 	mp.partyInvitations = slices.Delete(mp.partyInvitations, i, i+1)
 
