@@ -174,7 +174,6 @@ func (mm *MultiManager) GetMultiBackend(id uuid.UUID) (*multi.Backend, error) {
 }
 
 func (mm *MultiManager) GetMultiBackendUsingAddress(addr string) (*multi.Backend, error) {
-	mm.l.Debug("getting multibackend using address", "address", addr)
 	l := mm.GetAllMultiBackends()
 
 	for _, mb := range l {

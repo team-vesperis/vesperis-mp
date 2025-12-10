@@ -163,6 +163,21 @@ func (mm *MultiManager) GetAllMultiPlayers(includeVanished bool) []*multi.Player
 	return l
 }
 
+func (mm *MultiManager) ConvertPlayerIdListToMultiPlayers(ids []uuid.UUID) ([]*multi.Player, error) {
+	var l []*multi.Player
+
+	for _, id := range ids {
+		mp, err := mm.GetMultiPlayer(id)
+		if err != nil {
+			return nil, err
+		}
+
+		l = append(l, mp)
+	}
+
+	return l, nil
+}
+
 func (mm *MultiManager) GetAllMultiPlayersFromDatabase() ([]*multi.Player, error) {
 	var l []*multi.Player
 

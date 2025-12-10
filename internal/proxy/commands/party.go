@@ -2,6 +2,7 @@ package commands
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/team-vesperis/vesperis-mp/internal/database"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
@@ -15,13 +16,20 @@ import (
 
 func (cm *CommandManager) partyCommand(name string) brigodier.LiteralNodeBuilder {
 	return brigodier.Literal(name).
+		Executes(cm.executeIncorrectUsage("\n 1. /party info\n 2. /party create\n 3. /party invite <target>\n 4. /party accept/decline <partyId>")).
+		Then(brigodier.Literal("info").Executes(cm.executePartyInfo())).
 		Then(brigodier.Literal("decline").
+			Executes(cm.executeIncorrectUsage("/party decline <partyId>")).
 			Then(brigodier.Argument("partyId", brigodier.SingleWord).
+				Suggests(cm.suggestAllPartyInvitations()).
 				Executes(cm.executePartyResponse(false)))).
 		Then(brigodier.Literal("accept").
+			Executes(cm.executeIncorrectUsage("/party accept <partyId>")).
 			Then(brigodier.Argument("partyId", brigodier.SingleWord).
+				Suggests(cm.suggestAllPartyInvitations()).
 				Executes(cm.executePartyResponse(true)))).
 		Then(brigodier.Literal("invite").
+			Executes(cm.executeIncorrectUsage("/party invite <target>")).
 			Then(brigodier.Argument("target", brigodier.SingleWord).
 				Suggests(cm.suggestAllMultiPlayers(true, true)).
 				Executes(cm.executePartyInvite()))).
@@ -29,6 +37,59 @@ func (cm *CommandManager) partyCommand(name string) brigodier.LiteralNodeBuilder
 			Executes(cm.executePartyLeave())).
 		Then(brigodier.Literal("create").
 			Executes(cm.executePartyCreate()))
+}
+
+func (cm *CommandManager) executePartyInfo() brigodier.Command {
+	return command.Command(func(c *command.Context) error {
+		p := cm.getGatePlayerFromSource(c.Source)
+		if p == nil {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
+			return ErrOnlyPlayersSubCommand
+		}
+
+		mp, err := cm.mm.GetMultiPlayer(p.ID())
+		if err != nil {
+			c.SendMessage(util.TextInternalError("Could not get party info.", err))
+			return err
+		}
+
+		if mp.GetPartyId() == uuid.Nil {
+			c.SendMessage(util.TextWarn("You are not in a party."))
+			return nil
+		}
+
+		party, err := cm.mm.GetMultiParty(mp.GetPartyId())
+		if err != nil {
+			c.SendMessage(util.TextInternalError("Could not get party info.", err))
+			return err
+		}
+
+		members, err := cm.mm.ConvertPlayerIdListToMultiPlayers(party.GetPartyMembers())
+		if err != nil {
+			c.SendMessage(util.TextInternalError("Could not get party info.", err))
+			return err
+		}
+
+		var l []component.Component
+
+		l = append(l, util.TextAlternatingColors(util.ColorList(util.ColorGray, util.ColorRed), "PartyId: ", party.GetId().String()+"\n", "Members: \n"))
+
+		for _, member := range members {
+			if party.GetPartyOwner() == member.GetId() {
+				l = append(l, util.TextAlternatingColors(util.ColorList(util.ColorGray, util.ColorLightBlue, util.ColorLightGreen), " - ", member.GetUsername(), " (party owner)"+"\n"))
+			} else {
+				l = append(l, util.TextAlternatingColors(util.ColorList(util.ColorGray, util.ColorLightBlue), " - ", member.GetUsername()+"\n"))
+			}
+		}
+
+		c.SendMessage(&component.Text{
+			Content: "\nParty Information\n",
+			S:       util.StyleColorOrange,
+			Extra:   l,
+		})
+
+		return nil
+	})
 }
 
 func (cm *CommandManager) executePartyInvite() brigodier.Command {
@@ -80,6 +141,13 @@ func (cm *CommandManager) executePartyInvite() brigodier.Command {
 				c.SendMessage(util.TextInternalError("Could not invite to party.", err))
 				return err
 			}
+
+			err = mp.SetPartyId(party.GetId())
+			if err != nil {
+				c.SendMessage(util.TextInternalError("Could not create party.", err))
+				return err
+			}
+
 		} else {
 			party, err = cm.mm.GetMultiParty(partyId)
 			if err != nil {
@@ -231,12 +299,13 @@ func (cm *CommandManager) executePartyResponse(accept bool) brigodier.Command {
 				return err
 			}
 
-			for _, id := range party.GetPartyMembers() {
-				member, err := cm.mm.GetMultiPlayer(id)
-				if err != nil {
-					return err
-				}
+			members, err := cm.mm.ConvertPlayerIdListToMultiPlayers(party.GetPartyMembers())
+			if err != nil {
+				c.SendMessage(util.TextInternalError("Could not accept party invite.", err))
+				return err
+			}
 
+			for _, member := range members {
 				if member.IsOnline() {
 					proxy := member.GetProxy()
 					if proxy == nil {
@@ -329,12 +398,13 @@ func (cm *CommandManager) leaveParty(mp *multi.Player, c *command.Context) (bool
 			}
 		}
 
-		for _, id := range party.GetPartyMembers() {
-			member, err := cm.mm.GetMultiPlayer(id)
-			if err != nil {
-				return false, err
-			}
+		members, err := cm.mm.ConvertPlayerIdListToMultiPlayers(party.GetPartyMembers())
+		if err != nil {
+			c.SendMessage(util.TextInternalError("Could not leave party.", err))
+			return false, err
+		}
 
+		for _, member := range members {
 			if member.IsOnline() {
 				proxy := member.GetProxy()
 				if proxy == nil {
@@ -386,5 +456,35 @@ func (cm *CommandManager) executePartyCreate() brigodier.Command {
 
 		c.SendMessage(util.TextSuccessful("Successfully created a party."))
 		return nil
+	})
+}
+
+func (cm *CommandManager) suggestAllPartyInvitations() brigodier.SuggestionProvider {
+	return command.SuggestFunc(func(c *command.Context, b *brigodier.SuggestionsBuilder) *brigodier.Suggestions {
+		r := b.RemainingLowerCase
+
+		if len(r) < 1 {
+			b.Suggest("type a partyId...")
+			return b.Build()
+		}
+
+		p := cm.getGatePlayerFromSource(c.Source)
+		if p == nil {
+			return b.Build()
+		}
+
+		mp, err := cm.mm.GetMultiPlayer(p.ID())
+		if err != nil {
+			cm.l.Error("suggest all party invitations get multiplayer error", "error", err)
+			return b.Build()
+		}
+
+		for _, id := range mp.GetPartyInvitations() {
+			if len(r) > 2 && strings.HasPrefix(strings.ToLower(id.String()), r) {
+				b.Suggest(id.String())
+			}
+		}
+
+		return b.Build()
 	})
 }

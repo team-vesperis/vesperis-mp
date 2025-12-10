@@ -385,18 +385,19 @@ func (cm *CommandManager) suggestAllFriends() brigodier.SuggestionProvider {
 			return b.Build()
 		}
 
-		for _, id := range mp.GetFriendInfo().GetFriendsIds() {
-			t, err := cm.mm.GetMultiPlayer(id)
-			if err != nil {
-				continue
-			}
+		friends, err := cm.mm.ConvertPlayerIdListToMultiPlayers(mp.GetFriendInfo().GetFriendsIds())
+		if err != nil {
+			cm.l.Error("suggest all friends convert playerId list to multiplayer error", "error", err)
+			return b.Build()
+		}
 
-			username := t.GetUsername()
+		for _, friend := range friends {
+			username := friend.GetUsername()
 			if strings.HasPrefix(strings.ToLower(username), r) {
 				b.Suggest(username)
 			}
 
-			id := t.GetId().String()
+			id := friend.GetId().String()
 			if len(r) > 2 && strings.HasPrefix(strings.ToLower(id), r) {
 				b.Suggest(id)
 			}
