@@ -151,6 +151,10 @@ func redisPlayerKeyTranslator(playerId uuid.UUID) string {
 	return "player_data:" + playerId.String()
 }
 
+func redisPartyKeyTranslator(partyId uuid.UUID) string {
+	return "party_data:" + partyId.String()
+}
+
 func redisProxyKeyTranslator(proxyId uuid.UUID) string {
 	return "proxy_data:" + proxyId.String()
 }
@@ -170,47 +174,32 @@ func safeJsonPathForPostgres(field string) string {
 }
 
 func (db *Database) SetPlayerData(playerId uuid.UUID, data *data.PlayerData) error {
-	query := `
-		INSERT INTO player_data (playerId, playerData)
-		VALUES ($1, $2::jsonb)
-		ON CONFLICT (playerId) DO UPDATE
-		SET playerData = $2::jsonb
-	`
-	_, err := db.p.Exec(db.ctx, query, playerId, data)
-	if err != nil {
-		db.l.Error("postgres player data upsert error", "playerId", playerId, "error", err)
-		return err
-	}
+	return db.setData("player", playerId, data)
+}
 
-	return nil
+func (db *Database) SetPartyData(partyId uuid.UUID, data *data.PartyData) error {
+	return db.setData("party", partyId, data)
 }
 
 func (db *Database) SetProxyData(proxyId uuid.UUID, data *data.ProxyData) error {
-	query := `
-		INSERT INTO proxy_data (proxyId, proxyData)
-		VALUES ($1, $2::jsonb)
-		ON CONFLICT (proxyId) DO UPDATE
-		SET proxyData = $2::jsonb
-	`
-	_, err := db.p.Exec(db.ctx, query, proxyId, data)
-	if err != nil {
-		db.l.Error("postgres proxy data upsert error", "proxyId", proxyId, "error", err)
-		return err
-	}
-
-	return nil
+	return db.setData("proxy", proxyId, data)
 }
 
 func (db *Database) SetBackendData(backendId uuid.UUID, data *data.BackendData) error {
-	query := `
-		INSERT INTO backend_data (backendId, backendData)
-		VALUES ($1, $2::jsonb)
-		ON CONFLICT (backendId) DO UPDATE
-		SET backendData = $2::jsonb
-	`
-	_, err := db.p.Exec(db.ctx, query, backendId, data)
+	return db.setData("backend", backendId, data)
+}
+
+func (db *Database) setData(data_type string, id uuid.UUID, data any) error {
+	jsonData, err := json.Marshal(data)
 	if err != nil {
-		db.l.Error("postgres backend data upsert error", "backendId", backendId, "error", err)
+		db.l.Error("json marshal error", "dataType", data_type, "id", id, "error", err)
+		return err
+	}
+
+	query := `INSERT INTO ` + data_type + `_data (` + data_type + `Id, ` + data_type + `Data) VALUES ($1, $2::jsonb) ON CONFLICT (` + data_type + `Id) DO UPDATE SET ` + data_type + `Data = $2::jsonb`
+	_, err = db.p.Exec(db.ctx, query, id, jsonData)
+	if err != nil {
+		db.l.Error("postgres upsert error", "dataType", data_type, "id", id, "error", err)
 		return err
 	}
 
@@ -226,6 +215,28 @@ func (db *Database) GetPlayerData(playerId uuid.UUID) (*data.PlayerData, error) 
 			return nil, ErrDataNotFound
 		}
 		db.l.Error("postgres player data read error", "playerId", playerId, "error", err)
+		return nil, err
+	}
+
+	if data.InitializeDefaults() {
+		err := db.SetPlayerData(playerId, &data)
+		if err != nil {
+			db.l.Warn("failed to update player data with defaults", "playerId", playerId, "error", err)
+		}
+	}
+
+	return &data, nil
+}
+
+func (db *Database) GetPartyData(partyId uuid.UUID) (*data.PartyData, error) {
+	var data data.PartyData
+	query := `SELECT partyData FROM party_data WHERE partyId = $1`
+	err := db.p.QueryRow(db.ctx, query, partyId).Scan(&data)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, ErrDataNotFound
+		}
+		db.l.Error("postgres party data read error", "partyId", partyId, "error", err)
 		return nil, err
 	}
 
@@ -289,6 +300,39 @@ func (db *Database) SetPlayerDataField(playerId uuid.UUID, field key.PlayerKey, 
 	_, err = db.p.Exec(db.ctx, query, path, jsonVal, playerId)
 	if err != nil {
 		db.l.Error("postgres player data update error", "playerId", playerId, "field", field, "error", err)
+		return err
+	}
+
+	return nil
+}
+
+func (db *Database) SetPartyDataField(partyId uuid.UUID, field key.PartyKey, val any) error {
+	jsonVal, err := json.Marshal(val)
+	if err != nil {
+		db.l.Error("json player data marshal error", "playerId", partyId, "field", field, "error", err)
+		return err
+	}
+
+	key := redisPartyKeyTranslator(partyId)
+	err = db.r.HSet(db.ctx, key, field.String(), jsonVal).Err()
+	if err != nil {
+		db.l.Warn("redis player data set error", "playerId", partyId, "field", field, "error", err)
+	} else {
+		err = db.r.HExpire(db.ctx, key, redisTTL, field.String()).Err()
+		if err != nil {
+			db.l.Warn("redis player data set expiration error", "playerId", partyId, "field", field, "error", err)
+		}
+	}
+
+	path := safeJsonPathForPostgres(field.String())
+	query := `
+		UPDATE player_data
+		SET playerData = jsonb_set(playerData, $1, $2::jsonb, true)
+		WHERE playerId = $3
+	`
+	_, err = db.p.Exec(db.ctx, query, path, jsonVal, partyId)
+	if err != nil {
+		db.l.Error("postgres player data update error", "playerId", partyId, "field", field, "error", err)
 		return err
 	}
 
@@ -401,6 +445,46 @@ func (db *Database) GetPlayerDataField(playerId uuid.UUID, field key.PlayerKey, 
 	return nil
 }
 
+func (db *Database) GetPartyDataField(partyId uuid.UUID, field key.PartyKey, dest any) error {
+	key := redisPartyKeyTranslator(partyId)
+
+	val, err := db.r.HGet(db.ctx, key, field.String()).Result()
+	if err == nil && val != "" {
+		err := json.Unmarshal([]byte(val), dest)
+		if err == nil {
+			return nil
+		}
+	}
+
+	var jsonData []byte
+	query := `SELECT partyData #> $1 FROM party_data WHERE partyId = $2`
+
+	path := safeJsonPathForPostgres(field.String())
+	err = db.p.QueryRow(db.ctx, query, path, partyId).Scan(&jsonData)
+	if err != nil {
+		db.l.Error("")
+		return err
+	}
+
+	err = json.Unmarshal(jsonData, dest)
+	if err != nil {
+		db.l.Error("")
+		return err
+	}
+
+	err = db.r.HSet(db.ctx, key, field.String(), jsonData).Err()
+	if err != nil {
+		db.l.Warn("")
+	} else {
+		err = db.r.HExpire(db.ctx, key, redisTTL, field.String()).Err()
+		if err != nil {
+			db.l.Warn("")
+		}
+	}
+
+	return nil
+}
+
 func (db *Database) GetProxyDataField(proxyId uuid.UUID, field key.ProxyKey, dest any) error {
 	key := redisProxyKeyTranslator(proxyId)
 
@@ -481,33 +565,28 @@ func (db *Database) GetBackendDataField(backendId uuid.UUID, field key.BackendKe
 	return nil
 }
 
-// since proxy_data should not be kept when proxies are removed, we need a function to remove the proxy after closing
+func (db *Database) DeletePartyData(partyId uuid.UUID) error {
+	return db.deleteData("party", partyId)
+
+}
 func (db *Database) DeleteProxyData(proxyId uuid.UUID) error {
-	query := `DELETE FROM proxy_data WHERE proxyId = $1`
-	row, err := db.p.Exec(db.ctx, query, proxyId)
-	if err != nil {
-		db.l.Error("postgres delete proxy data error", "error", err)
-		return err
-	}
+	return db.deleteData("proxy", proxyId)
 
-	if row.RowsAffected() < 1 {
-		db.l.Warn("proxy data not found to delete", "proxyId", proxyId)
-	} else if row.RowsAffected() > 1 {
-		db.l.Warn("multiple rows deleted after deleting proxy data", "proxyId", proxyId)
-	}
-
-	return nil
 }
 
 func (db *Database) DeleteBackendData(backendId uuid.UUID) error {
-	query := `DELETE FROM backend_data WHERE backendId = $1`
-	_, err := db.p.Exec(db.ctx, query, backendId)
+	return db.deleteData("backend", backendId)
+}
+
+func (db *Database) deleteData(data_type string, id uuid.UUID) error {
+	query := "DELETE FROM " + data_type + "_data WHERE " + data_type + "Id = $1"
+	_, err := db.p.Exec(db.ctx, query, id)
 	if err != nil {
 		if err != pgx.ErrNoRows {
 			return ErrDataNotFound
 		}
 
-		db.l.Error("postgres delete backend data error", "error", err)
+		db.l.Error("postgres delete "+data_type+" data error", "error", err)
 		return err
 	}
 
@@ -516,6 +595,10 @@ func (db *Database) DeleteBackendData(backendId uuid.UUID) error {
 
 func (db *Database) GetAllPlayerIds() ([]uuid.UUID, error) {
 	return db.getAllIds("player")
+}
+
+func (db *Database) GetAllPartyIds() ([]uuid.UUID, error) {
+	return db.getAllIds("party")
 }
 
 func (db *Database) GetAllProxyIds() ([]uuid.UUID, error) {
@@ -554,13 +637,10 @@ func (db *Database) getAllIds(data_type string) ([]uuid.UUID, error) {
 	return ids, nil
 }
 
-// AcquireLock tries to acquire a simple Redis-based lock for the given key with TTL.
-// Returns true if lock was acquired, false otherwise.
 func (db *Database) AcquireLock(lockKey string, ttl time.Duration) (bool, error) {
 	return db.r.SetNX(db.ctx, lockKey, "1", ttl).Result()
 }
 
-// ReleaseLock releases a Redis-based lock.
 func (db *Database) ReleaseLock(lockKey string) error {
 	return db.r.Del(db.ctx, lockKey).Err()
 }

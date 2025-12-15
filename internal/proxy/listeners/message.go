@@ -16,7 +16,7 @@ func (lm *ListenerManager) onChatMessage(e *proxy.PlayerChatEvent) {
 
 		tr := lm.tm.BuildTask(tasks.NewMessageTask(mp.GetId(), mp.GetProxy().GetId(), util.ComponentToString(util.TextAlternatingColors(util.ColorList(util.ColorLightBlue, util.ColorWhite), "["+p.Username()+"]", ": "+e.Message()))))
 		if !tr.IsSuccessful() {
-			lm.l.Info("player chat event send message task to online player error", "originalPlayerId", p.ID(), "targetPlayerId", mp.GetId(), "error", tr.GetInfo())
+			lm.l.Error("player chat event send message task to online player error", "originalPlayerId", p.ID(), "targetPlayerId", mp.GetId(), "error", tr.GetInfo())
 		}
 	}
 }

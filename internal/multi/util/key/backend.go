@@ -7,8 +7,8 @@ import (
 
 type BackendKey string
 
-func (pk BackendKey) String() string {
-	return string(pk)
+func (bk BackendKey) String() string {
+	return string(bk)
 }
 
 var ErrIncorrectBackendKey = errors.New("incorrect backend key")
@@ -24,10 +24,10 @@ var AllowedBackendKeys = []BackendKey{
 }
 
 func GetBackendKey(s string) (BackendKey, error) {
-	pk := BackendKey(s)
-	if !slices.Contains(AllowedBackendKeys, pk) {
+	bk := BackendKey(s)
+	if !slices.Contains(AllowedBackendKeys, bk) {
 		return BackendKey(""), ErrIncorrectBackendKey
 	}
 
-	return pk, nil
+	return bk, nil
 }

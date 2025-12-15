@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/team-vesperis/vesperis-mp/internal/database"
-	"github.com/team-vesperis/vesperis-mp/internal/logger"
 	"github.com/team-vesperis/vesperis-mp/internal/multi"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/data"
 	"github.com/team-vesperis/vesperis-mp/internal/multi/util/key"
@@ -14,15 +12,7 @@ import (
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
-func (mm *MultiManager) GetDatabase() *database.Database {
-	return mm.db
-}
-
-func (mm *MultiManager) GetLogger() *logger.Logger {
-	return mm.l
-}
-
-func (mm *MultiManager) createUpdateListener() func(msg *redis.Message) {
+func (mm *MultiManager) createPlayerUpdateListener() func(msg *redis.Message) {
 	return func(msg *redis.Message) {
 		m := msg.Payload
 		s := strings.Split(m, "_")
@@ -94,6 +84,8 @@ func (mm *MultiManager) NewMultiPlayer(p proxy.Player) (*multi.Player, error) {
 			FriendRequests:        make([]uuid.UUID, 0),
 			FriendPendingRequests: make([]uuid.UUID, 0),
 		},
+		PartyId:          uuid.Nil,
+		PartyInvitations: make([]uuid.UUID, 0),
 	}
 
 	err := mm.db.SetPlayerData(id, data)
@@ -113,7 +105,7 @@ func (mm *MultiManager) NewMultiPlayer(p proxy.Player) (*multi.Player, error) {
 		return nil, err
 	}
 
-	mm.GetLogger().Info("created new multiplayer", "playerId", id, "duration", time.Since(now))
+	mm.l.Info("created new multiplayer", "playerId", id, "duration", time.Since(now))
 	return mp, nil
 }
 
@@ -169,6 +161,21 @@ func (mm *MultiManager) GetAllMultiPlayers(includeVanished bool) []*multi.Player
 	mm.mu.RUnlock()
 
 	return l
+}
+
+func (mm *MultiManager) ConvertPlayerIdListToMultiPlayers(ids []uuid.UUID) ([]*multi.Player, error) {
+	var l []*multi.Player
+
+	for _, id := range ids {
+		mp, err := mm.GetMultiPlayer(id)
+		if err != nil {
+			return nil, err
+		}
+
+		l = append(l, mp)
+	}
+
+	return l, nil
 }
 
 func (mm *MultiManager) GetAllMultiPlayersFromDatabase() ([]*multi.Player, error) {

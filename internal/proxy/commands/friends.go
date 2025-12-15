@@ -44,6 +44,7 @@ func (cm *CommandManager) executeFriendsRemove() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		p := cm.getGatePlayerFromSource(c.Source)
 		if p == nil {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
 			return ErrOnlyPlayersSubCommand
 		}
 
@@ -90,6 +91,7 @@ func (cm *CommandManager) executeFriendsResponse(accept bool) brigodier.Command 
 	return command.Command(func(c *command.Context) error {
 		p := cm.getGatePlayerFromSource(c.Source)
 		if p == nil {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
 			return ErrOnlyPlayersSubCommand
 		}
 
@@ -176,6 +178,7 @@ func (cm *CommandManager) executeFriendsRequest() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		p := cm.getGatePlayerFromSource(c.Source)
 		if p == nil {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
 			return ErrOnlyPlayersSubCommand
 		}
 
@@ -275,6 +278,7 @@ func (cm *CommandManager) executeFriendsList() brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		p := cm.getGatePlayerFromSource(c.Source)
 		if p == nil {
+			c.SendMessage(ComponentOnlyPlayersSubCommand)
 			return ErrOnlyPlayersSubCommand
 		}
 
@@ -283,18 +287,20 @@ func (cm *CommandManager) executeFriendsList() brigodier.Command {
 			return err
 		}
 
-		if len(mp.GetFriendInfo().GetFriendsIds()) < 1 {
-
+		ids := mp.GetFriendInfo().GetFriendsIds()
+		if len(ids) < 1 {
+			c.SendMessage(util.TextWarn("You don't have any friends yet."))
 			return nil
 		}
 
-		c.SendMessage(util.TextSuccessful("Your friend list:"))
-		for _, id := range mp.GetFriendInfo().GetFriendsIds() {
-			f, err := cm.mm.GetMultiPlayer(id)
-			if err != nil {
-				continue
-			}
+		friends, err := cm.mm.ConvertPlayerIdListToMultiPlayers(ids)
+		if err != nil {
+			cm.l.Error("suggest all friends convert playerId list to multiplayer error", "error", err)
+			return err
+		}
 
+		c.SendMessage(util.TextSuccessful("Your friend list:"))
+		for _, f := range friends {
 			var hover component.Component
 			if f.IsOnline() {
 				hover = util.TextSuccessful("Player is online!")
@@ -381,18 +387,19 @@ func (cm *CommandManager) suggestAllFriends() brigodier.SuggestionProvider {
 			return b.Build()
 		}
 
-		for _, id := range mp.GetFriendInfo().GetFriendsIds() {
-			t, err := cm.mm.GetMultiPlayer(id)
-			if err != nil {
-				continue
-			}
+		friends, err := cm.mm.ConvertPlayerIdListToMultiPlayers(mp.GetFriendInfo().GetFriendsIds())
+		if err != nil {
+			cm.l.Error("suggest all friends convert playerId list to multiplayer error", "error", err)
+			return b.Build()
+		}
 
-			username := t.GetUsername()
+		for _, friend := range friends {
+			username := friend.GetUsername()
 			if strings.HasPrefix(strings.ToLower(username), r) {
 				b.Suggest(username)
 			}
 
-			id := t.GetId().String()
+			id := friend.GetId().String()
 			if len(r) > 2 && strings.HasPrefix(strings.ToLower(id), r) {
 				b.Suggest(id)
 			}
@@ -422,18 +429,19 @@ func (cm *CommandManager) suggestAllFriendRequestMultiPlayers() brigodier.Sugges
 			return b.Build()
 		}
 
-		for _, id := range mp.GetFriendInfo().GetFriendRequestIds() {
-			t, err := cm.mm.GetMultiPlayer(id)
-			if err != nil {
-				continue
-			}
+		requests, err := cm.mm.ConvertPlayerIdListToMultiPlayers(mp.GetFriendInfo().GetFriendRequestIds())
+		if err != nil {
+			cm.l.Error("suggest all friend requests convert playerId list to multiplayer error", "error", err)
+			return b.Build()
+		}
 
-			username := t.GetUsername()
+		for _, request := range requests {
+			username := request.GetUsername()
 			if strings.HasPrefix(strings.ToLower(username), r) {
 				b.Suggest(username)
 			}
 
-			id := t.GetId().String()
+			id := request.GetId().String()
 			if len(r) > 2 && strings.HasPrefix(strings.ToLower(id), r) {
 				b.Suggest(id)
 			}
