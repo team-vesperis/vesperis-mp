@@ -68,6 +68,11 @@ func Init(cf *config.Config, db *database.Database, l *logger.Logger) (*MultiMan
 		mm.l.Warn("filling up multiplayer map error", "error", err)
 	}
 
+	_, err = mm.GetAllMultiPartiesFromDatabase()
+	if err != nil {
+		mm.l.Warn("filling up multiparty map error", "error", err)
+	}
+
 	mm.l.Info("initialized multimanager", "duration", time.Since(now))
 	return mm, nil
 }

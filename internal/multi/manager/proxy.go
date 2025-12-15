@@ -249,5 +249,9 @@ func (mm *MultiManager) GetProxyWithLowestPlayerCount(includingThisProxy bool) *
 		}
 	}
 
+	if proxy == nil {
+		return nil
+	}
+
 	return proxy
 }
