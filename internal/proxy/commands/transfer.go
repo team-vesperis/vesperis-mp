@@ -20,13 +20,13 @@ func (cm *CommandManager) transferCommand(name string) brigodier.LiteralNodeBuil
 			Suggests(cm.suggestAllMultiPlayers(true, false)).
 			Then(brigodier.Argument("proxyId", brigodier.SingleWord).
 				Suggests(cm.suggestAllMultiProxies(false)).
-				Executes(cm.executeTransfer()).
+				Executes(cm.executeTransfer(false)).
 				Then(brigodier.Argument("backendId", brigodier.SingleWord).
 					Suggests(cm.suggestAllMultiBackendsUnderProxy(true)).
-					Executes(cm.executeTransfer()))))
+					Executes(cm.executeTransfer(true)))))
 }
 
-func (cm *CommandManager) executeTransfer() brigodier.Command {
+func (cm *CommandManager) executeTransfer(withBackend bool) brigodier.Command {
 	return command.Command(func(c *command.Context) error {
 		proxyString := c.String("proxyId")
 		proxyId, err := uuid.Parse(proxyString)
@@ -35,10 +35,10 @@ func (cm *CommandManager) executeTransfer() brigodier.Command {
 			return nil
 		}
 
-		backendString := c.String("backendId")
 		backendId := uuid.Nil
+		if withBackend {
+			backendString := c.String("backendId")
 
-		if backendString != "" {
 			backendId, err = uuid.Parse(backendString)
 			if err != nil {
 				c.SendMessage(util.TextWarn("Invalid Backend UUID"))
@@ -79,7 +79,7 @@ func (cm *CommandManager) executeTransfer() brigodier.Command {
 			return nil
 		}
 
-		if backendId == uuid.Nil && mp.GetId() == proxyId {
+		if !withBackend && mp.GetId() == proxyId {
 			c.SendMessage(util.TextWarn("Target is already on that proxy."))
 			return nil
 		}
