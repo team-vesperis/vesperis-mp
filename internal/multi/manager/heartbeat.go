@@ -2,13 +2,10 @@ package manager
 
 import (
 	"time"
-
-	"github.com/team-vesperis/vesperis-mp/internal/multi"
 )
 
 type hartBeatManager struct {
 	t  *time.Ticker
-	p  *multi.Proxy
 	d  chan bool
 	mm *MultiManager
 }
@@ -18,7 +15,6 @@ const maxLastHartBeat = 5 * time.Minute
 func (mm *MultiManager) InitHeartBeatManager() *hartBeatManager {
 	hbm := &hartBeatManager{
 		t:  time.NewTicker(3 * time.Minute),
-		p:  mm.ownerMP,
 		d:  make(chan bool),
 		mm: mm,
 	}
@@ -34,8 +30,10 @@ func (hbm *hartBeatManager) start() {
 		select {
 		case <-hbm.d:
 			return
-		case t := <-hbm.t.C:
-			hbm.p.SetLastHeartBeat(&t)
+		case <-hbm.t.C:
+			now := time.Now()
+			hbm.mm.GetOwnerMultiProxy().SetLastHeartBeat(&now)
+			hbm.mm.l.Debug("hart beat manager set last heart beat", "time", now, "duration", time.Since(now))
 			go func() {
 				now := time.Now()
 				lockKey := "proxy_cleanup_leader"

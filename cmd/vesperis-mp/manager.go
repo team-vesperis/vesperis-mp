@@ -95,8 +95,6 @@ func Init(ctx context.Context, cf *config.Config, l *logger.Logger, db *database
 		return m, err
 	}
 
-	m.multi.InitHeartBeatManager()
-
 	return m, nil
 }
 
