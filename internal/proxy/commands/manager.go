@@ -42,6 +42,7 @@ func Init(p *proxy.Proxy, l *logger.Logger, db *database.Database, mm *manager.M
 func (cm *CommandManager) registerCommands() {
 	cm.m.Register(cm.databaseCommand("database"))
 	cm.m.Register(cm.databaseCommand("db"))
+	cm.m.Register(cm.refreshCommand("refresh"))
 
 	cm.m.Register(cm.vanishCommand("vanish"))
 	cm.m.Register(cm.vanishCommand("v"))

@@ -99,6 +99,41 @@ func (mm *MultiManager) Close() error {
 	return nil
 }
 
+func (mm *MultiManager) Refresh() time.Duration {
+	now := time.Now()
+
+	mm.mu.Lock()
+	mm.proxyMap = make(map[uuid.UUID]*multi.Proxy)
+	mm.backendMap = make(map[uuid.UUID]*multi.Backend)
+	mm.playerMap = make(map[uuid.UUID]*multi.Player)
+	mm.partyMap = make(map[uuid.UUID]*multi.Party)
+	mm.mu.Unlock()
+
+	_, err := mm.GetAllMultiProxiesFromDatabase()
+	if err != nil {
+		mm.l.Warn("refilling up multiproxy map error", "error", err)
+	}
+
+	_, err = mm.GetAllMultiBackendsFromDatabase()
+	if err != nil {
+		mm.l.Warn("refilling up multibackend map error", "error", err)
+	}
+
+	_, err = mm.GetAllMultiPlayersFromDatabase()
+	if err != nil {
+		mm.l.Warn("refilling up multiplayer map error", "error", err)
+	}
+
+	_, err = mm.GetAllMultiPartiesFromDatabase()
+	if err != nil {
+		mm.l.Warn("refilling up multiparty map error", "error", err)
+	}
+
+	d := time.Since(now)
+	mm.l.Info("refreshed multimanager", "duration", d)
+	return d
+}
+
 func (mm *MultiManager) GetOwnerMultiProxy() *multi.Proxy {
 	return mm.ownerMP
 }
