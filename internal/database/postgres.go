@@ -33,33 +33,32 @@ func initPostgres(ctx context.Context, l *logger.Logger, c *config.Config) (*pgx
 	return p, nil
 }
 
-func createTable(ctx context.Context, p *pgxpool.Pool, data_type string) error {
-	table := "CREATE TABLE IF NOT EXISTS " + data_type + "_data (" + data_type + "Id UUID PRIMARY KEY," + data_type + "Data JSONB NOT NULL);"
-
+func createTable(ctx context.Context, p *pgxpool.Pool, dt DataType) error {
+	table := "CREATE TABLE IF NOT EXISTS " + dt.String() + "_data (" + dt.String() + "Id UUID PRIMARY KEY," + dt.String() + "Data JSONB NOT NULL);"
 	_, err := p.Exec(ctx, table)
 	return err
 }
 
 func createTables(ctx context.Context, p *pgxpool.Pool, l *logger.Logger) error {
-	err := createTable(ctx, p, "player")
+	err := createTable(ctx, p, PlayerDataType)
 	if err != nil {
 		l.Error("postgres creating player table error", "error", err)
 		return err
 	}
 
-	err = createTable(ctx, p, "party")
+	err = createTable(ctx, p, PartyDataType)
 	if err != nil {
 		l.Error("postgres creating party table error", "error", err)
 		return err
 	}
 
-	err = createTable(ctx, p, "proxy")
+	err = createTable(ctx, p, ProxyDataType)
 	if err != nil {
 		l.Error("postgres creating proxy table error", "error", err)
 		return err
 	}
 
-	err = createTable(ctx, p, "backend")
+	err = createTable(ctx, p, BackendDataType)
 	if err != nil {
 		l.Error("postgres creating backend table error", "error", err)
 		return err
@@ -74,7 +73,7 @@ func createTables(ctx context.Context, p *pgxpool.Pool, l *logger.Logger) error 
 
 	_, err = p.Exec(ctx, dataTable)
 	if err != nil {
-		l.Error("postgres creating table error", "table", dataTable, "error", err)
+		l.Error("postgres creating data table error", "table", dataTable, "error", err)
 		return err
 	}
 

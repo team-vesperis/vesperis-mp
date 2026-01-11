@@ -94,20 +94,22 @@ func (lm *ListenerManager) chooseRandomServer(p proxy.Player, e *proxy.PlayerCho
 }
 
 func (lm *ListenerManager) sendNoAvailableServers(p proxy.Player) {
-	time.Sleep(200 * time.Millisecond)
+	go func() {
+		time.Sleep(200 * time.Millisecond)
 
-	proxy := lm.mm.GetProxyWithLowestPlayerCount(false)
-	if proxy == nil {
-		p.Disconnect(util.TextError("No available server. Please try again."))
-		return
-	}
+		proxy := lm.mm.GetProxyWithLowestPlayerCount(false)
+		if proxy == nil {
+			p.Disconnect(util.TextError("No available server. Please try again."))
+			return
+		}
 
-	tr := lm.tm.BuildTask(tasks.NewTransferTask(p.ID(), lm.mm.GetOwnerMultiProxy().GetId(), proxy.GetId(), uuid.Nil))
-	if !tr.IsSuccessful() {
-		lm.l.Error("transfer not successful", "playerId", p.ID(), "error", tr.GetInfo())
-		p.Disconnect(util.TextError("No available server. Please try again."))
-		return
-	}
+		tr := lm.tm.BuildTask(tasks.NewTransferTask(p.ID(), lm.mm.GetOwnerMultiProxy().GetId(), proxy.GetId(), uuid.Nil))
+		if !tr.IsSuccessful() {
+			lm.l.Error("transfer not successful", "playerId", p.ID(), "error", tr.GetInfo())
+			p.Disconnect(util.TextError("No available server. Please try again."))
+			return
+		}
 
-	lm.l.Info("transferring player", "playerId", p.ID(), "proxyId", proxy.GetId())
+		lm.l.Info("transferring player", "playerId", p.ID(), "proxyId", proxy.GetId())
+	}()
 }
