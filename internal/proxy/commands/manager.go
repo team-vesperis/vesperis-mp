@@ -57,13 +57,19 @@ func (cm *CommandManager) registerCommands() {
 
 	cm.m.Register(cm.banCommand("ban"))
 	cm.m.Register(cm.tempBanCommand("tempban"))
+	cm.m.Register(cm.tempBanCommand("tban"))
 	cm.m.Register(cm.unBanCommand("unban"))
 
 	cm.m.Register(cm.permissionCommand("permission"))
 	cm.m.Register(cm.permissionCommand("pm"))
 
 	cm.m.Register(cm.friendsCommand("friends"))
+	cm.m.Register(cm.friendsCommand("f"))
 	cm.m.Register(cm.partyCommand("party"))
+	cm.m.Register(cm.partyCommand("p"))
+
+	cm.m.Register(cm.maintenanceCommand("maintenance"))
+	cm.m.Register(cm.maintenanceCommand("mtn"))
 }
 
 func (cm *CommandManager) executeIncorrectUsage(correctUsage string) brigodier.Command {
