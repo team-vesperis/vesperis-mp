@@ -13,6 +13,15 @@ var loginDenyComponent = util.TextError("There was an error logging in. Please t
 
 func (lm *ListenerManager) onLogin(e *proxy.LoginEvent) {
 	p := e.Player()
+
+	if p.Protocol() < 766 {
+		e.Deny(&component.Text{
+			Content: "Use 1.20.5 or higher!",
+			S:       util.StyleColorRed,
+		})
+		return
+	}
+
 	id := p.ID()
 
 	mp, err := lm.mm.GetMultiPlayer(id)

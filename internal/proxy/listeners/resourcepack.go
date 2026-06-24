@@ -8,7 +8,10 @@ import (
 	"go.minekube.com/gate/pkg/util/uuid"
 )
 
-var rp proxy.ResourcePackInfo
+var (
+	rp     proxy.ResourcePackInfo
+	packId uuid.UUID = uuid.New()
+)
 
 func (lm *ListenerManager) initResourcePack() error {
 	var val string
@@ -34,13 +37,26 @@ func (lm *ListenerManager) initResourcePack() error {
 	prompt := util.TextWarn("Vesperis requires you to enable our resourcepack.")
 
 	rp = proxy.ResourcePackInfo{
-		ID:          uuid.New(),
+		ID:          packId,
 		URL:         url,
 		Hash:        hash,
 		Prompt:      prompt,
 		ShouldForce: true,
 	}
 
+	return nil
+}
+
+func (lm *ListenerManager) refreshResourcePack() error {
+	// first re-initialize resource pack, then update for existing players
+	err := lm.initResourcePack()
+	if err != nil {
+		return err
+	}
+
+	for _, p := range lm.ownerGate.Players() {
+		p.SendResourcePack(rp)
+	}
 	return nil
 }
 

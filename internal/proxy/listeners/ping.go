@@ -47,7 +47,7 @@ func (lm *ListenerManager) onPing(e *proxy.PingEvent) {
 			Max:    playerCount + 1,
 			Sample: []ping.SamplePlayer{
 				{
-					Name: "§eSupported versions: §a1.21.9 §e& §a1.21.10",
+					Name: "§eSupported versions: §a1.20.5 - §a26.2",
 					ID:   uuid.New(),
 				},
 				{
