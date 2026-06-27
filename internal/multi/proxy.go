@@ -24,6 +24,8 @@ type Proxy struct {
 	mu        sync.RWMutex
 	managerId uuid.UUID
 
+	mi *maintenanceInfo
+
 	l  *logger.Logger
 	db *database.Database
 	cf *config.Config
@@ -42,18 +44,23 @@ func NewProxy(id, managerId uuid.UUID, l *logger.Logger, db *database.Database, 
 	}
 
 	mp.address = data.Address
-	mp.maintenance = data.Maintenance
 	mp.backends = data.Backends
 	mp.players = data.Players
 	mp.lastHeartBeat = data.LastHeartBeat
+	mp.mi = newProxyMaintenanceInfo(mp, data)
 
 	return mp
 }
 
 const UpdateMultiProxyChannel = "update_multiproxy"
 
-func (mp *Proxy) save(k key.ProxyKey, val any) error {
-	err := mp.db.SetProxyDataField(mp.id, k, val)
+func (mp *Proxy) save(k key.Key, val any) error {
+	pk, ok := k.(key.ProxyKey)
+	if !ok {
+		return key.ErrIncorrectProxyKey
+	}
+
+	err := mp.db.SetProxyDataField(mp.id, pk, val)
 	if err != nil {
 		return err
 	}
@@ -66,10 +73,6 @@ func (mp *Proxy) Update(k key.ProxyKey) {
 	var err error
 
 	switch k {
-	case key.ProxyKey_Maintenance:
-		var maintenance bool
-		err = mp.db.GetProxyDataField(mp.id, key.ProxyKey_Maintenance, &maintenance)
-		mp.setInMaintenance(maintenance, false)
 	case key.ProxyKey_BackendList:
 		var backends []uuid.UUID
 		err = mp.db.GetProxyDataField(mp.id, key.ProxyKey_BackendList, &backends)
@@ -122,27 +125,8 @@ func (mp *Proxy) setLastHeartBeat(t *time.Time, notify bool) error {
 	return nil
 }
 
-func (mp *Proxy) IsInMaintenance() bool {
-	mp.mu.RLock()
-	defer mp.mu.RUnlock()
-	return mp.maintenance
-}
-
-func (mp *Proxy) SetInMaintenance(maintenance bool) error {
-	return mp.setInMaintenance(maintenance, true)
-}
-
-func (mp *Proxy) setInMaintenance(maintenance, notify bool) error {
-	mp.mu.Lock()
-	defer mp.mu.Unlock()
-
-	mp.maintenance = maintenance
-
-	if notify {
-		return mp.save(key.ProxyKey_Maintenance, maintenance)
-	}
-
-	return nil
+func (mp *Proxy) GetMaintenanceInfo() *maintenanceInfo {
+	return mp.mi
 }
 
 func (mp *Proxy) GetPlayerIds() []uuid.UUID {

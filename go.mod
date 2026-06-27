@@ -11,13 +11,13 @@ require (
 	github.com/robinbraemer/event v0.1.1
 	github.com/spf13/viper v1.21.0
 	go.minekube.com/brigodier v0.0.2
-	go.minekube.com/common v0.3.0
-	go.minekube.com/gate v0.68.0
+	go.minekube.com/common v0.4.0
+	go.minekube.com/gate v0.68.6
 	go.uber.org/zap v1.28.0
 )
 
 require (
-	buf.build/gen/go/minekube/connect/protocolbuffers/go v1.36.11-20240220124425-904ce30425c9.1 // indirect
+	buf.build/gen/go/minekube/connect/protocolbuffers/go v1.36.11-20260627072639-c8f384df9493.1 // indirect
 	connectrpc.com/connect v1.20.0 // indirect
 	connectrpc.com/otelconnect v0.9.0 // indirect
 	github.com/Tnze/go-mc v1.20.2 // indirect
@@ -48,9 +48,9 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.4.1 // indirect
 	github.com/knadh/koanf/providers/file v1.2.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
-	github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e // indirect
+	github.com/lufia/plan9stats v0.0.0-20260627054121-477a66015f15 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
-	github.com/pelletier/go-toml/v2 v2.4.1 // indirect
+	github.com/pelletier/go-toml/v2 v2.4.2 // indirect
 	github.com/pires/go-proxyproto v0.12.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/rs/xid v1.6.0 // indirect
@@ -70,8 +70,8 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zyedidia/generic v1.2.1 // indirect
 	go.minekube.com/connect v0.6.2 // indirect
-	go.minekube.com/geyserlite v0.3.14 // indirect
-	go.minekube.com/vialite v0.2.8 // indirect
+	go.minekube.com/geyserlite v0.3.15 // indirect
+	go.minekube.com/vialite v0.3.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/host v0.69.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect

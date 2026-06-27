@@ -17,10 +17,11 @@ type Backend struct {
 	id uuid.UUID
 	mp *Proxy
 
-	name        string
-	address     string
-	maintenance bool
-	players     []uuid.UUID
+	name    string
+	address string
+	players []uuid.UUID
+
+	mi *maintenanceInfo
 
 	mu        sync.RWMutex
 	managerId uuid.UUID
@@ -43,8 +44,8 @@ func NewBackend(id, managerId uuid.UUID, ownerMP *Proxy, l *logger.Logger, db *d
 
 	mb.name = data.Name
 	mb.address = data.Address
-	mb.maintenance = data.Maintenance
 	mb.players = data.Players
+	mb.mi = newBackendMaintenanceInfo(mb, data)
 
 	return mb
 }
@@ -53,8 +54,13 @@ var ErrBackendNotFound = errors.New("backend not found")
 
 const UpdateMultiBackendChannel = "update_multibackend"
 
-func (mb *Backend) save(k key.BackendKey, val any) error {
-	err := mb.db.SetBackendDataField(mb.id, k, val)
+func (mb *Backend) save(k key.Key, val any) error {
+	bk, ok := k.(key.BackendKey)
+	if !ok {
+		return key.ErrIncorrectBackendKey
+	}
+
+	err := mb.db.SetBackendDataField(mb.id, bk, val)
 	if err != nil {
 		return err
 	}
@@ -67,10 +73,6 @@ func (mb *Backend) Update(k key.BackendKey) {
 	var err error
 
 	switch k {
-	case key.BackendKey_Maintenance:
-		var maintenance bool
-		err = mb.db.GetBackendDataField(mb.id, key.BackendKey_Maintenance, &maintenance)
-		mb.setInMaintenance(maintenance, false)
 	case key.BackendKey_PlayerList:
 		var playerList []uuid.UUID
 		err = mb.db.GetBackendDataField(mb.id, key.BackendKey_PlayerList, &playerList)
@@ -99,27 +101,8 @@ func (mb *Backend) GetMultiProxy() *Proxy {
 	return mb.mp
 }
 
-func (mb *Backend) IsInMaintenance() bool {
-	mb.mu.RLock()
-	defer mb.mu.RUnlock()
-	return mb.maintenance
-}
-
-func (mb *Backend) SetInMaintenance(maintenance bool) error {
-	return mb.setInMaintenance(maintenance, true)
-}
-
-func (mb *Backend) setInMaintenance(maintenance, notify bool) error {
-	mb.mu.Lock()
-	defer mb.mu.Unlock()
-
-	mb.maintenance = maintenance
-
-	if notify {
-		return mb.save(key.BackendKey_Maintenance, maintenance)
-	}
-
-	return nil
+func (mb *Backend) GetMaintenanceInfo() *maintenanceInfo {
+	return mb.mi
 }
 
 func (mb *Backend) GetPlayerIds() []uuid.UUID {
