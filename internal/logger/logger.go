@@ -25,7 +25,8 @@ type Logger struct {
 func Init() (*Logger, error) {
 	now := time.Now()
 
-	if err := os.MkdirAll(logDir, os.ModePerm); err != nil {
+	err := os.MkdirAll(logDir, os.ModePerm)
+	if err != nil {
 		log.Printf("Failed to create log directory: %v", err)
 		return &Logger{}, err
 	}

@@ -22,12 +22,15 @@ func main() {
 
 	l, err := logger.Init()
 	if err != nil {
+		time.Sleep(3 * time.Second)
 		return
 	}
 
+	l.Info("initializing config...")
 	cf, err := config.Init(l)
 	if err != nil {
 		l.Error("config initialization error", "error", err)
+		time.Sleep(3 * time.Second)
 		return
 	}
 
@@ -36,15 +39,18 @@ func main() {
 		l.Debug("debug mode active")
 	}
 
+	l.Info("initializing database...")
 	db, err := database.Init(ctx, cf, l)
 	if err != nil {
 		l.Error("database initialization error", "error", err)
+		time.Sleep(3 * time.Second)
 		return
 	}
 
 	m, err := Init(ctx, cf, l, db)
 	if err != nil {
 		l.Error("manager initialization error", "error", err)
+		time.Sleep(3 * time.Second)
 		return
 	}
 

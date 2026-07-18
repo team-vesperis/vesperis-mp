@@ -104,8 +104,13 @@ func (mm *MultiManager) NewMultiProxy() (*multi.Proxy, error) {
 	}
 
 	data := &data.ProxyData{
-		Address:       addr,
-		Maintenance:   false,
+		Address: addr,
+		Maintenance: &data.MaintenanceData{
+			InMaintenance: false,
+			Reason:        "No reason provided.",
+			Expire:        false,
+			Expiration:    time.Time{},
+		},
 		Backends:      make([]uuid.UUID, 0),
 		Players:       make([]uuid.UUID, 0),
 		LastHeartBeat: &now,

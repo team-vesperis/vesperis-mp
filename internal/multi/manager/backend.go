@@ -91,11 +91,16 @@ func (mm *MultiManager) NewMultiBackend(name, addr string) (*multi.Backend, erro
 	}
 
 	data := &data.BackendData{
-		Name:        name,
-		Proxy:       mm.ownerMP.GetId(),
-		Address:     addr,
-		Maintenance: false,
-		Players:     make([]uuid.UUID, 0),
+		Name:    name,
+		Proxy:   mm.ownerMP.GetId(),
+		Address: addr,
+		Maintenance: &data.MaintenanceData{
+			InMaintenance: false,
+			Reason:        "No reason provided.",
+			Expire:        false,
+			Expiration:    time.Time{},
+		},
+		Players: make([]uuid.UUID, 0),
 	}
 
 	err = mm.db.SetBackendData(id, data)

@@ -45,7 +45,7 @@ func NewBackend(id, managerId uuid.UUID, ownerMP *Proxy, l *logger.Logger, db *d
 	mb.name = data.Name
 	mb.address = data.Address
 	mb.players = data.Players
-	mb.mi = newBackendMaintenanceInfo(mb, data)
+	mb.mi = newMaintenanceInfo(mb, *data.Maintenance)
 
 	return mb
 }
